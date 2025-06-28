@@ -177,9 +177,21 @@ def user_home(username: str, token: str):
     return render_template('index.html', user_leaves=user_leaves)
 
 
-@app.route('/account', methods=['GET', 'POST'])
+@app.route('/account')
 @login_required
-def account():
+def account_root():
+    uname = session['username']
+    token = make_daily_token(uname)
+    return redirect(url_for('account', username=uname, token=token))
+
+
+@app.route('/<username>/account/<token>', methods=['GET', 'POST'])
+@login_required
+def account(username: str, token: str):
+    print(username, token, session['username'], make_daily_token(username))
+    if username != session['username'] or token != make_daily_token(username):
+        return apology("Verification failed! Logout and Re-login!", 403)
+
     if request.method == "GET":
         user = auth.get_user_info_with_id(session['user_id'])
         pprint.pprint(dict(user))
