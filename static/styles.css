@@ -1,0 +1,357 @@
+body {
+   background-color: #f0f2f5;
+   margin: 0;
+   padding: 0;
+}
+.wrapper {
+  display: flex;
+  align-items: center;
+  margin-top: 4%;
+  margin-left: 30%;
+}
+.calendar {
+  width: 720px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  position: relative;
+  margin-right: 30px;
+}
+
+.header {
+  position: relative;
+  padding: 18px 32px;
+  background: #fafafa;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.header button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 2.1em;
+  cursor: pointer;
+  color: #555;
+}
+#prev { left: 32px; }
+#next { right: 32px; }
+.header select {
+  border: none;
+  font-size: 1.5em;
+  background: transparent;
+  font-weight: bold;
+  color: #333;
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: auto;
+}
+
+/* Weekday labels */
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #f7f7f7;
+  padding: 15px 0;
+}
+.weekdays div {
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.35em;
+  color: #666;
+}
+
+/* Days grid */
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 15px;
+  gap: 6px;
+}
+.days div {
+  height: 60px;
+  line-height: 60px;
+  text-align: center;
+  border-radius: 6px;
+  cursor: default;
+  font-size: 1.425em;
+  color: #333;
+}
+.days div:hover {
+  background: #eee;
+}
+.days .today {
+  background: #007bff;
+  color: #fff;
+}
+.days .today:hover {
+  background: #cce5ff;
+  color: #222;
+}
+.days .empty {
+  background: transparent;
+  cursor: default;
+}
+
+/* Year Slider */
+.year-slider-container {
+  position: relative;
+  width: 100px;
+  height: 300px;
+  overflow-y: scroll;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  background: #f0f2f5;
+  border-radius: 8px;
+  padding: 10px 0;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.year-slider-container::-webkit-scrollbar {
+  display: none;
+}
+
+.year-item {
+  text-align: center;
+  font-size: 1.8em;
+  font-weight: bold;
+  padding: 5px 0;
+  cursor: pointer;
+  color: #888;
+  transition: color 0.2s ease, font-size 0.2s ease;
+}
+
+.year-item.active {
+  color: #333;
+  font-size: 2.5em;
+}
+
+/* Gradient Overlays */
+.year-slider-container::before,
+.year-slider-container::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.year-slider-container::before {
+  top: 0;
+  background: linear-gradient(to bottom, #f0f2f5, rgba(240, 242, 245, 0));
+}
+
+.year-slider-container::after {
+  bottom: 0;
+  background: linear-gradient(to top, #f0f2f5, rgba(240, 242, 245, 0));
+}
+
+
+/* Size for brand */
+nav .navbar-brand
+{
+    font-weight: bold;
+    font-size: 2em;
+}
+
+/* Colors for brand */
+nav .navbar-brand .blue
+{
+    color: #537fbe;
+}
+nav .navbar-brand .red
+{
+    color: #ea433b;
+}
+nav .navbar-brand .yellow
+{
+    color: #f5b82e;
+}
+nav .navbar-brand .green
+{
+    color: #2e944b;
+}
+
+.main-right-panel-wrapper {
+    background-color: #ffffff; /* White background for the RIGHT content area */
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); /* Subtle shadow for the RIGHT panel */
+    padding: 30px; /* Padding for content inside the right panel */
+    margin-top: 5px; /* Space from the top header */
+    max-width: 50%; /* Approx 50% of viewport width */
+    margin-left: auto; /* Center the panel or push it to the right with specific margins */
+    margin-right: auto; /* Center the panel */
+    float: none; /* Ensure it doesn't float when centered with auto margins */
+  }
+
+  /* Specific styling for the row containing the sidebar and content */
+  .page-layout-row {
+      display: flex; /* Use flexbox to align sidebar and right panel */
+      justify-content: center; /* Center the entire layout on the page */
+      align-items: flex-start; /* Align items to the top */
+  }
+
+
+  /* LEFT SIDEBAR Styling - now separate and blends with body background */
+  .sidebar {
+    min-width: 30%;
+    min-height: 80vh; /* Ensure sidebar extends down */
+    background-color: #f0f2f5; /* Same as body background */
+    padding: 30px; /* Padding for the sidebar content */
+    margin-right: 10px; /* Space between left sidebar and right panel */
+    align-self: flex-start; /* Align to the top within the flex container */
+  }
+  .profile-pic-container {
+    position: relative;
+    width: 250px;
+    height: 250px;
+    border-radius: 50%;
+    background-image: linear-gradient(to right top, #ff8c00, #ff007f); /* Vibrant gradient background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 15px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  .profile-pic {
+    width: 230px; /* Slightly smaller to show the border/background */
+    height: 230px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #ffffff; /* White border around the image */
+  }
+  .sidebar h5 {
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 5px;
+  }
+  .sidebar small.text-muted {
+    color: #666 !important;
+    font-size: 0.9em;
+  }
+
+  /* Navigation links */
+  .nav-link {
+    color: #666;
+    padding: 10px 0;
+    transition: all 0.3s ease;
+    text-align: left; /* Ensure left alignment */
+  }
+  .nav-link:hover {
+    color: #007bff;
+    padding-left: 5px; /* Slight indent on hover */
+  }
+  .nav-link.active {
+    font-weight: 600;
+    color: #007bff !important;
+    border-left: 3px solid #007bff; /* Indicator for active link */
+    padding-left: 5px;
+  }
+
+  /* Floating Add button */
+  .add-button-container {
+    text-align: center;
+    margin-top: 30px;
+  }
+  .add-button {
+    width: 56px; /* Slightly larger */
+    height: 56px;
+    font-size: 28px;
+    background-color: #007bff;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+    transition: all 0.3s ease;
+  }
+  .add-button:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px); /* Slight lift on hover */
+  }
+
+  .content-section-inner .card-title {
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 20px;
+    text-align: left; /* Ensure title is left aligned */
+  }
+  .content-section-inner hr {
+    border-top: 1px solid #eee;
+    margin-bottom: 25px;
+  }
+
+  /* Styling for the "box rects" */
+  .info-box {
+    background-color: #f8f9fa; /* Default light shade */
+    border-radius: 8px;
+    padding: 15px 20px; /* Increased padding for more space within boxes */
+    margin-bottom: 15px; /* Space between boxes */
+    display: flex; /* Use flexbox for key-value alignment */
+    align-items: center; /* Vertically center */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03); /* Lighter shadow for a more integrated feel */
+    transition: all 0.2s ease-in-out;
+    border: 1px solid #e9ecef; /* Light border */
+  }
+
+  /* Specific shades for variety */
+  .info-box.shade-1 { background-color: #f8f9fa; }
+  .info-box.shade-2 { background-color: #f2f4f6; } /* Slightly darker */
+  .info-box.shade-3 { background-color: #ebedef; } /* Even darker */
+  .info-box.shade-4 { background-color: #e0e2e5; } /* Darkest of the light shades */
+
+  .info-box-label {
+    font-weight: 600;
+    color: #555;
+    flex-basis: 200px; /* Increased fixed width for the label to create more space and align */
+    text-align: left; /* Explicitly left-align the label */
+    padding-right: 20px; /* More space between label and value */
+  }
+
+  .info-box-value {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.1em;
+    color: #333;
+    font-weight: bold;
+    flex-grow: 1; /* Allow value to take remaining space */
+    text-align: left; /* Explicitly left-align the value */
+  }
+
+  #account-info-form .form-control {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #333;
+  }
+
+  .btn-outline-primary {
+    border-color: #007bff;
+    color: #007bff;
+    border-radius: 8px;
+    padding: 10px 20px;
+    transition: all 0.3s ease;
+    margin-top: 15px; /* Adjust spacing below the last info box */
+    width: 100%;
+    padding: 10px;
+  }
+  .btn-outline-primary:hover {
+    background-color: #007bff;
+    color: #fff;
+  }
+
+  /* Adjust Bootstrap column behavior for layout control */
+  /* This setup uses flexbox on .page-layout-row to align the two main components */
+  .col-md-3-custom {
+      flex: 0 0 auto; /* Don't grow or shrink, take auto width */
+      width: 250px; /* Fixed width for sidebar if desired, or let content define */
+      /* If you want it to be a Bootstrap column-like width relative to its parent,
+         you might reconsider the flexbox approach for the main row, or calculate
+         percentage widths here. For clear separation, fixed width often helps. */
+  }
+  .col-md-9-custom {
+      flex-grow: 1; /* Allow the right panel to grow */
+      /* Max-width for right panel is controlled by .main-right-panel-wrapper */
+  }

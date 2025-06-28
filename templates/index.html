@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+
+{% block title %} Your Leaves Dashboard {% endblock %}
+
+{% block main %}
+<style>
+    .custom-font {
+        font-family: 'Consolas', sans-serif;
+    }
+</style>
+
+    <div class="wrapper">
+        <div class="calendar">
+          <div class="header">
+            <button id="prev">&laquo;</button>
+            <select id="month"></select>
+            <button id="next">&raquo;</button>
+          </div>
+          <div class="weekdays">
+            <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+          </div>
+          <div class="days" id="days"></div>
+        </div>
+        <div class="year-slider-container" id="yearSlider">
+          </div>
+    </div>
+
+<script>
+  window.USER_LEAVES = {{ user_leaves|tojson }};
+</script>
+
+{% endblock %}
