@@ -222,3 +222,82 @@
         // Allow form to submit
     });
 })();
+
+// Leaves types add rows
+document.getElementById('add-row').addEventListener('click', () => {
+  const tbody = document.querySelector('#leave-table tbody');
+  const lastRow = tbody.lastElementChild;  // or: tbody.querySelector('tr:last-child')
+  const row = lastRow.cloneNode(true);
+  row.querySelectorAll('input').forEach(i => i.value = '');
+  tbody.append(row);
+});
+document.querySelector('#leave-table').addEventListener('click', e => {
+  if (e.target.classList.contains('remove-row')) {
+    const rows = document.querySelectorAll('#leave-table tbody tr');
+    if (rows.length > 1) e.target.closest('tr').remove();
+  }
+});
+
+// Import leaves data function
+(function () {
+  const importBtn = document.getElementById("import-leaves-btn");
+  const box = document.getElementById("import-leaves-box");
+  const input = document.getElementById("leave-json-input");
+  const submit = document.getElementById("submit-leave-json");
+  const cancel = document.getElementById("cancel-leave-json");
+  const errorBox = document.getElementById("leave-import-error");
+
+  if (!importBtn || !box || !input || !submit || !cancel || !errorBox) return;
+
+  importBtn.addEventListener("click", () => {
+    box.style.display = "block";
+    errorBox.style.display = "none";
+    input.focus();
+  });
+
+  cancel.addEventListener("click", () => {
+    input.value = "";
+    box.style.display = "none";
+    errorBox.style.display = "none";
+  });
+
+  submit.addEventListener("click", async () => {
+    errorBox.style.display = "none";
+    errorBox.textContent = "";
+
+    let parsed;
+    try {
+      parsed = JSON.parse(input.value);
+    } catch {
+      errorBox.textContent = "Invalid JSON format.";
+      errorBox.style.display = "block";
+      return;
+    }
+
+    try {
+      const res = await fetch("/leaves/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leaves_taken: parsed })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        errorBox.textContent = data.error || "Import failed.";
+        errorBox.style.display = "block";
+        return;
+      }
+
+      // Optional: show toast/alert
+      alert("Leaves data imported successfully.");
+      box.style.display = "none";
+      input.value = "";
+      location.reload(); // or reload part of the UI
+    } catch (err) {
+      console.error("Fetch error during leave import:", err);
+      errorBox.textContent = "Server error. Please try again.";
+      errorBox.style.display = "block";
+    }
+  });
+})();

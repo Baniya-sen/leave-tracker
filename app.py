@@ -1,3 +1,4 @@
+import json
 import pprint
 import re
 import hmac
@@ -9,7 +10,7 @@ from dotenv import load_dotenv
 
 from flask import (
     Flask, g, session, request,
-    redirect, url_for, render_template
+    redirect, url_for, render_template, jsonify
 )
 from flask_session import Session
 from functools import wraps
@@ -52,6 +53,15 @@ def teardown(exc):
     auth.close_auth_db(exc)
 
 
+@app.template_filter("from_json")
+def from_json_filter(s):
+    try:
+        return json.loads(s)
+    except Exception as e:
+        print(e)
+        return {}
+
+
 def valid_date(s):
     try:
         datetime.strptime(s, DATE_FMT)
@@ -78,6 +88,7 @@ def login_required(f):
             return redirect(url_for('login'))
 
         return f(*args, **kwargs)
+
     return wrapper
 
 
@@ -177,18 +188,17 @@ def user_home(username: str, token: str):
     return render_template('index.html', user_leaves=user_leaves)
 
 
-@app.route('/account')
+@app.route('/account', methods=['GET', 'POST'])
 @login_required
 def account_root():
     uname = session['username']
     token = make_daily_token(uname)
-    return redirect(url_for('account', username=uname, token=token))
+    return redirect(url_for('account', username=uname, token=token), code=307)
 
 
 @app.route('/<username>/account/<token>', methods=['GET', 'POST'])
 @login_required
 def account(username: str, token: str):
-    print(username, token, session['username'], make_daily_token(username))
     if username != session['username'] or token != make_daily_token(username):
         return apology("Verification failed! Logout and Re-login!", 403)
 
@@ -222,12 +232,87 @@ def account(username: str, token: str):
             else:
                 return apology("Invalid weekend days", 400)
 
+        types = request.form.getlist('leave_type')
+        counts = request.form.getlist('leave_count')
+
+        leaves_given = {}
+        for t, c in zip(types, counts):
+            t = t.strip()
+            try:
+                n = int(c)
+                if not t or n < 0:
+                    raise ValueError
+            except ValueError:
+                return apology("Each leave type must have a non‑negative integer count.", 400)
+            leaves_given[t] = n
+
+        if leaves_given:
+            firm = leaves.get_user_key_data(session['user_id'], "user_info.firm_name")
+            if not firm:
+                return apology("Firm not configured.", 400)
+
+        data['leaves_type'] = leaves_given
+
         if auth.update_user_info(session["user_id"], data) and \
                 leaves.update_user_profile(session["user_id"], data):
+
             user = auth.get_user_info_with_id(session["user_id"])
-            return redirect(url_for('account'))
+            return redirect(
+                url_for('account',
+                        username=session['username'],
+                        token=make_daily_token(session['username']))
+            )
         else:
             return apology("Something went wrong!", 401)
+
+
+@app.route("/leaves/import", methods=["POST"])
+@login_required
+def import_leaves():
+    user_id = session["user_id"]
+
+    data = request.get_json(silent=True)
+    if not data or "leaves_taken" not in data:
+        return jsonify(error="Missing 'leaves_taken' field."), 400
+
+    leaves_taken = data["leaves_taken"]
+    if not isinstance(leaves_taken, dict):
+        return jsonify(error="'leaves_taken' must be a JSON object."), 400
+
+    firm = leaves.get_user_key_data(user_id, "user_info.firm_name")
+    if not firm:
+        return jsonify(error="Firm not configured."), 400
+
+    firm_data = leaves.get_user_key_data(user_id, f"user_leaves.{firm}")
+    if not firm_data:
+        return jsonify(error="Add leave structure for your firm first."), 400
+
+    allowed_types = set(firm_data.get("leaves_given", {}).keys())
+    allowed_types = [item.title() for item in allowed_types]
+    if not allowed_types:
+        return jsonify(error="No granted leave types found."), 400
+
+    def valid_iso(s):
+        try:
+            date.fromisoformat(s)
+            return True
+        except Exception as e:
+            print(user_id, "Wrong date in import- ", e)
+            return False
+
+    for leave_type, dates in leaves_taken.items():
+        if leave_type.title() not in allowed_types:
+            return jsonify(error=f"Unknown leave type: '{leave_type}'."), 400
+        if not isinstance(dates, list) or not all(
+                isinstance(d, str) and valid_iso(d) for d in dates
+        ):
+            return jsonify(error=f"Invalid dates for leave type '{leave_type}'."), 400
+
+    count, matched = leaves.update_user_leaves_by_import(user_id, leaves_taken)
+    if (count, matched) == (-1, -1):
+        return jsonify(error="One or more leave types exceed available remaining leaves."), 400
+
+    return jsonify(status="ok", updated=count, matched=matched)
 
 
 @app.route('/take_leave', methods=['POST'])

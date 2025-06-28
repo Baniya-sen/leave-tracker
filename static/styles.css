@@ -355,3 +355,12 @@ nav .navbar-brand .green
       flex-grow: 1; /* Allow the right panel to grow */
       /* Max-width for right panel is controlled by .main-right-panel-wrapper */
   }
+
+#import-leaves-box pre {
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+#import-leaves-box textarea {
+  font-family: monospace;
+}

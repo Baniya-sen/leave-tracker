@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 
 import sqlite3
@@ -77,9 +78,21 @@ def get_user_info_with_username(username: str):
 
 def update_user_info(user_id: int, data: dict) -> bool:
     db = get_auth_db()
+    existing = db.execute(
+        "SELECT leaves_type FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+    existing_leaves = {}
+    if existing and existing["leaves_type"]:
+        try:
+            existing_leaves = json.loads(existing["leaves_type"])
+        except Exception as e:
+            print(e)
+            existing_leaves = {}
+
     allowed_fields = [
         'name', 'age', 'email', 'date',
-        'firm_name', 'firm_join_date', 'firm_weekend_days'
+        'firm_name', 'firm_join_date', 'firm_weekend_days',
+        'leaves_type'
     ]
 
     fields = []
@@ -87,7 +100,13 @@ def update_user_info(user_id: int, data: dict) -> bool:
     for field in allowed_fields:
         if field in data:
             fields.append(f"{field} = ?")
-            values.append(data[field])
+            if field == "leaves_type":
+                new_leaves = data[field]
+                merged = existing_leaves.copy()
+                merged.update(new_leaves)
+                values.append(json.dumps(merged))
+            else:
+                values.append(data[field])
 
     if not fields:
         return False

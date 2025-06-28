@@ -36,7 +36,7 @@
             </div>
              <div class="col-md-6">
               <label for="age" class="form-label">Age</label>
-              <input type="number" class="form-control" id="age" name="age" value="{{ user_info['name'] or '' }}">
+              <input type="number" class="form-control" id="age" name="age" value="{{ user_info['age'] or '' }}">
             </div>
             <div class="col-md-6">
               <label for="email" class="form-label">Email</label>
@@ -55,8 +55,26 @@
               <input type="date" class="form-control" id="firm_join_date" name="firm_join_date" value="{{ user_info['firm_join_date'] or '' }}">
             </div>
             <div class="col-md-6">
-              <label for="firm_join_date" class="form-label">Firm Leaves</label>
-              <input type="date" class="form-control" id="firm_join_date" name="firm_join_date" value="{{ user_info['firm_join_date'] or '' }}">
+              <table id="leave-table" class="table">
+                <thead>
+                  <tr><th>Leave Type</th><th>Total Leaves</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% set granted = user_info['leaves_type'] | from_json %}
+                    {% for lt, count in granted.items() %}
+                    <tr>
+                      <td><input name="leave_given" class="form-control" placeholder="{{ lt }}" required readonly></td>
+                      <td><input name="leave_counter_given" type="number" class="form-control" min="0" placeholder="{{ count }}" required readonly></td>
+                    </tr>
+                    {% endfor %}
+                  <tr>
+                    <td><input name="leave_type" class="form-control" placeholder="e.g. 'Sick'" required></td>
+                    <td><input name="leave_count" type="number" class="form-control" min="0" placeholder="Per Year" required></td>
+                    <td><button type="button" class="btn btn-sm btn-danger remove-row">×</button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <button type="button" class="btn btn-outline-secondary" id="add-row">+ Add Leave Type</button>
             </div>
             <div class="col-md-6">
               <label for="firm_weekend_days" class="form-label">Firm Weekend Days (e.g. 6,7)</label>
@@ -90,14 +108,6 @@
             <span class="info-box-value">{{ user_info['date'] or '' }}</span>
           </div>
           <div class="info-box shade-1">
-            <span class="info-box-label">Firm Name</span>
-            <span class="info-box-value">{{ user_info['firm_name'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Firm Join Date</span>
-            <span class="info-box-value">{{ user_info['firm_join_date'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
             <span class="info-box-label">Account Created</span>
             <span class="info-box-value">{{ user_info['account_created'] or '' }}</span>
           </div>
@@ -106,8 +116,40 @@
             <span class="info-box-value">{{ 'Yes' if user_info['account_verified'] else 'No' }}</span>
           </div>
           <div class="info-box shade-1">
+            <span class="info-box-label">Firm Name</span>
+            <span class="info-box-value">{{ user_info['firm_name'] or '' }}</span>
+          </div>
+          <div class="info-box shade-1">
+            <span class="info-box-label">Firm Join Date</span>
+            <span class="info-box-value">{{ user_info['firm_join_date'] or '' }}</span>
+          </div>
+          <div class="info-box shade-1">
             <span class="info-box-label">Firm Weekend Days</span>
             <span class="info-box-value">{{ user_info['firm_weekend_days'] or '' }}</span>
+          </div>
+          <div class="info-box shade-1">
+            <span class="info-box-label">Firm Leaves Structure:</span>
+            {% set granted = user_info['leaves_type'] | from_json %}
+            <ul class="info-box-value list-unstyled mb-0">
+              {% for lt, count in granted.items() %}
+                <li><strong>{{ lt }}</strong>: {{ count }}</li>
+              {% endfor %}
+            </ul>
+          </div>
+          <button class="btn btn-outline-secondary mt-3" id="import-leaves-btn">
+            📥 Import Leave Data
+          </button>
+          <div id="import-leaves-box" class="card mt-3 p-3" style="display: none;">
+            <h5>Paste Your Leave Data JSON</h5>
+            <p class="text-muted small mb-2">
+              <strong>Example:</strong>
+              <code>{"Casual": ["2025-07-01", "2025-07-15"], "Sick": ["2025-06-20"]}</code>
+            </p>
+            <div id="leave-import-error" class="text-danger mb-2" style="display: none;"></div>
+            <textarea id="leave-json-input" class="form-control" rows="7" placeholder="Leave types must match those in your account. If not, data will be replaced.&#10;&#10;{&#10;  &quot;Casual&quot;: [&quot;2025-07-01&quot;, &quot;2025-07-15&quot;],&#10;  &quot;Sick&quot;: [&quot;2025-06-20&quot;],&#10;  &quot;Earned&quot;: []&#10;}"></textarea>
+
+            <button class="btn btn-success mt-2" id="submit-leave-json">Save</button>
+            <button class="btn btn-link mt-2" id="cancel-leave-json">Cancel</button>
           </div>
         </div>
       </div>
