@@ -1,0 +1,117 @@
+{% extends "layout.html" %}
+{% block title %}Account Information{% endblock %}
+
+{% block main %}
+
+<div class="container-fluid">
+  <div class="row page-layout-row">
+    <nav class="col-md-3-custom sidebar">
+      <div class="text-center my-4">
+        <div class="profile-pic-container">
+          <img src="{{ user_info['avatar_url'] or url_for('static', filename='default-avatar.png') }}"
+               alt="Profile" class="profile-pic">
+        </div>
+        <h5>{{ user_info['name'] or '—' }}</h5>
+<!--        <small class="text-muted">{{ user_info['role'] or 'User' }}</small>-->
+      </div>
+<!--      <ul class="nav flex-column">-->
+<!--        <li class="nav-item mb-2">-->
+<!--          <a class="nav-link active" href="#">Profile</a>-->
+<!--        </li>-->
+<!--      </ul>-->
+      <div class="add-button-container">
+        <button class="btn btn-outline-primary" id="edit-account-btn">Change Account Info</button>
+      </div>
+    </nav>
+
+    <section class="col-md-9-custom main-right-panel-wrapper">
+      <div class="content-section-inner">
+        <h4 class="card-title">Your Account Related Information:</h4>
+        <hr>
+        <form id="account-info-form" method="post" action="/account" style="display:none;">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="name" class="form-label">Name</label>
+              <input type="text" class="form-control" id="name" name="name" value="{{ user_info['name'] or '' }}">
+            </div>
+             <div class="col-md-6">
+              <label for="age" class="form-label">Age</label>
+              <input type="number" class="form-control" id="age" name="age" value="{{ user_info['name'] or '' }}">
+            </div>
+            <div class="col-md-6">
+              <label for="email" class="form-label">Email</label>
+              <input type="email" class="form-control" id="email" name="email" value="{{ user_info['email'] or '' }}">
+            </div>
+            <div class="col-md-6">
+              <label for="date" class="form-label">Date of Birth</label>
+              <input type="date" class="form-control" id="date" name="date" value="{{ user_info['date'] or '' }}">
+            </div>
+            <div class="col-md-6">
+              <label for="firm_name" class="form-label">Firm Name</label>
+              <input type="text" class="form-control" id="firm_name" name="firm_name" value="{{ user_info['firm_name'] or '' }}">
+            </div>
+            <div class="col-md-6">
+              <label for="firm_join_date" class="form-label">Firm Join Date</label>
+              <input type="date" class="form-control" id="firm_join_date" name="firm_join_date" value="{{ user_info['firm_join_date'] or '' }}">
+            </div>
+            <div class="col-md-6">
+              <label for="firm_join_date" class="form-label">Firm Leaves</label>
+              <input type="date" class="form-control" id="firm_join_date" name="firm_join_date" value="{{ user_info['firm_join_date'] or '' }}">
+            </div>
+            <div class="col-md-6">
+              <label for="firm_weekend_days" class="form-label">Firm Weekend Days (e.g. 6,7)</label>
+              <input type="text" class="form-control" id="firm_weekend_days" name="firm_weekend_days" value="{{ user_info['firm_weekend_days'] or '' }}">
+            </div>
+          </div>
+          <div class="mt-4 d-flex gap-2 justify-content-end">
+            <button type="submit" class="btn btn-success" id="save-account-btn">Save</button>
+            <button type="button" class="btn btn-secondary" id="cancel-account-btn">Cancel</button>
+          </div>
+        </form>
+        <div id="account-info-view">
+          <div class="info-box shade-1">
+            <span class="info-box-label">Username</span>
+            <span class="info-box-value">{{ user_info['username'] or '' }}</span>
+          </div>
+          <div class="info-box shade-1">
+            <span class="info-box-label">Name</span>
+            <span class="info-box-value">{{ user_info['name'] or '' }}</span>
+          </div>
+          <div class="info-box shade-1">
+            <span class="info-box-label">Age</span>
+            <span class="info-box-value">{{ user_info['age'] or '' }}</span>
+          </div>
+          <div class="info-box shade-1">
+            <span class="info-box-label">Email</span>
+            <span class="info-box-value">{{ user_info['email'] or '' }}</span>
+          </div>
+          <div class="info-box shade-1">
+            <span class="info-box-label">Date of Birth</span>
+            <span class="info-box-value">{{ user_info['date'] or '' }}</span>
+          </div>
+          <div class="info-box shade-1">
+            <span class="info-box-label">Firm Name</span>
+            <span class="info-box-value">{{ user_info['firm_name'] or '' }}</span>
+          </div>
+          <div class="info-box shade-1">
+            <span class="info-box-label">Firm Join Date</span>
+            <span class="info-box-value">{{ user_info['firm_join_date'] or '' }}</span>
+          </div>
+          <div class="info-box shade-1">
+            <span class="info-box-label">Account Created</span>
+            <span class="info-box-value">{{ user_info['account_created'] or '' }}</span>
+          </div>
+          <div class="info-box shade-1">
+            <span class="info-box-label">Account Verified</span>
+            <span class="info-box-value">{{ 'Yes' if user_info['account_verified'] else 'No' }}</span>
+          </div>
+          <div class="info-box shade-1">
+            <span class="info-box-label">Firm Weekend Days</span>
+            <span class="info-box-value">{{ user_info['firm_weekend_days'] or '' }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}

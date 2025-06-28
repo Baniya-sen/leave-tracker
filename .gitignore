@@ -1,0 +1,10 @@
+# PyCharm project settings
+.idea/
+
+# Python byte‑compiled files
+__pycache__/
+*.py[cod]
+
+.env
+user_auth.db
+flask_session
