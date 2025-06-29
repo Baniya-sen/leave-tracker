@@ -1,4 +1,4 @@
-    (function () {
+(function () {
     const monthNames = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
@@ -101,9 +101,14 @@
         }
         for (let d = 1; d <= daysInMonth; d++) {
             const cell = document.createElement('div');
-            cell.textContent = d;
 
-            // Highlight today
+            // 1) Wrap the date in its own element
+            const num = document.createElement('span');
+            num.classList.add('date-number');
+            num.style.zIndex = '2';
+            num.style.position = 'relative';
+
+            // 2) Highlight today if needed
             if (
                 d === today.getDate() &&
                 currentMonth === today.getMonth() &&
@@ -112,14 +117,36 @@
                 cell.classList.add('today');
             }
 
-            // Check if this date has leaves
+            // 3) Leaves logic
             const iso = `${currentYear}-${pad(currentMonth + 1)}-${pad(d)}`;
             if (leaveMap[iso]) {
                 cell.classList.add('leave-day');
+                cell.style.position = 'relative';
+                cell.style.overflow = 'hidden';
                 cell.style.backgroundColor = 'red';
+                cell.style.display = 'flex';
+                cell.style.flexDirection = 'column';
+                cell.style.justifyContent = 'space-between';
                 cell.title = leaveMap[iso].join(', ');
+
+                // 4) Build the badges container
                 const labelsContainer = document.createElement('div');
                 labelsContainer.classList.add('leave-labels');
+                // absolutely position inside the cell
+                Object.assign(labelsContainer.style, {
+                    position: 'absolute',
+                    bottom: '2px',
+                    left: '2px',
+                    right: '2px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'center',
+                    gap: '2px',
+                    overflow: 'hidden',
+                    maxHeight: '2.5em',
+                    background: 'transparent',
+                    zIndex: '1'
+                });
 
                 leaveMap[iso].forEach(type => {
                     const span = document.createElement('span');
@@ -127,8 +154,12 @@
                     span.textContent = type;
                     labelsContainer.append(span);
                 });
+
                 cell.append(labelsContainer);
             }
+
+            num.textContent = d;
+            cell.append(num);
             daysContainer.append(cell);
         }
 
@@ -161,7 +192,7 @@
 })();
 
 // Account info edit mode logic
-(function() {
+(function () {
     const editBtn = document.getElementById('edit-account-btn');
     const form = document.getElementById('account-info-form');
     const view = document.getElementById('account-info-view');
@@ -179,15 +210,15 @@
         }
     }
 
-    editBtn.addEventListener('click', function() {
+    editBtn.addEventListener('click', function () {
         toggleEditMode(true);
     });
 
-    cancelBtn.addEventListener('click', function() {
+    cancelBtn.addEventListener('click', function () {
         toggleEditMode(false);
     });
 
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', function (e) {
         // Validate fields
         let valid = true;
         // Email (optional, but if present must be valid)
@@ -232,83 +263,83 @@
 
 // Leaves types add rows
 document.getElementById('add-row').addEventListener('click', () => {
-  const tbody = document.querySelector('#leave-table tbody');
-  const lastRow = tbody.lastElementChild;  // or: tbody.querySelector('tr:last-child')
-  const row = lastRow.cloneNode(true);
-  row.querySelectorAll('input').forEach(i => i.value = '');
-  tbody.append(row);
+    const tbody = document.querySelector('#leave-table tbody');
+    const lastRow = tbody.lastElementChild;  // or: tbody.querySelector('tr:last-child')
+    const row = lastRow.cloneNode(true);
+    row.querySelectorAll('input').forEach(i => i.value = '');
+    tbody.append(row);
 });
 document.querySelector('#leave-table').addEventListener('click', e => {
-  if (e.target.classList.contains('remove-row')) {
-    const rows = document.querySelectorAll('#leave-table tbody tr');
-    if (rows.length > 1) e.target.closest('tr').remove();
-  }
+    if (e.target.classList.contains('remove-row')) {
+        const rows = document.querySelectorAll('#leave-table tbody tr');
+        if (rows.length > 1) e.target.closest('tr').remove();
+    }
 });
 
 // Import leaves data function
 (function () {
-  const importBtn = document.getElementById("import-leaves-btn");
-  const box = document.getElementById("import-leaves-box");
-  const input = document.getElementById("leave-json-input");
-  const submit = document.getElementById("submit-leave-json");
-  const cancel = document.getElementById("cancel-leave-json");
-  const errorBox = document.getElementById("leave-import-error");
+    const importBtn = document.getElementById("import-leaves-btn");
+    const box = document.getElementById("import-leaves-box");
+    const input = document.getElementById("leave-json-input");
+    const submit = document.getElementById("submit-leave-json");
+    const cancel = document.getElementById("cancel-leave-json");
+    const errorBox = document.getElementById("leave-import-error");
 
-  if (!importBtn || !box || !input || !submit || !cancel || !errorBox) return;
+    if (!importBtn || !box || !input || !submit || !cancel || !errorBox) return;
 
-  importBtn.addEventListener("click", () => {
-    box.style.display = "block";
-    errorBox.style.display = "none";
-    input.focus();
-  });
+    importBtn.addEventListener("click", () => {
+        box.style.display = "block";
+        errorBox.style.display = "none";
+        input.focus();
+    });
 
-  cancel.addEventListener("click", () => {
-    input.value = "";
-    box.style.display = "none";
-    errorBox.style.display = "none";
-  });
+    cancel.addEventListener("click", () => {
+        input.value = "";
+        box.style.display = "none";
+        errorBox.style.display = "none";
+    });
 
-  submit.addEventListener("click", async () => {
-    errorBox.style.display = "none";
-    errorBox.textContent = "";
+    submit.addEventListener("click", async () => {
+        errorBox.style.display = "none";
+        errorBox.textContent = "";
 
-    let parsed;
-    try {
-      parsed = JSON.parse(input.value);
-    } catch {
-      errorBox.textContent = "Invalid JSON format.";
-      errorBox.style.display = "block";
-      return;
-    }
+        let parsed;
+        try {
+            parsed = JSON.parse(input.value);
+        } catch {
+            errorBox.textContent = "Invalid JSON format.";
+            errorBox.style.display = "block";
+            return;
+        }
 
-    try {
-      const csrf = document.querySelector('meta[name="csrf-token"]').content;
-      const res = await fetch("/leaves/import", {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrf
-        },
-        body: JSON.stringify({ leaves_taken: parsed })
-      });
+        try {
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            const res = await fetch("/leaves/import", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf
+                },
+                body: JSON.stringify({ leaves_taken: parsed })
+            });
 
-      const data = await res.json();
+            const data = await res.json();
 
-      if (!res.ok) {
-        errorBox.textContent = data.error || "Import failed.";
-        errorBox.style.display = "block";
-        return;
-      }
+            if (!res.ok) {
+                errorBox.textContent = data.error || "Import failed.";
+                errorBox.style.display = "block";
+                return;
+            }
 
-      // Optional: show toast/alert
-      alert("Leaves data imported successfully.");
-      box.style.display = "none";
-      input.value = "";
-      location.reload(); // or reload part of the UI
-    } catch (err) {
-      console.error("Fetch error during leave import:", err);
-      errorBox.textContent = "Server error. Please try again.";
-      errorBox.style.display = "block";
-    }
-  });
+            // Optional: show toast/alert
+            alert("Leaves data imported successfully.");
+            box.style.display = "none";
+            input.value = "";
+            location.reload(); // or reload part of the UI
+        } catch (err) {
+            console.error("Fetch error during leave import:", err);
+            errorBox.textContent = "Server error. Please try again.";
+            errorBox.style.display = "block";
+        }
+    });
 })();

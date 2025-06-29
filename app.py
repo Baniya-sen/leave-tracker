@@ -4,7 +4,7 @@ import re
 import hmac
 import hashlib
 import base64
-from os import getenv
+from os import getenv, path
 from datetime import datetime, date
 from dotenv import load_dotenv
 from functools import wraps
@@ -23,24 +23,31 @@ import leaves
 
 load_dotenv()
 
+# Reddis
+REDDIS_PASS = quote_plus(getenv('REDDIS_PASS'))
+REDDIS_DB = quote_plus(getenv('REDDIS_DB'))
+REDDIS_PORT = quote_plus(getenv('REDDIS_PORT'))
+REDDIS_URI = f'rediss://default:{REDDIS_PASS}@{REDDIS_DB}.upstash.io:{REDDIS_PORT}'
+
 # Mongo variables
-USER = quote_plus(getenv('MONGO_USER'))
-PASS = quote_plus(getenv('MONGO_PASS'))
-CLUSTER = getenv('MONGO_CLUSTER')
-COLLECTION = getenv('MONGO_COLLECTION')
-HOST = getenv('MONGO_HOST')
-OPTIONS = getenv('MONGO_OPTIONS')
-URI = f"mongodb+srv://{USER}:{PASS}@{CLUSTER}{HOST}/?{OPTIONS}{CLUSTER}"
+MONGO_USER = quote_plus(getenv('MONGO_USER'))
+MONGO_PASS = quote_plus(getenv('MONGO_PASS'))
+MONGO_CLUSTER = getenv('MONGO_CLUSTER')
+MONGO_COLLECTION = getenv('MONGO_COLLECTION')
+MONGO_HOST = getenv('MONGO_HOST')
+MONGO_OPTIONS = getenv('MONGO_OPTIONS')
+MONGO_URI = f"mongodb+srv://{MONGO_USER}:{MONGO_PASS}@{MONGO_CLUSTER}{MONGO_HOST}/?{MONGO_OPTIONS}{MONGO_CLUSTER}"
 
 app = Flask(__name__)
 app.secret_key = getenv('APP_KEY')
 
 app.config['AUTH_DB'] = 'user_auth.db'
+app.config['RATELIMIT_STORAGE_URL'] = REDDIS_URI
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_TYPE'] = 'filesystem'
-app.config['MONGO_URI'] = URI
-app.config['MONGO_DB'] = CLUSTER
-app.config['MONGO_Coll'] = COLLECTION
+app.config['MONGO_URI'] = MONGO_URI
+app.config['MONGO_DB'] = MONGO_CLUSTER
+app.config['MONGO_Coll'] = MONGO_COLLECTION
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
@@ -50,6 +57,7 @@ app.config.update(
 limiter = Limiter(
     app=app,
     key_func=lambda: session.get('user_id'),
+    storage_uri=REDDIS_URI
 )
 Session(app)
 csrf = CSRFProtect(app)
@@ -203,6 +211,7 @@ def user_home(username: str, token: str):
 
     return render_template(
         'index.html',
+        firms="Bonanza Interactive",
         user_leaves=firm_leaves
     )
 
