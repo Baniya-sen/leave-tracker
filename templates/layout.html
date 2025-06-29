@@ -19,6 +19,8 @@
 
         <title>Leaves Tracker: {% block title %}{% endblock %}</title>
 
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+
     </head>
 
     <body>
@@ -61,7 +63,11 @@
             This is a project in development! <a href="https://github.com/Baniya-sen">Baniya</a>
         </footer>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+        {% block extra_scripts %}
+          <script>window.USER_LEAVES = {};</script>
+        {% endblock %}
+
+        <script src="{{ url_for('static', filename='script.js') }}"></script>
 
     </body>
 

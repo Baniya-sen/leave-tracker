@@ -22,19 +22,24 @@ def get_leaves_collection():
     return client[db_name][collection_name]
 
 
-def init_user_info(user_id: int, username: str) -> None:
-    collection = get_leaves_collection()
-    now_iso = datetime.now(timezone.utc).isoformat()
+def init_user_info(user_id: int, username: str) -> bool:
+    try:
+        collection = get_leaves_collection()
+        now_iso = datetime.now(timezone.utc).isoformat()
 
-    stub = {
-        "user_id": user_id,
-        "user_info": {
-            "username": username,
-            "account_created": now_iso
-        },
-        "user_leaves": {}
-    }
-    collection.insert_one(stub)
+        stub = {
+            "user_id": user_id,
+            "user_info": {
+                "username": username,
+                "account_created": now_iso
+            },
+            "user_leaves": {}
+        }
+        collection.insert_one(stub)
+        return True
+    except Exception as e:
+        print(e)
+        return False
 
 
 def update_user_profile(user_id: int, data: dict) -> bool:
@@ -81,7 +86,7 @@ def update_user_profile(user_id: int, data: dict) -> bool:
         return False
 
 
-def get_user_key_data(user_id: int, key_path: str) -> Optional[Any]:
+def get_user_key_data(user_id: int, key_path: str) -> dict | None:
     coll = get_leaves_collection()
 
     doc = coll.find_one(
@@ -135,7 +140,7 @@ def update_user_leaves_by_import(user_id: int, leaves_taken_data: dict) -> Tuple
     return len(update_ops), result.matched_count
 
 
-def get_users_leaves(user_id: int, username: str) -> dict | None:
+def get_users_leaves(user_id: int, username: str, firm: str) -> dict | None:
     collection = get_leaves_collection()
     document = collection.find_one(
         {
@@ -144,7 +149,7 @@ def get_users_leaves(user_id: int, username: str) -> dict | None:
         },
         {
             "_id": 0,
-            "user_leaves": 1
+            f"user_leaves.{firm}": 1
         }
     )
     return document.get("user_leaves") if document else None

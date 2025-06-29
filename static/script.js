@@ -1,4 +1,4 @@
-(function () {
+    (function () {
     const monthNames = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
@@ -22,14 +22,12 @@
      */
     function buildLeaveMap() {
         const leaveMap = {};
-        if (window.USER_LEAVES) {
-            Object.values(window.USER_LEAVES).forEach(firm => {
-                const taken = firm.leaves_taken || {};
-                Object.entries(taken).forEach(([type, dates]) => {
-                    dates.forEach(dateStr => {
-                        if (!leaveMap[dateStr]) leaveMap[dateStr] = [];
-                        leaveMap[dateStr].push(type);
-                    });
+        if (window.USER_LEAVES && window.USER_LEAVES.leaves_taken) {
+            const taken = window.USER_LEAVES.leaves_taken;
+            Object.entries(taken).forEach(([type, dates]) => {
+                dates.forEach(dateStr => {
+                    if (!leaveMap[dateStr]) leaveMap[dateStr] = [];
+                    leaveMap[dateStr].push(type);
                 });
             });
         }
@@ -120,8 +118,17 @@
                 cell.classList.add('leave-day');
                 cell.style.backgroundColor = 'red';
                 cell.title = leaveMap[iso].join(', ');
-            }
+                const labelsContainer = document.createElement('div');
+                labelsContainer.classList.add('leave-labels');
 
+                leaveMap[iso].forEach(type => {
+                    const span = document.createElement('span');
+                    span.classList.add('leave-label');
+                    span.textContent = type;
+                    labelsContainer.append(span);
+                });
+                cell.append(labelsContainer);
+            }
             daysContainer.append(cell);
         }
 
@@ -275,9 +282,13 @@ document.querySelector('#leave-table').addEventListener('click', e => {
     }
 
     try {
+      const csrf = document.querySelector('meta[name="csrf-token"]').content;
       const res = await fetch("/leaves/import", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrf
+        },
         body: JSON.stringify({ leaves_taken: parsed })
       });
 

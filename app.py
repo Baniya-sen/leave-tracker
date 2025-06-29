@@ -7,14 +7,17 @@ import base64
 from os import getenv
 from datetime import datetime, date
 from dotenv import load_dotenv
-
-from flask import (
-    Flask, g, session, request,
-    redirect, url_for, render_template, jsonify
-)
-from flask_session import Session
 from functools import wraps
 from urllib.parse import quote_plus
+
+from flask import (
+    Flask, g, session, request, render_template,
+    redirect, url_for, jsonify
+)
+from flask_session import Session
+from flask_wtf import CSRFProtect
+from flask_limiter import Limiter
+
 import auth
 import leaves
 
@@ -28,20 +31,28 @@ COLLECTION = getenv('MONGO_COLLECTION')
 HOST = getenv('MONGO_HOST')
 OPTIONS = getenv('MONGO_OPTIONS')
 URI = f"mongodb+srv://{USER}:{PASS}@{CLUSTER}{HOST}/?{OPTIONS}{CLUSTER}"
-# URI = f"mongodb+srv://{USER}:{PASS}@{CLUSTER}.zv9v2ag.mongodb.net/?retryWrites=true&w=majority&appName=leave-tracker"
 
 app = Flask(__name__)
 app.secret_key = getenv('APP_KEY')
 
 app.config['AUTH_DB'] = 'user_auth.db'
-
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_TYPE'] = 'filesystem'
-Session(app)
-
 app.config['MONGO_URI'] = URI
 app.config['MONGO_DB'] = CLUSTER
 app.config['MONGO_Coll'] = COLLECTION
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=True
+)
+
+limiter = Limiter(
+    app=app,
+    key_func=lambda: session.get('user_id'),
+)
+Session(app)
+csrf = CSRFProtect(app)
 
 DATE_FMT = "%Y-%m-%d"
 WEEKEND_RE = re.compile(r'^\d+(?:,\d+)*$')
@@ -115,6 +126,7 @@ def apology(message, code=400):
 
 
 # Routes
+@csrf.exempt
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == "GET":
@@ -128,13 +140,14 @@ def register():
 
         if auth.register_user(request.form.get("username"), request.form.get("password")):
             user = auth.get_user_info_with_username(request.form.get("username"))
-            leaves.init_user_info(user['id'], user['username'])
-            print("User Registered! ", user['username'])
-            return redirect(url_for('login'))
+            if leaves.init_user_info(user['id'], user['username']):
+                print("User Registered! ", user['username'])
+                return redirect(url_for('login'))
 
         return apology('Username taken!')
 
 
+@csrf.exempt
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     session.clear()
@@ -184,8 +197,14 @@ def user_home(username: str, token: str):
     if token != make_daily_token(username):
         apology("Token did not matched! Logout and Re-login.", 404)
 
-    user_leaves = leaves.get_users_leaves(session['user_id'], session['username'])
-    return render_template('index.html', user_leaves=user_leaves)
+    all_firm_leaves = leaves.get_user_key_data(session['user_id'], f"user_leaves")
+    last_firm = list(all_firm_leaves.keys())[-1]
+    firm_leaves = all_firm_leaves[last_firm]
+
+    return render_template(
+        'index.html',
+        user_leaves=firm_leaves
+    )
 
 
 @app.route('/account', methods=['GET', 'POST'])
@@ -256,7 +275,6 @@ def account(username: str, token: str):
         if auth.update_user_info(session["user_id"], data) and \
                 leaves.update_user_profile(session["user_id"], data):
 
-            user = auth.get_user_info_with_id(session["user_id"])
             return redirect(
                 url_for('account',
                         username=session['username'],
@@ -267,12 +285,16 @@ def account(username: str, token: str):
 
 
 @app.route("/leaves/import", methods=["POST"])
+@limiter.limit("1 per minute")
 @login_required
 def import_leaves():
     user_id = session["user_id"]
 
-    data = request.get_json(silent=True)
-    if not data or "leaves_taken" not in data:
+    if not request.is_json:
+        return jsonify(error="Expected application/json"), 415
+
+    data = request.get_json()
+    if "leaves_taken" not in data:
         return jsonify(error="Missing 'leaves_taken' field."), 400
 
     leaves_taken = data["leaves_taken"]

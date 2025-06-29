@@ -9,6 +9,7 @@
         <div class="col-md-6">
             <h2 class="text-center mb-4">Register here!</h2>
             <form id="registerForm" action="/register" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mb-3 row">
                     <label for="username-input" class="col-sm-4 col-form-label" style="font-weight: 600;">Name/Username:</label>
                     <div class="col-sm-8">

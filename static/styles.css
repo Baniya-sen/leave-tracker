@@ -364,3 +364,12 @@ nav .navbar-brand .green
 #import-leaves-box textarea {
   font-family: monospace;
 }
+
+.leave-label {
+  background: rgba(255,255,255,0.8);
+  color: #c00;
+  font-size: 0.6rem;
+  padding: 1px 3px;
+  border-radius: 3px;
+  margin: 1px;
+}
