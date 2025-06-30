@@ -3,36 +3,42 @@
 {% block title %} Register -{% endblock %}
 
 {% block main %}
-
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <h2 class="text-center mb-4">Register here!</h2>
-            <form id="registerForm" action="/register" method="post">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<div class="app-login-root">
+    <div class="app-login-left">
+        <div class="app-login-left-text">Track<br>Your<br>Leaves<br>Any<br>where</div>
+    </div>
+    <div class="app-login-right">
+        <div class="app-login-content">
+            <div class="app-login-logo">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="leave tracker Logo"
+                    height="60" width="60" />
+            </div>
+            <div class="app-login-title">Sign up to Leave Tracker</div>
+            <!-- <div class="app-login-social-row">
+                <button type="button" class="app-login-social-btn"><i class="fab fa-google"></i></button>
+                <button type="button" class="app-login-social-btn"><i class="fab fa-github"></i></button>
+            </div> -->
+            <form id="registerForm" action="/register" method="post" class="app-login-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="mb-3 row">
-                    <label for="username-input" class="col-sm-4 col-form-label" style="font-weight: 600;">Name/Username:</label>
-                    <div class="col-sm-8">
-                        <input name="username" type="text" autocomplete="off" autofocus class="form-control" placeholder="Username" required>
-                        <small id="emailHelp" class="form-text text-muted">You can use email, we never share it.</small>
-                    </div>
-                </div>
-                <div class="mb-3 row">
-                    <label for="password-input" class="col-sm-4 col-form-label" style="font-weight: 600;">Password:</label>
-                    <div class="col-sm-8">
-                        <input name="password" type="password" autocomplete="off" class="form-control" placeholder="Password" required>
-                    </div>
-                </div>
-                <div class="mb-3 row">
-                    <label for="password-confirm" class="col-sm-4 col-form-label" style="font-weight: 600;">Confirm Password:</label>
-                    <div class="col-sm-8">
-                        <input name="confirmation" type="password" autocomplete="off" class="form-control" placeholder="Re-enter Password" required>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block" id="passwordSubmit">Submit</button>
+                <input name="username" type="text" autocomplete="off" autofocus class="app-login-input"
+                    placeholder="Email" required>
+                <input name="password" type="password" autocomplete="off" class="app-login-input" placeholder="Password"
+                    required>
+                <input name="confirmation" type="password" autocomplete="off" class="app-login-input"
+                    placeholder="Re-enter Password" required>
+                <button type="submit" class="app-login-btn" id="passwordSubmit">Sign Up</button>
             </form>
+            <div class="app-login-links" style="justify-content: flex-start;">
+                <a href="/login" class="app-login-link">I already have an account</a>
+            </div>
+        </div>
+        <div class="app-register-terms">
+            <span style="color: #8a8a8a; font-size: 0.93rem;">By continuing, you agree to our <a href="#"
+                    style="color: #8a8a8a; text-decoration: underline;">Terms of Service</a> and <a href="#"
+                    style="color: #8a8a8a; text-decoration: underline;">Privacy Policy</a>.</span>
         </div>
     </div>
 </div>
-
 {% endblock %}
