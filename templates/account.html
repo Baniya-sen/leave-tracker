@@ -2,159 +2,156 @@
 {% block title %}Account - {% endblock %}
 
 {% block main %}
-
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <div class="container-fluid">
   <div class="row page-layout-row">
-    <nav class="col-md-3-custom sidebar">
-      <div class="text-center my-4">
-        <div class="profile-pic-container">
-          <img src="{{ user_info['avatar_url'] or url_for('static', filename='default-avatar.png') }}"
-               alt="Profile" class="profile-pic">
+    <section class="col-md-9-custom main-right-panel-wrapper mx-auto" style="min-width: 350px; max-width: 900px;">
+      <div class="settings-title-bar">
+        <h1 class="settings-page-title">Account</h1>
+      </div>
+      <!-- Tab Navigation -->
+      <div class="settings-tabs d-flex gap-4 mb-4">
+        <button class="settings-tab active" data-tab="account">Account Settings</button>
+        <button class="settings-tab" data-tab="firm">Firm Settings</button>
+      </div>
+      <!-- Tab Panels -->
+      <div class="settings-tab-panel" id="tab-account">
+        <div class="settings-card mb-4">
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <img src="{{ user_info['avatar_url'] or url_for('static', filename='default-avatar.png') }}" alt="Profile"
+              class="profile-pic" style="width: 48px; height: 48px;">
+            <div>
+              <div class="fw-semibold settings-profile-name">{{ user_info['name'] or '—' }}</div>
+              <div class="text-muted settings-profile-username">@{{ user_info['username'] or '' }}</div>
+            </div>
+          </div>
+          <div class="settings-list">
+            <!-- Group: Name & Age -->
+            <form class="settings-row-bg settings-form-group" id="name-age-form" onsubmit="return false;">
+              <div style="flex:1; min-width:180px;">
+                <label class="settings-label mb-1">Name</label>
+                <input type="text" class="form-control" id="name-input" value="{{ user_info['name'] or '' }}" disabled>
+              </div>
+              <div style="width:120px;">
+                <label class="settings-label mb-1">Age</label>
+                <input type="number" class="form-control" id="age-input" value="{{ user_info['age'] or '' }}" disabled>
+              </div>
+              <div class="settings-form-actions">
+                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-name-age">Edit</button>
+                <button type="submit" class="btn btn-success d-none" id="save-name-age">Save</button>
+                <button type="button" class="btn btn-secondary d-none" id="cancel-name-age">Cancel</button>
+              </div>
+            </form>
+            <!-- Group: Email & Password -->
+            <form class="settings-row-bg settings-form-group" id="email-password-form" onsubmit="return false;">
+              <div style="flex:2; min-width:220px;">
+                <label class="settings-label mb-1">Account Email Address</label>
+                <input type="email" class="form-control" id="email-input" value="{{ user_info['email'] or '' }}"
+                  disabled>
+              </div>
+              <div class="settings-form-actions">
+                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-email">Change Email</button>
+              </div>
+            </form>
+            <!-- Other fields -->
+            <div class="settings-row-bg">
+              <div class="settings-row">
+                <div class="settings-label">Date of Birth</div>
+                <div class="settings-value">Your mentioned Date of birth is: {{ user_info['date'] or '' }}</div>
+              </div>
+            </div>
+            <div class="settings-row-bg">
+              <div class="settings-row">
+                <div class="settings-label">Account Created</div>
+                <div class="settings-value">Your account was created on: {{ user_info['account_created'] or '' }}</div>
+              </div>
+            </div>
+            <div class="settings-row-bg">
+              <div class="settings-row">
+                <div class="settings-label">Account Verified</div>
+                <div class="settings-value">Is your account verified? {{ 'Yes' if user_info['account_verified'] else 'No' }}</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <h5>{{ user_info['name'] or '—' }}</h5>
-<!--        <small class="text-muted">{{ user_info['role'] or 'User' }}</small>-->
       </div>
-<!--      <ul class="nav flex-column">-->
-<!--        <li class="nav-item mb-2">-->
-<!--          <a class="nav-link active" href="#">Profile</a>-->
-<!--        </li>-->
-<!--      </ul>-->
-      <div class="add-button-container">
-        <button class="btn btn-outline-primary" id="edit-account-btn">Change Account Info</button>
-      </div>
-    </nav>
-
-    <section class="col-md-9-custom main-right-panel-wrapper">
-      <div class="content-section-inner">
-        <h4 class="card-title">Your Account Related Information:</h4>
-        <hr>
-        <form id="account-info-form" method="post" action="/account" style="display:none;">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label for="name" class="form-label">Name</label>
-              <input type="text" class="form-control" id="name" name="name" value="{{ user_info['name'] or '' }}">
+      <div class="settings-tab-panel d-none" id="tab-firm">
+        <div class="settings-card mb-4">
+          <div class="settings-list">
+            <div class="settings-row-bg">
+              <div class="settings-row">
+                <div class="settings-label">Firm Name</div>
+                <div class="settings-value">{{ user_info['firm_name'] or '' }}</div>
+                <button class="btn btn-link p-0 settings-edit-btn" data-panel="edit-firm-name">Edit</button>
+              </div>
             </div>
-             <div class="col-md-6">
-              <label for="age" class="form-label">Age</label>
-              <input type="number" class="form-control" id="age" name="age" value="{{ user_info['age'] or '' }}">
+            <div class="settings-row-bg">
+              <div class="settings-row">
+                <div class="settings-label">Firm Join Date</div>
+                <div class="settings-value">{{ user_info['firm_join_date'] or '' }}</div>
+                <button class="btn btn-link p-0 settings-edit-btn" data-panel="edit-firm-join">Edit</button>
+              </div>
             </div>
-            <div class="col-md-6">
-              <label for="email" class="form-label">Email</label>
-              <input type="email" class="form-control" id="email" name="email" value="{{ user_info['email'] or '' }}">
+            <div class="settings-row-bg">
+              <div class="settings-row">
+                <div class="settings-label">Firm Weekend Days</div>
+                <div class="settings-value">{{ user_info['firm_weekend_days'] or '' }}</div>
+                <button class="btn btn-link p-0 settings-edit-btn" data-panel="edit-firm-weekend">Edit</button>
+              </div>
             </div>
-            <div class="col-md-6">
-              <label for="date" class="form-label">Date of Birth</label>
-              <input type="date" class="form-control" id="date" name="date" value="{{ user_info['date'] or '' }}">
+            <div class="settings-row-bg">
+              <div class="settings-row">
+                <div class="settings-label">Firm Leaves Structure</div>
+                <ul class="info-box-value list-unstyled mb-0">
+                  {% set granted = user_info['leaves_type'] | from_json %}
+                  {% for lt, count in granted.items() %}
+                  <li><strong>{{ lt }}</strong>: {{ count }}</li>
+                  {% endfor %}
+                </ul>
+                <button class="btn btn-link p-0 settings-edit-btn" data-panel="edit-leaves">Edit</button>
+              </div>
             </div>
-            <div class="col-md-6">
-              <label for="firm_name" class="form-label">Firm Name</label>
-              <input type="text" class="form-control" id="firm_name" name="firm_name" value="{{ user_info['firm_name'] or '' }}">
-            </div>
-            <div class="col-md-6">
-              <label for="firm_join_date" class="form-label">Firm Join Date</label>
-              <input type="date" class="form-control" id="firm_join_date" name="firm_join_date" value="{{ user_info['firm_join_date'] or '' }}">
-            </div>
-            <div class="col-md-6">
-              <table id="leave-table" class="table">
-                <thead>
-                  <tr><th>Leave Type</th><th>Total Leaves</th><th></th></tr>
-                </thead>
-                <tbody>
-                    {% set granted = user_info['leaves_type'] | from_json %}
-                    {% for lt, count in granted.items() %}
-                    <tr>
-                      <td><input name="leave_given" class="form-control" placeholder="{{ lt }}" required readonly></td>
-                      <td><input name="leave_counter_given" type="number" class="form-control" min="0" placeholder="{{ count }}" required readonly></td>
-                    </tr>
-                    {% endfor %}
-                  <tr>
-                    <td><input name="leave_type" class="form-control" placeholder="e.g. 'Sick'" required></td>
-                    <td><input name="leave_count" type="number" class="form-control" min="0" placeholder="Per Year" required></td>
-                    <td><button type="button" class="btn btn-sm btn-danger remove-row">×</button></td>
-                  </tr>
-                </tbody>
-              </table>
-              <button type="button" class="btn btn-outline-secondary" id="add-row">+ Add Leave Type</button>
-            </div>
-            <div class="col-md-6">
-              <label for="firm_weekend_days" class="form-label">Firm Weekend Days (e.g. 6,7)</label>
-              <input type="text" class="form-control" id="firm_weekend_days" name="firm_weekend_days" value="{{ user_info['firm_weekend_days'] or '' }}">
-            </div>
-          </div>
-          <div class="mt-4 d-flex gap-2 justify-content-end">
-            <button type="submit" class="btn btn-success" id="save-account-btn">Save</button>
-            <button type="button" class="btn btn-secondary" id="cancel-account-btn">Cancel</button>
-          </div>
-        </form>
-        <div id="account-info-view">
-          <div class="info-box shade-1">
-            <span class="info-box-label">Username</span>
-            <span class="info-box-value">{{ user_info['username'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Name</span>
-            <span class="info-box-value">{{ user_info['name'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Age</span>
-            <span class="info-box-value">{{ user_info['age'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Email</span>
-            <span class="info-box-value">{{ user_info['email'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Date of Birth</span>
-            <span class="info-box-value">{{ user_info['date'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Account Created</span>
-            <span class="info-box-value">{{ user_info['account_created'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Account Verified</span>
-            <span class="info-box-value">{{ 'Yes' if user_info['account_verified'] else 'No' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Firm Name</span>
-            <span class="info-box-value">{{ user_info['firm_name'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Firm Join Date</span>
-            <span class="info-box-value">{{ user_info['firm_join_date'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Firm Weekend Days</span>
-            <span class="info-box-value">{{ user_info['firm_weekend_days'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Firm Leaves Structure:</span>
-            {% set granted = user_info['leaves_type'] | from_json %}
-            <ul class="info-box-value list-unstyled mb-0">
-              {% for lt, count in granted.items() %}
-                <li><strong>{{ lt }}</strong>: {{ count }}</li>
-              {% endfor %}
-            </ul>
-          </div>
-          <button class="btn btn-outline-secondary mt-3" id="import-leaves-btn">
-            📥 Import Leave Data
-          </button>
-          <div id="import-leaves-box" class="card mt-3 p-3" style="display: none;">
-            <h5>Paste Your Leave Data JSON</h5>
-            <p class="text-muted small mb-2">
-              <strong>Example:</strong>
-              <code>{"Casual": ["2025-07-01", "2025-07-15"], "Sick": ["2025-06-20"]}</code>
-            </p>
-            <div id="leave-import-error" class="text-danger mb-2" style="display: none;"></div>
-            <textarea id="leave-json-input" class="form-control" rows="7" placeholder="Leave types must match those in your account. If not, data will be replaced.&#10;&#10;{&#10;  &quot;Casual&quot;: [&quot;2025-07-01&quot;, &quot;2025-07-15&quot;],&#10;  &quot;Sick&quot;: [&quot;2025-06-20&quot;],&#10;  &quot;Earned&quot;: []&#10;}"></textarea>
-
-            <button class="btn btn-success mt-2" id="submit-leave-json">Save</button>
-            <button class="btn btn-link mt-2" id="cancel-leave-json">Cancel</button>
           </div>
         </div>
       </div>
     </section>
   </div>
 </div>
+<script>
+  // Tab switching
+  const tabs = document.querySelectorAll('.settings-tab');
+  const panels = document.querySelectorAll('.settings-tab-panel');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', function () {
+      tabs.forEach(t => t.classList.remove('active'));
+      panels.forEach(p => p.classList.add('d-none'));
+      this.classList.add('active');
+      document.getElementById('tab-' + this.dataset.tab).classList.remove('d-none');
+    });
+  });
+  // Inline editing for name/age
+  const editNameAgeBtn = document.getElementById('edit-name-age');
+  const saveNameAgeBtn = document.getElementById('save-name-age');
+  const cancelNameAgeBtn = document.getElementById('cancel-name-age');
+  const nameInput = document.getElementById('name-input');
+  const ageInput = document.getElementById('age-input');
+  editNameAgeBtn.addEventListener('click', function () {
+    nameInput.disabled = false;
+    ageInput.disabled = false;
+    saveNameAgeBtn.classList.remove('d-none');
+    cancelNameAgeBtn.classList.remove('d-none');
+    editNameAgeBtn.classList.add('d-none');
+    nameInput.focus();
+  });
+  cancelNameAgeBtn.addEventListener('click', function () {
+    nameInput.value = '{{ user_info['name'] or '' }}';
+    ageInput.value = '{{ user_info['age'] or '' }}';
+    nameInput.disabled = true;
+    ageInput.disabled = true;
+    saveNameAgeBtn.classList.add('d-none');
+    cancelNameAgeBtn.classList.add('d-none');
+    editNameAgeBtn.classList.remove('d-none');
+  });
+  // Optionally, handle saveNameAgeBtn click for AJAX save
+</script>
 {% endblock %}
