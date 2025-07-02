@@ -191,74 +191,226 @@
     scrollToYear(currentYear);
 })();
 
-// Account info edit mode logic
+// Account page logic (only runs on account.html)
 (function () {
-    const editBtn = document.getElementById('edit-account-btn');
-    const form = document.getElementById('account-info-form');
-    const view = document.getElementById('account-info-view');
-    const cancelBtn = document.getElementById('cancel-account-btn');
+    // Only run if on account page
+    if (!document.querySelector('.settings-card') || !document.getElementById('tab-account')) return;
 
-    if (!editBtn || !form || !view) return;
-
-    function toggleEditMode(editing) {
-        if (editing) {
-            form.style.display = '';
-            view.style.display = 'none';
-        } else {
-            form.style.display = 'none';
-            view.style.display = '';
+    // Helper to close all edit modes
+    function closeAllEditModes() {
+        // Name & Age
+        if (nameAgeEditForm && nameAgeDisplay && editNameAgeBtn) {
+            nameAgeEditForm.classList.add('d-none');
+            nameAgeDisplay.style.display = '';
+            editNameAgeBtn.classList.remove('d-none');
+            nameInputEdit.value = nameInputEdit.getAttribute('value') || '';
+            ageInputEdit.value = ageInputEdit.getAttribute('value') || '';
+        }
+        // Email
+        if (emailEditForm && emailDisplay && editEmailBtn) {
+            emailEditForm.classList.add('d-none');
+            emailDisplay.style.display = '';
+            editEmailBtn.classList.remove('d-none');
+            emailInputEdit.value = emailInputEdit.getAttribute('value') || '';
+        }
+        // DOB
+        if (dobEditForm && dobDisplay && editDobBtn) {
+            dobEditForm.classList.add('d-none');
+            dobDisplay.style.display = '';
+            editDobBtn.classList.remove('d-none');
+            dobInputEdit.value = dobInputEdit.getAttribute('value') || '';
         }
     }
 
-    editBtn.addEventListener('click', function () {
-        toggleEditMode(true);
+    // Tab switching
+    const tabs = document.querySelectorAll('.settings-tab');
+    const panels = document.querySelectorAll('.settings-tab-panel');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            tabs.forEach(t => t.classList.remove('active'));
+            panels.forEach(p => p.classList.add('d-none'));
+            this.classList.add('active');
+            document.getElementById('tab-' + this.dataset.tab).classList.remove('d-none');
+            closeAllEditModes(); // Also close all edit modes when switching tabs
+        });
     });
 
-    cancelBtn.addEventListener('click', function () {
-        toggleEditMode(false);
-    });
+    // Inline editing for name & age (merged)
+    const editNameAgeBtn = document.getElementById('edit-name-age');
+    const nameAgeDisplay = document.getElementById('name-age-display');
+    const nameAgeEditForm = document.getElementById('name-age-edit-form');
+    const cancelNameAgeBtn = document.getElementById('cancel-name-age');
+    const nameInputEdit = document.getElementById('name-input-edit');
+    const ageInputEdit = document.getElementById('age-input-edit');
+    let agePopup = null;
+    if (editNameAgeBtn && nameAgeDisplay && nameAgeEditForm && cancelNameAgeBtn && nameInputEdit && ageInputEdit) {
+        agePopup = document.createElement('div');
+        agePopup.className = 'age-popup';
+        agePopup.innerText = 'Age must be valid be at least 14.';
+        ageInputEdit.parentElement.style.position = 'relative';
+        ageInputEdit.parentElement.appendChild(agePopup);
 
-    form.addEventListener('submit', function (e) {
-        // Validate fields
-        let valid = true;
-        // Email (optional, but if present must be valid)
-        const email = form.email.value.trim();
-        if (email && !/^\S+@\S+\.\S+$/.test(email)) {
-            valid = false;
-            form.email.classList.add('is-invalid');
-        } else {
-            form.email.classList.remove('is-invalid');
+        function validateAgePopup() {
+            const age = ageInputEdit.value;
+            if (age === '') {
+                agePopup.classList.remove('active');
+                return
+            }
+            const val = parseInt(age, 10);
+            if (val < 14) {
+                agePopup.classList.add('active');
+            } else {
+                agePopup.classList.remove('active');
+            }
         }
-        // Date of Birth (optional, but if present must be valid date)
-        const date = form.date.value.trim();
-        if (date && isNaN(Date.parse(date))) {
-            valid = false;
-            form.date.classList.add('is-invalid');
-        } else {
-            form.date.classList.remove('is-invalid');
-        }
-        // Firm Join Date (optional, but if present must be valid date)
-        const firmJoin = form.firm_join_date.value.trim();
-        if (firmJoin && isNaN(Date.parse(firmJoin))) {
-            valid = false;
-            form.firm_join_date.classList.add('is-invalid');
-        } else {
-            form.firm_join_date.classList.remove('is-invalid');
-        }
-        // Firm Weekend Days (optional, but if present must be comma-separated numbers)
-        const weekend = form.firm_weekend_days.value.trim();
-        if (weekend && !/^\d+(?:\s*,\s*\d+)*$/.test(weekend)) {
-            valid = false;
-            form.firm_weekend_days.classList.add('is-invalid');
-        } else {
-            form.firm_weekend_days.classList.remove('is-invalid');
-        }
-        if (!valid) {
-            e.preventDefault();
-            return false;
-        }
-        // Allow form to submit
-    });
+        ageInputEdit.addEventListener('input', validateAgePopup);
+        // Also validate on open
+        editNameAgeBtn.addEventListener('click', function () {
+            closeAllEditModes();
+            nameAgeDisplay.style.display = 'none';
+            nameAgeEditForm.classList.remove('d-none');
+            editNameAgeBtn.classList.add('d-none');
+            nameInputEdit.focus();
+            setTimeout(validateAgePopup, 10);
+        });
+        cancelNameAgeBtn.addEventListener('click', function () {
+            nameAgeEditForm.classList.add('d-none');
+            nameAgeDisplay.style.display = '';
+            editNameAgeBtn.classList.remove('d-none');
+            nameInputEdit.value = nameInputEdit.getAttribute('value') || '';
+            ageInputEdit.value = ageInputEdit.getAttribute('value') || '';
+            agePopup.classList.remove('active');
+        });
+    }
+
+    // Inline editing for email
+    const editEmailBtn = document.getElementById('edit-email');
+    const emailDisplay = document.getElementById('email-display');
+    const emailEditForm = document.getElementById('email-edit-form');
+    const cancelEmailBtn = document.getElementById('cancel-email');
+    const emailInputEdit = document.getElementById('email-input-edit');
+    if (editEmailBtn && emailDisplay && emailEditForm && cancelEmailBtn && emailInputEdit) {
+        editEmailBtn.addEventListener('click', function () {
+            closeAllEditModes();
+            emailDisplay.style.display = 'none';
+            emailEditForm.classList.remove('d-none');
+            editEmailBtn.classList.add('d-none');
+            emailInputEdit.focus();
+        });
+        cancelEmailBtn.addEventListener('click', function () {
+            emailEditForm.classList.add('d-none');
+            emailDisplay.style.display = '';
+            editEmailBtn.classList.remove('d-none');
+            emailInputEdit.value = emailInputEdit.getAttribute('value') || '';
+        });
+    }
+
+    // Inline editing for date of birth
+    const editDobBtn = document.getElementById('edit-dob');
+    const dobDisplay = document.getElementById('dob-display');
+    const dobEditForm = document.getElementById('dob-edit-form');
+    const cancelDobBtn = document.getElementById('cancel-dob');
+    const dobInputEdit = document.getElementById('dob-input-edit');
+    if (editDobBtn && dobDisplay && dobEditForm && cancelDobBtn && dobInputEdit) {
+        editDobBtn.addEventListener('click', function () {
+            closeAllEditModes();
+            dobDisplay.style.display = 'none';
+            dobEditForm.classList.remove('d-none');
+            editDobBtn.classList.add('d-none');
+            dobInputEdit.focus();
+        });
+        cancelDobBtn.addEventListener('click', function () {
+            dobEditForm.classList.add('d-none');
+            dobDisplay.style.display = '';
+            editDobBtn.classList.remove('d-none');
+            dobInputEdit.value = dobInputEdit.getAttribute('value') || '';
+        });
+    }
+
+    // Inline editing for firm info (like name & age)
+    const editFirmInfoBtn = document.getElementById('edit-firm-info');
+    const firmInfoDisplay = document.getElementById('firm-info-display');
+    const firmInfoEditForm = document.getElementById('firm-info-edit-form');
+    const cancelFirmInfoBtn = document.getElementById('cancel-firm-info');
+    const firmNameInputEdit = document.querySelector('input[name="firm_name"]');
+    const firmJoinDateInputEdit = document.querySelector('input[name="firm_join_date"]');
+    if (editFirmInfoBtn && firmInfoDisplay && firmInfoEditForm && cancelFirmInfoBtn && firmNameInputEdit && firmJoinDateInputEdit) {
+        editFirmInfoBtn.addEventListener('click', function () {
+            closeAllEditModes();
+            firmInfoDisplay.style.display = 'none';
+            firmInfoEditForm.classList.remove('d-none');
+            editFirmInfoBtn.classList.add('d-none');
+            firmNameInputEdit.focus();
+        });
+        cancelFirmInfoBtn.addEventListener('click', function () {
+            firmInfoEditForm.classList.add('d-none');
+            firmInfoDisplay.style.display = '';
+            editFirmInfoBtn.classList.remove('d-none');
+            firmNameInputEdit.value = firmNameInputEdit.getAttribute('value') || '';
+            firmJoinDateInputEdit.value = firmJoinDateInputEdit.getAttribute('value') || '';
+        });
+    }
+
+    // Inline editing for firm weekend days
+    const editFirmWeekendBtn = document.getElementById('edit-firm-weekend');
+    const firmWeekendDisplay = document.getElementById('firm-weekend-display');
+    const firmWeekendEditForm = document.getElementById('firm-weekend-edit-form');
+    const cancelFirmWeekendBtn = document.getElementById('cancel-firm-weekend');
+    const firmWeekendInputEdit = document.querySelector('input[name="firm_weekend_days"]');
+    if (editFirmWeekendBtn && firmWeekendDisplay && firmWeekendEditForm && cancelFirmWeekendBtn && firmWeekendInputEdit) {
+        editFirmWeekendBtn.addEventListener('click', function () {
+            closeAllEditModes();
+            firmWeekendDisplay.classList.add('d-none');
+            firmWeekendEditForm.classList.remove('d-none');
+            editFirmWeekendBtn.classList.add('d-none');
+            firmWeekendInputEdit.focus();
+        });
+        cancelFirmWeekendBtn.addEventListener('click', function () {
+            firmWeekendEditForm.classList.add('d-none');
+            firmWeekendDisplay.classList.remove('d-none');
+            editFirmWeekendBtn.classList.remove('d-none');
+            firmWeekendInputEdit.value = firmWeekendInputEdit.getAttribute('value') || '';
+        });
+    }
+
+    // Inline editing for firm leaves structure (match HTML)
+    const editFirmLeavesBtn = document.getElementById('edit-firm-leaves');
+    const firmLeavesDisplay = document.querySelector('.leaves-grid');
+    const firmLeavesEditForm = document.getElementById('firm-leaves-edit-form');
+    const cancelFirmLeavesBtn = document.getElementById('cancel-firm-leaves');
+    const addLeaveTypeBtn = document.getElementById('add-leave-type');
+    if (editFirmLeavesBtn && firmLeavesDisplay && firmLeavesEditForm && cancelFirmLeavesBtn && addLeaveTypeBtn) {
+        editFirmLeavesBtn.addEventListener('click', function () {
+            closeAllEditModes();
+            firmLeavesDisplay.classList.add('d-none');
+            firmLeavesEditForm.classList.remove('d-none');
+            editFirmLeavesBtn.classList.add('d-none');
+        });
+        cancelFirmLeavesBtn.addEventListener('click', function () {
+            firmLeavesEditForm.classList.add('d-none');
+            firmLeavesDisplay.classList.remove('d-none');
+            editFirmLeavesBtn.classList.remove('d-none');
+        });
+        addLeaveTypeBtn.addEventListener('click', function () {
+            const form = firmLeavesEditForm;
+            const newSet = document.createElement('div');
+            newSet.className = 'd-flex align-items-center gap-2 mb-2 leave-input-set';
+            newSet.innerHTML = `
+                <input type="text" class="form-control" name="leave_type[]" placeholder="Leave type" style="width:120px;">
+                <input type="number" class="form-control" name="leave_count[]" placeholder="Number" style="width:80px;">
+                <button type="button" class="btn btn-danger btn-sm remove-leave-type">&times;</button>
+            `;
+            // Insert before the Add button
+            form.querySelector('#firm-leaves-inputs').appendChild(newSet);
+        });
+        firmLeavesEditForm.addEventListener('click', function (e) {
+            if (e.target.classList.contains('remove-leave-type')) {
+                e.preventDefault();
+                const set = e.target.closest('.leave-input-set');
+                if (set) set.remove();
+            }
+        });
+    }
 })();
 
 // Leaves types add rows

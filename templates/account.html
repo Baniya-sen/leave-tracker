@@ -9,149 +9,218 @@
       <div class="settings-title-bar">
         <h1 class="settings-page-title">Account</h1>
       </div>
+
       <!-- Tab Navigation -->
       <div class="settings-tabs d-flex gap-4 mb-4">
         <button class="settings-tab active" data-tab="account">Account Settings</button>
         <button class="settings-tab" data-tab="firm">Firm Settings</button>
       </div>
+
       <!-- Tab Panels -->
       <div class="settings-tab-panel" id="tab-account">
         <div class="settings-card mb-4">
           <div class="d-flex align-items-center gap-3 mb-4">
-            <img src="{{ user_info['avatar_url'] or url_for('static', filename='default-avatar.png') }}" alt="Profile"
-              class="profile-pic" style="width: 48px; height: 48px;">
+            <img src="{{ user_info['avatar_url'] or url_for('static', filename='images/avatar.png') }}" alt="Profile"
+              class="profile-pic" style="width: 100px; height: 100px;">
             <div>
               <div class="fw-semibold settings-profile-name">{{ user_info['name'] or '—' }}</div>
               <div class="text-muted settings-profile-username">@{{ user_info['username'] or '' }}</div>
             </div>
           </div>
+
           <div class="settings-list">
             <!-- Group: Name & Age -->
-            <form class="settings-row-bg settings-form-group" id="name-age-form" onsubmit="return false;">
-              <div style="flex:1; min-width:180px;">
-                <label class="settings-label mb-1">Name</label>
-                <input type="text" class="form-control" id="name-input" value="{{ user_info['name'] or '' }}" disabled>
-              </div>
-              <div style="width:120px;">
-                <label class="settings-label mb-1">Age</label>
-                <input type="number" class="form-control" id="age-input" value="{{ user_info['age'] or '' }}" disabled>
+            <div class="settings-row-bg settings-form-group" id="name-age-section">
+              <div style="flex:1; min-width:180px; width:100%;">
+                <label class="settings-label mb-1">Your Basic Info</label>
+                <div id="name-age-display" class="d-flex align-items-center gap-3">
+                  <span>Name: <b>{{ user_info['name'] or 'None' }}</b></span>
+                  <span class="mx-2">|</span>
+                  <span>Age: <b>{{ user_info['age'] or 'None' }}</b></span>
+                </div>
+                <form id="name-age-edit-form" class="d-none d-flex align-items-end gap-3" method="post"
+                  action="/change_name_age" style="margin-top:0.5rem;">
+                  <input type="text" class="form-control name-age-input" id="name-input-edit" name="name"
+                    placeholder="Enter your name" value="{{ user_info['name'] or '' }}">
+                  <input type="text" class="form-control name-age-input" id="age-input-edit" name="age"
+                    placeholder="Enter your age" value="{{ user_info['age'] or '' }}">
+                  <div class="settings-form-actions">
+                    <button type="submit" class="btn btn-success" id="save-name-age">Save</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-name-age">Cancel</button>
+                  </div>
+                </form>
               </div>
               <div class="settings-form-actions">
-                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-name-age">Edit</button>
-                <button type="submit" class="btn btn-success d-none" id="save-name-age">Save</button>
-                <button type="button" class="btn btn-secondary d-none" id="cancel-name-age">Cancel</button>
+                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-name-age">Update Info</button>
               </div>
-            </form>
+            </div>
+
             <!-- Group: Email & Password -->
-            <form class="settings-row-bg settings-form-group" id="email-password-form" onsubmit="return false;">
+            <div class="settings-row-bg settings-form-group" id="email-section">
               <div style="flex:2; min-width:220px;">
                 <label class="settings-label mb-1">Account Email Address</label>
-                <input type="email" class="form-control" id="email-input" value="{{ user_info['email'] or '' }}"
-                  disabled>
+                <div id="email-display">
+                  <span>Your current email address is <b>{{ user_info['email'] or 'None' }}</b></span>
+                </div>
+                <form id="email-edit-form" class="d-none" method="post" action="/change_email">
+                  <input type="email" class="form-control mb-2" id="email-input-edit" name="email"
+                    placeholder="Enter new email" value="{{ user_info['email'] or '' }}">
+                  <div class="settings-form-actions">
+                    <button type="submit" class="btn btn-success" id="save-email">Save</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-email">Cancel</button>
+                  </div>
+                </form>
               </div>
               <div class="settings-form-actions">
-                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-email">Change Email</button>
-              </div>
-            </form>
-            <!-- Other fields -->
-            <div class="settings-row-bg">
-              <div class="settings-row">
-                <div class="settings-label">Date of Birth</div>
-                <div class="settings-value">Your mentioned Date of birth is: {{ user_info['date'] or '' }}</div>
+                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-email">Update Email</button>
               </div>
             </div>
-            <div class="settings-row-bg">
-              <div class="settings-row">
-                <div class="settings-label">Account Created</div>
-                <div class="settings-value">Your account was created on: {{ user_info['account_created'] or '' }}</div>
+
+            <!-- Date of Birth -->
+            <div class="settings-row-bg settings-form-group" id="dob-section">
+              <div style="flex:2; min-width:220px;">
+                <label class="settings-label mb-1">Date of Birth</label>
+                <div id="dob-display">
+                  <span>Your mentioned Date of birth is <b>{{ user_info['date'] or 'None' }}</b></span>
+                </div>
+                <form id="dob-edit-form" class="d-none" method="post" action="/change_dob">
+                  <input type="date" class="form-control mb-2" id="dob-input-edit" name="date"
+                    value="{{ user_info['date'] or '' }}">
+                  <div class="settings-form-actions">
+                    <button type="submit" class="btn btn-success" id="save-dob">Save</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-dob">Cancel</button>
+                  </div>
+                </form>
+              </div>
+              <div class="settings-form-actions">
+                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-dob">Update DOB</button>
               </div>
             </div>
+
+            <!-- Account Verified -->
             <div class="settings-row-bg">
-              <div class="settings-row">
-                <div class="settings-label">Account Verified</div>
-                <div class="settings-value">Is your account verified? {{ 'Yes' if user_info['account_verified'] else 'No' }}</div>
+              <div class="d-flex align-items-center justify-content-between w-100">
+                <div class="settings-label d-flex align-items-center" style="gap: 8px;">
+                  Account Verified
+                  {% if not user_info['account_verified'] %}
+                    <span class="account-badge account-badge-unverified">UNVERIFIED</span>
+                  {% else %}
+                    <span class="account-badge account-badge-verified">VERIFIED</span>
+                  {% endif %}
+                </div>
+                {% if not user_info['account_verified'] %}
+                  <button class="btn btn-outline-danger btn-sm ms-auto" id="verify-account-btn">Verify Account</button>
+                {% endif %}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+          </div> <!-- .settings-list -->
+        </div> <!-- .settings-card -->
+      </div> <!-- #tab-account -->
+
       <div class="settings-tab-panel d-none" id="tab-firm">
         <div class="settings-card mb-4">
           <div class="settings-list">
-            <div class="settings-row-bg">
-              <div class="settings-row">
-                <div class="settings-label">Firm Name</div>
-                <div class="settings-value">{{ user_info['firm_name'] or '' }}</div>
-                <button class="btn btn-link p-0 settings-edit-btn" data-panel="edit-firm-name">Edit</button>
+            <!-- Group: Firm Name & Firm Join Date -->
+            <div class="settings-row-bg settings-form-group" id="firm-info-section">
+              <div style="flex:1; min-width:180px; width:100%;">
+                <label class="settings-label mb-1">Your Firm Basic Info</label>
+                <div id="firm-info-display" class="d-flex align-items-center gap-3">
+                  <span>Firm Name: <b>{{ user_info['firm_name'] or 'None' }}</b></span>
+                  <span class="mx-2">|</span>
+                  <span>Joining Date: <b>{{ user_info['firm_join_date'] or 'None' }}</b></span>
+                </div>
+                <form id="firm-info-edit-form" class="d-none d-flex align-items-end gap-3" method="post"
+                  action="/change_firm_info" style="margin-top:0.5rem;">
+                  <input type="text" class="form-control name-age-input" id="firm-name-input-edit" name="firm_name"
+                    placeholder="Enter firm name" value="{{ user_info['firm_name'] or '' }}">
+                  <input type="date" class="form-control name-age-input" id="firm-join-date-input-edit"
+                    name="firm_join_date" placeholder="Enter joining date"
+                    value="{{ user_info['firm_join_date'] or '' }}">
+                  <div class="settings-form-actions">
+                    <button type="submit" class="btn btn-success" id="save-firm-info">Save</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-firm-info">Cancel</button>
+                  </div>
+                </form>
+              </div>
+              <div class="settings-form-actions">
+                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-firm-info">Update Info</button>
               </div>
             </div>
-            <div class="settings-row-bg">
-              <div class="settings-row">
-                <div class="settings-label">Firm Join Date</div>
-                <div class="settings-value">{{ user_info['firm_join_date'] or '' }}</div>
-                <button class="btn btn-link p-0 settings-edit-btn" data-panel="edit-firm-join">Edit</button>
+
+            <!-- Firm Weekend Days -->
+            <div class="settings-row-bg settings-form-group">
+              <div class="d-flex align-items-center w-100">
+                <div style="flex:1;">
+                  <label class="settings-label mb-1">Your Firm Weekend Days</label>
+                  <div id="firm-weekend-display" class="settings-value d-flex align-items-center" style="gap: 10px;">
+                    {% set value_str = user_info['firm_weekend_days'] or '' %}
+                    {% set weekday_map = { '1': 'Monday', '2': 'Tuesday', '3': 'Wednesday', '4': 'Thursday', '5': 'Friday', '6': 'Saturday', '7': 'Sunday' } %}
+                    {% for num in value_str.split(',') if num.strip() %}
+                      <span>{{ num.strip() }}: {{ weekday_map[num.strip()] }}</span>
+                    {% endfor %}
+                  </div>
+                  <form id="firm-weekend-edit-form" class="d-none d-flex align-items-end gap-3 mt-2" method="post" action="/change_firm_weekend">
+                    <input type="text" class="form-control" id="firm-weekend-input-edit" name="firm_weekend_days"
+                      placeholder="Enter weekend days numbers. e.g. 6,7 for Saturday, Sunday"
+                      value="{{ user_info['firm_weekend_days'] or '' }}" style="max-width: 300px;">
+                    <div class="settings-form-actions">
+                      <button type="submit" class="btn btn-success" id="save-firm-weekend">Save</button>
+                      <button type="button" class="btn btn-secondary" id="cancel-firm-weekend">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+                <div class="settings-form-actions">
+                  <button class="btn btn-link p-0 settings-edit-btn" id="edit-firm-weekend" data-panel="edit-firm-weekend">Update Weekend Days</button>
+                </div>
               </div>
             </div>
-            <div class="settings-row-bg">
-              <div class="settings-row">
-                <div class="settings-label">Firm Weekend Days</div>
-                <div class="settings-value">{{ user_info['firm_weekend_days'] or '' }}</div>
-                <button class="btn btn-link p-0 settings-edit-btn" data-panel="edit-firm-weekend">Edit</button>
-              </div>
-            </div>
-            <div class="settings-row-bg">
-              <div class="settings-row">
-                <div class="settings-label">Firm Leaves Structure</div>
-                <ul class="info-box-value list-unstyled mb-0">
+
+            <!-- Firm Leaves Structure -->
+            <div class="settings-row-bg settings-form-group" id="firm-leaves-section">
+              <div class="d-flex align-items-start w-100" style="gap: 1rem;">
+                <!-- Display Grid -->
+                <div class="leaves-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; flex:1;">
+                  <span class="settings-label" style="grid-column: span 2;">Your Firm Leaves Structure</span>
                   {% set granted = user_info['leaves_type'] | from_json %}
                   {% for lt, count in granted.items() %}
-                  <li><strong>{{ lt }}</strong>: {{ count }}</li>
+                    <span><strong>{{ lt }}</strong>: {{ count }}</span>
                   {% endfor %}
-                </ul>
-                <button class="btn btn-link p-0 settings-edit-btn" data-panel="edit-leaves">Edit</button>
+                </div>
+
+                <!-- Edit Button -->
+                <div class="settings-form-actions">
+                  <button class="btn btn-link p-0 settings-edit-btn" data-panel="edit-firm-leaves" id="edit-firm-leaves">Update Firm Leaves</button>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
+
+              <!-- Hidden Edit Form -->
+              <form id="firm-leaves-edit-form" class="d-none flex-column gap-3 mt-3" method="post" action="/change_firm_leaves">
+                <div id="firm-leaves-inputs" class="d-flex flex-wrap align-items-end gap-3" style="padding-bottom: 48px;">
+                  {% for lt, count in granted.items() %}
+                    <div class="d-flex align-items-center gap-2 mb-2 leave-input-set">
+                      <input type="text" class="form-control" name="leave_type[]" value="{{ lt }}" placeholder="Leave type" style="width: 120px;">
+                      <input type="number" class="form-control" name="leave_count[]" value="{{ count }}" placeholder="Number" style="width: 80px;">
+                      <button type="button" class="btn btn-danger btn-sm remove-leave-type">&times;</button>
+                    </div>
+                  {% endfor %}
+                </div>
+                <div class="d-flex w-100" style="justify-content: space-between; padding-top: 8px;">
+                  <button type="button" class="btn btn-secondary btn-sm" id="add-leave-type">Add Leave Type</button>
+                  <div class="settings-form-actions d-flex gap-2">
+                    <button type="submit" class="btn btn-success" id="save-firm-leaves">Save</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-firm-leaves">Cancel</button>
+                  </div>
+                </div>
+              </form>
+            </div><!-- .settings-list -->
+              </div> <!-- .settings-card -->
+            </div> <!-- #tab-firm -->
+
+          </div> <!-- .settings-list -->
+        </div> <!-- .settings-card -->
+      </div> <!-- #tab-firm -->
+
     </section>
-  </div>
-</div>
-<script>
-  // Tab switching
-  const tabs = document.querySelectorAll('.settings-tab');
-  const panels = document.querySelectorAll('.settings-tab-panel');
-  tabs.forEach(tab => {
-    tab.addEventListener('click', function () {
-      tabs.forEach(t => t.classList.remove('active'));
-      panels.forEach(p => p.classList.add('d-none'));
-      this.classList.add('active');
-      document.getElementById('tab-' + this.dataset.tab).classList.remove('d-none');
-    });
-  });
-  // Inline editing for name/age
-  const editNameAgeBtn = document.getElementById('edit-name-age');
-  const saveNameAgeBtn = document.getElementById('save-name-age');
-  const cancelNameAgeBtn = document.getElementById('cancel-name-age');
-  const nameInput = document.getElementById('name-input');
-  const ageInput = document.getElementById('age-input');
-  editNameAgeBtn.addEventListener('click', function () {
-    nameInput.disabled = false;
-    ageInput.disabled = false;
-    saveNameAgeBtn.classList.remove('d-none');
-    cancelNameAgeBtn.classList.remove('d-none');
-    editNameAgeBtn.classList.add('d-none');
-    nameInput.focus();
-  });
-  cancelNameAgeBtn.addEventListener('click', function () {
-    nameInput.value = '{{ user_info['name'] or '' }}';
-    ageInput.value = '{{ user_info['age'] or '' }}';
-    nameInput.disabled = true;
-    ageInput.disabled = true;
-    saveNameAgeBtn.classList.add('d-none');
-    cancelNameAgeBtn.classList.add('d-none');
-    editNameAgeBtn.classList.remove('d-none');
-  });
-  // Optionally, handle saveNameAgeBtn click for AJAX save
-</script>
+  </div> <!-- .row -->
+</div> <!-- .container-fluid -->
 {% endblock %}

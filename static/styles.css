@@ -3,7 +3,7 @@ body {
     margin: 0;
     padding: 0;
     height: 100%;
-    background-color: #f0f2f5;
+    background-color: #FAFAFA;
     overflow: hidden;
 }
 
@@ -514,6 +514,7 @@ nav .navbar-brand .logo_text::first-letter {
     font-size: 1.1em;
     font-weight: bold;
     color: #333;
+    opacity: 0.5;
 }
 
 .btn-outline-primary {
@@ -884,7 +885,7 @@ nav .navbar-brand .logo_text::first-letter {
     border-radius: 8px;
     padding: 6px 16px;
     font-weight: 500;
-    font-size: 1rem;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -941,7 +942,7 @@ nav .navbar-brand .logo_text::first-letter {
     border-radius: 8px;
     padding: 10px 15px;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.95rem;
     transition: background 0.2s, color 0.2s;
     margin: 0 2px;
     display: flex;
@@ -1135,7 +1136,473 @@ nav .navbar-brand .logo_text::first-letter {
     align-items: center;
     justify-content: space-between;
     box-shadow: none;
-    border: 1px solid #dcdcdc;
+}
+
+.settings-card input.form-control {
+    font-size: 1.08rem;
+    border-radius: 8px;
+    border: 1.5px solid #e5e7eb;
+    background: #f6fcfa;
+    color: #222;
+    margin-left: 8px;
+    opacity: 0.5;
+}
+
+.settings-card input.form-control:focus {
+    border-color: #1ec28b;
+    background: #fff;
+}
+
+.settings-card .btn-success {
+    background: #1ec28b;
+    border: none;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 6px 18px;
+}
+
+.settings-card .btn-success:hover {
+    background: #16a076;
+}
+
+.settings-card .btn-link {
+    color: #1ec28b;
+    font-weight: 600;
+    text-decoration: underline;
+    border: none;
+    background: none;
+    padding: 0;
+}
+
+.settings-card .btn-link:hover {
+    color: #16a076;
+}
+
+.profile-pic {
+    border-radius: 50%;
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border: 2.5px solid #1ec28b;
+    background: #f6fcfa;
+    margin-left: 25px;
+}
+
+/* Center the main card on the page */
+.main-right-panel-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 600px;
+    background: none;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+}
+
+@media (max-width: 700px) {
+    .settings-card {
+        padding: 18px 6px;
+    }
+
+    .settings-tabs {
+        gap: 8px;
+    }
+
+    .settings-tab {
+        padding: 8px 10px;
+        font-size: 1em;
+    }
+
+    .settings-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+}
+
+/* --- Upstash-like Settings/Account Page Styles --- */
+.upstash-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 16px 0 rgba(30, 194, 139, 0.07);
+    padding: 32px 28px 18px 28px;
+    margin: 0 auto 2.5rem auto;
+    font-family: 'Inter', sans-serif;
+    text-align: left;
+    width: 100%;
+    max-width: none;
+}
+
+.upstash-tabs {
+    justify-content: flex-start;
+    align-items: flex-end;
+    gap: 0;
+    margin-bottom: 32px;
+    border-bottom: 1.5px solid #e5e7eb;
+}
+
+.upstash-tab {
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0 28px 16px 0;
+    font-size: 1.08rem;
+    font-weight: 500;
+    color: #888;
+    cursor: pointer;
+    transition: color 0.2s;
+    outline: none;
+    position: relative;
+}
+
+.upstash-tab.active {
+    color: #1ec28b;
+    font-weight: 600;
+}
+
+.upstash-tab.active::after {
+    content: '';
+    display: block;
+    height: 3px;
+    width: 100%;
+    background: #1ec28b;
+    border-radius: 2px 2px 0 0;
+    position: absolute;
+    left: 0;
+    bottom: -1.5px;
+}
+
+.upstash-settings-list {
+    margin-top: 8px;
+}
+
+.upstash-settings-row {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 0 0 0;
+    min-height: 48px;
+    border-bottom: 1px solid #f0f2f5;
+    font-size: 1rem;
+    color: #222;
+}
+
+.upstash-settings-row:last-child {
+    border-bottom: none;
+}
+
+.upstash-settings-label {
+    min-width: 140px;
+    color: #888;
+    font-weight: 500;
+    flex: 0 0 140px;
+}
+
+.upstash-settings-value {
+    flex: 1 1 auto;
+    color: #222;
+    font-weight: 400;
+    font-size: 1rem;
+}
+
+.upstash-edit-btn {
+    color: #1ec28b !important;
+    font-weight: 500;
+    font-size: 1em;
+    text-decoration: underline;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: color 0.2s;
+    padding: 0 8px;
+}
+
+.upstash-edit-btn:hover {
+    color: #16a076 !important;
+}
+
+.upstash-inline-input {
+    font-size: 1rem;
+    border-radius: 8px;
+    border: 1.5px solid #e5e7eb;
+    background: #f6fcfa;
+    color: #222;
+    margin-left: 8px;
+    width: 80px;
+}
+
+.upstash-inline-input:focus {
+    border-color: #1ec28b;
+    background: #fff;
+}
+
+.upstash-card .btn-success {
+    background: #1ec28b;
+    border: none;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 6px 18px;
+    font-size: 1rem;
+}
+
+.upstash-card .btn-success:hover {
+    background: #16a076;
+}
+
+.upstash-card .btn-link {
+    color: #1ec28b;
+    font-weight: 500;
+    text-decoration: underline;
+    border: none;
+    background: none;
+    padding: 0;
+}
+
+.upstash-card .btn-link:hover {
+    color: #16a076;
+}
+
+.upstash-profile-name {
+    font-size: 1.08rem;
+    font-weight: 600;
+    color: #222;
+}
+
+.upstash-profile-username {
+    font-size: 0.98rem;
+    color: #888;
+    font-weight: 400;
+}
+
+.upstash-edit-panel {
+    margin-top: 0;
+}
+
+.upstash-edit-title {
+    font-size: 1.12rem;
+    font-weight: 600;
+    color: #222;
+}
+
+.upstash-cancel-btn {
+    background: #f6fcfa;
+    color: #222;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 6px 18px;
+}
+
+.upstash-cancel-btn:hover {
+    background: #e5e7eb;
+}
+
+.profile-pic {
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    object-fit: cover;
+    border: 2px solid #1ec28b;
+    background: #f6fcfa;
+}
+
+.main-right-panel-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 600px;
+    background: none;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+}
+
+@media (max-width: 700px) {
+    .upstash-card {
+        padding: 12px 2px;
+    }
+
+    .upstash-tabs {
+        margin-bottom: 18px;
+    }
+
+    .upstash-settings-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .upstash-settings-label {
+        min-width: 0;
+        flex: none;
+    }
+}
+
+.settings-label-bg {
+    display: inline-block;
+    background: rgba(30, 194, 139, 0.07);
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    color: #222;
+    padding: 4px 16px;
+    font-size: 1.01rem;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.01em;
+}
+
+.settings-title-bar {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 0;
+    padding: 15px 0 15px 32px;
+    margin-bottom: 2.2rem;
+    width: 102vw;
+    max-width: 102vw;
+    text-align: left;
+    box-shadow: none;
+    position: relative;
+    left: 0;
+    z-index: 1;
+}
+
+.settings-title-bar .settings-page-title {
+    margin: 0;
+    margin-left: 28.5%;
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: #222;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: -0.01em;
+}
+
+.settings-tab-panel {
+    width: 100%;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+.settings-form-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    align-items: flex-end;
+}
+
+.settings-form-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 12px;
+}
+
+/* --- Modern Settings/Account Page Styles --- */
+.settings-card {
+    background: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 32px 28px 18px 28px;
+    margin: 0 auto 2.5rem auto;
+    font-family: 'Inter', sans-serif;
+    text-align: left;
+    width: 100%;
+    max-width: none;
+}
+
+.settings-card.card-style {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 2px 16px 0 rgba(30, 194, 139, 0.07);
+}
+
+.settings-tabs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    width: 80%;
+    height: auto;
+    margin-bottom: 0.5rem;
+    border-bottom: 1.5px solid #d5d5d5;
+    background: none;
+    padding-left: 0;
+    margin-left: 0;
+}
+
+.settings-tab {
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding-block: 10px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #222;
+    cursor: pointer;
+    transition: color 0.2s;
+    outline: none;
+    position: relative;
+    margin-bottom: -1.5px;
+}
+
+.settings-tab.active {
+    color: #1ec28b;
+    font-weight: 600;
+}
+
+.settings-tab.active::after {
+    content: '';
+    display: block;
+    height: 2.5px;
+    width: 100%;
+    background: #1ec28b;
+    border-radius: 2px 2px 0 0;
+    position: absolute;
+    left: 1px;
+    bottom: -1.5px;
+}
+
+.settings-tab:not(.active):hover {
+    color: #1ec28b;
+}
+
+.account-badge {
+    display: inline-block;
+    background-color: #FEE2E2;
+    color: #B91C1C;
+    border: 1px solid #FDE7E7;
+    padding: 4px;
+    font-size: 0.72rem;
+    border-radius: 6px;
+    font-weight: 400;
+}
+
+.account-badge .account-badge-verified {
+    display: inline-block;
+    background-color: #e9fee2;
+    color: #53b91c;
+    border: 1px solid #edfde7;
+    padding: 4px;
+    font-size: 0.72rem;
+    border-radius: 6px;
+    font-weight: 400;
+}
+
+.verify-account-btn {
+    align-item: right;
+}
+
+.settings-row-bg {
+    background: #f0f6f6;
+    border-radius: 10px;
+    padding: 18px 24px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: none;
+    border: 1px solid #e5eaea;
 }
 
 .settings-row {
@@ -1143,12 +1610,6 @@ nav .navbar-brand .logo_text::first-letter {
     background: none;
     padding: 0;
     margin: 0;
-}
-
-.settings-row span:first-child {
-    min-width: 140px;
-    color: #888;
-    font-weight: 500;
 }
 
 .settings-edit-btn {
@@ -1165,7 +1626,7 @@ nav .navbar-brand .logo_text::first-letter {
 }
 
 .settings-edit-btn:hover {
-    background: #22d599; !important;
+    background: #22d599 !important;
 }
 
 .settings-card input.form-control {
@@ -1482,39 +1943,7 @@ nav .navbar-brand .logo_text::first-letter {
 }
 
 .settings-page-title {
-    font-family: 'Inter', sans-serif;
-    font-size: 2.1rem;
-    font-weight: 700;
-    color: #222;
-    margin-bottom: 1.5rem;
-    margin-left: 0.5rem;
-    letter-spacing: -0.01em;
     text-align: left;
-}
-
-.settings-title-bar {
-    background: rgba(0, 0, 0, 0.08);
-    border-radius: 0;
-    padding: 18px 0 10px 32px;
-    margin-top: -5px !Important;
-    margin-bottom: 2.2rem;
-    width: 102vw;
-    max-width: 102vw;
-    text-align: left;
-    box-shadow: none;
-    position: relative;
-    left: 0;
-    z-index: 1;
-}
-
-.settings-title-bar .settings-page-title {
-    margin: 0;
-    margin-left: 28.5%;
-    font-size: 2.1rem;
-    font-weight: 700;
-    color: #222;
-    font-family: 'Inter', sans-serif;
-    letter-spacing: -0.01em;
 }
 
 .settings-tab-panel {
@@ -1540,4 +1969,42 @@ nav .navbar-brand .logo_text::first-letter {
 .settings-label {
     font-size: 1.2rem;
     font-weight: 500;
+}
+
+/* Modern side popup for age validation */
+.age-popup {
+    position: absolute;
+    left: 105%;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #fff6f6;
+    color: #d7263d;
+    border: 1.5px solid #ffb3b3;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px 0 rgba(215, 38, 61, 0.08);
+    padding: 12px 18px;
+    font-size: 1.05rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    z-index: 100;
+    min-width: 180px;
+    max-width: 260px;
+    display: none;
+    animation: fadeInSlide 0.3s cubic-bezier(.4, 1.4, .6, 1) 1;
+}
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) translateX(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
+    }
+}
+
+.age-popup.active {
+    display: block;
 }
