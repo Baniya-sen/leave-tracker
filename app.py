@@ -20,6 +20,7 @@ from flask_limiter import Limiter
 
 import auth
 import leaves
+import helpers
 
 load_dotenv()
 
@@ -224,73 +225,52 @@ def account_root():
     return redirect(url_for('account', username=uname, token=token), code=307)
 
 
-@app.route('/<username>/account/<token>', methods=['GET', 'POST'])
+@app.route('/<username>/account/<token>', methods=['GET'])
 @login_required
 def account(username: str, token: str):
     if username != session['username'] or token != make_daily_token(username):
         return apology("Verification failed! Logout and Re-login!", 403)
 
-    if request.method == "GET":
-        user = auth.get_user_info_with_id(session['user_id'])
-        pprint.pprint(dict(user))
-        return render_template(
-            'account.html',
-            user_info=user or {}
-        )
+    user = auth.get_user_info_with_id(session['user_id'])
+    pprint.pprint(dict(user))
+    return render_template(
+        'account.html',
+        user_info=user or {}
+    )
 
-    if request.method == "POST":
-        data = {}
-        for k in ("name", "email", "firm_name"):
-            v = request.form.get(k, "").strip()
-            if v:
-                data[k] = v
-        age = request.form.get("age", "").strip()
-        if age.isdigit():
-            data["age"] = int(age)
-        for k in ("date", "firm_join_date"):
-            v = request.form.get(k, "").strip()
-            if v and valid_date(v):
-                data[k] = v
-            elif v:
-                return apology(f"Invalid {k}", 400)
-        w = request.form.get("firm_weekend_days", "").strip()
-        if w:
-            if WEEKEND_RE.match(w):
-                data["firm_weekend_days"] = w
-            else:
-                return apology("Invalid weekend days", 400)
 
-        types = request.form.getlist('leave_type')
-        counts = request.form.getlist('leave_count')
+@app.route('/account/update-info/<info_type>', methods=['POST'])
+@login_required
+def update_account_info(info_type):
+    user_id = session['user_id']
+    data = request.form.to_dict(flat=True)
 
-        leaves_given = {}
-        for t, c in zip(types, counts):
-            t = t.strip()
-            try:
-                n = int(c)
-                if not t or n < 0:
-                    raise ValueError
-            except ValueError:
-                return apology("Each leave type must have a non‑negative integer count.", 400)
-            leaves_given[t] = n
+    validators = {
+        'name_age': helpers.validate_name_age,
+        'email': helpers.validate_email,
+        'dob': helpers.validate_dob,
+        'firm_info': helpers.validate_firm_info,
+        'firm_weekend': helpers.validate_firm_weekend,
+        'firm_leaves': lambda d: helpers.validate_firm_leaves(d, request),
+    }
 
-        if leaves_given:
-            firm = leaves.get_user_key_data(session['user_id'], "user_info.firm_name")
-            if not firm:
-                return apology("Firm not configured.", 400)
+    if info_type not in validators:
+        return apology('Unknown info type', 400)
+    valid, error, clean_data = validators[info_type](data)
+    if not valid:
+        return apology(error, 400)
 
-        data['leaves_type'] = leaves_given
+    update_data = clean_data
+    if info_type == 'firm_leaves':
+        update_data['leaves_type'] = dict(zip(
+            request.form.getlist('leave_type[]'),
+            map(int, request.form.getlist('leave_count[]'))
+        ))
 
-        if auth.update_user_info(session["user_id"], data) and \
-                leaves.update_user_profile(session["user_id"], data):
-
-            return redirect(
-                url_for('account',
-                        username=session['username'],
-                        token=make_daily_token(session['username']))
-            )
-        else:
-            return apology("Something went wrong!", 401)
+    if auth.update_user_info(user_id, update_data):
+        return redirect(url_for('account_root'))
+    else:
+        return apology('Update failed', 400)
 
 
 @app.route("/leaves/import", methods=["POST"])
@@ -349,14 +329,44 @@ def import_leaves():
 @app.route('/take_leave', methods=['POST'])
 @login_required
 def take_leave():
+    user_id = session['user_id']
+    username = session['username']
+    data = request.get_json(force=True)
+    date_str = data.get('date')
+    leave_type = data.get('type')
+    days = int(data.get('days', 1))
+    if not date_str or not leave_type or days < 1:
+        return jsonify(error='Invalid input'), 400
+
+    firm = leaves.get_user_key_data(user_id, 'user_info.firm_name')
+    if not firm:
+        return jsonify(error='Firm not configured'), 400
+    firm_data = leaves.get_user_key_data(user_id, f'user_leaves.{firm}')
+    if not firm_data:
+        return jsonify(error='No leave structure found'), 400
+    leaves_given = firm_data.get('leaves_given', {})
+    leaves_remaining = firm_data.get('leaves_remaining', {})
+    if leave_type not in leaves_given:
+        return jsonify(error='Invalid leave type'), 400
+    remaining = leaves_remaining.get(leave_type, leaves_given[leave_type])
+    if days > remaining:
+        return jsonify(error='Not enough leaves left'), 400
+
+    # Update DB: add date to leaves_taken, decrement leaves_remaining
     coll = leaves.get_leaves_collection()
-    coll.insert_one({
-        'user_id': g.user['id'],
-        'date': request.form['date'],
-        'leave_type': request.form['type'],
-        'days': int(request.form['days'])
-    })
-    return redirect(url_for('show_leaves'))
+    taken_key = f'user_leaves.{firm}.leaves_taken.{leave_type}'
+    rem_key = f'user_leaves.{firm}.leaves_remaining.{leave_type}'
+    doc = coll.find_one({'user_id': user_id})
+    taken = doc.get('user_leaves', {}).get(firm, {}).get('leaves_taken', {}).get(leave_type, [])
+    # Prevent duplicate date
+    if date_str in taken:
+        return jsonify(error='Leave already taken for this date'), 400
+    new_taken = taken + [date_str] * days
+    new_remaining = remaining - days
+    if new_remaining < 0:
+        return jsonify(error='Not enough leaves left'), 400
+    coll.update_one({'user_id': user_id}, {'$set': {taken_key: new_taken, rem_key: new_remaining}})
+    return jsonify(status='ok')
 
 
 if __name__ == '__main__':

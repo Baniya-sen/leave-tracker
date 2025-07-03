@@ -101,7 +101,7 @@
         }
         for (let d = 1; d <= daysInMonth; d++) {
             const cell = document.createElement('div');
-
+            cell.classList.add('calendar-day');
             // 1) Wrap the date in its own element
             const num = document.createElement('span');
             num.classList.add('date-number');
@@ -119,6 +119,7 @@
 
             // 3) Leaves logic
             const iso = `${currentYear}-${pad(currentMonth + 1)}-${pad(d)}`;
+            cell.dataset.date = iso;
             if (leaveMap[iso]) {
                 cell.classList.add('leave-day');
                 cell.style.position = 'relative';
@@ -132,7 +133,6 @@
                 // 4) Build the badges container
                 const labelsContainer = document.createElement('div');
                 labelsContainer.classList.add('leave-labels');
-                // absolutely position inside the cell
                 Object.assign(labelsContainer.style, {
                     position: 'absolute',
                     bottom: '2px',
@@ -360,14 +360,14 @@
     if (editFirmWeekendBtn && firmWeekendDisplay && firmWeekendEditForm && cancelFirmWeekendBtn && firmWeekendInputEdit) {
         editFirmWeekendBtn.addEventListener('click', function () {
             closeAllEditModes();
-            firmWeekendDisplay.classList.add('d-none');
+            firmWeekendDisplay.style.display = 'none';
             firmWeekendEditForm.classList.remove('d-none');
             editFirmWeekendBtn.classList.add('d-none');
             firmWeekendInputEdit.focus();
         });
         cancelFirmWeekendBtn.addEventListener('click', function () {
             firmWeekendEditForm.classList.add('d-none');
-            firmWeekendDisplay.classList.remove('d-none');
+            firmWeekendDisplay.style.display = '';
             editFirmWeekendBtn.classList.remove('d-none');
             firmWeekendInputEdit.value = firmWeekendInputEdit.getAttribute('value') || '';
         });
@@ -375,26 +375,27 @@
 
     // Inline editing for firm leaves structure (match HTML)
     const editFirmLeavesBtn = document.getElementById('edit-firm-leaves');
-    const firmLeavesDisplay = document.querySelector('.leaves-grid');
+    const firmLeavesContainer = document.querySelector('.leaves-grid');
+    const firmLeavesDisplay = document.querySelector('.leaves-items');
     const firmLeavesEditForm = document.getElementById('firm-leaves-edit-form');
     const cancelFirmLeavesBtn = document.getElementById('cancel-firm-leaves');
     const addLeaveTypeBtn = document.getElementById('add-leave-type');
     if (editFirmLeavesBtn && firmLeavesDisplay && firmLeavesEditForm && cancelFirmLeavesBtn && addLeaveTypeBtn) {
         editFirmLeavesBtn.addEventListener('click', function () {
             closeAllEditModes();
-            firmLeavesDisplay.classList.add('d-none');
+            firmLeavesDisplay.style.display = 'none';
             firmLeavesEditForm.classList.remove('d-none');
             editFirmLeavesBtn.classList.add('d-none');
         });
         cancelFirmLeavesBtn.addEventListener('click', function () {
             firmLeavesEditForm.classList.add('d-none');
-            firmLeavesDisplay.classList.remove('d-none');
+            firmLeavesDisplay.style.display = '';
             editFirmLeavesBtn.classList.remove('d-none');
         });
         addLeaveTypeBtn.addEventListener('click', function () {
             const form = firmLeavesEditForm;
             const newSet = document.createElement('div');
-            newSet.className = 'd-flex align-items-center gap-2 mb-2 leave-input-set';
+            newSet.className = 'd-flex align-items-center gap-2 leave-input-set';
             newSet.innerHTML = `
                 <input type="text" class="form-control" name="leave_type[]" placeholder="Leave type" style="width:120px;">
                 <input type="number" class="form-control" name="leave_count[]" placeholder="Number" style="width:80px;">
@@ -414,19 +415,25 @@
 })();
 
 // Leaves types add rows
-document.getElementById('add-row').addEventListener('click', () => {
-    const tbody = document.querySelector('#leave-table tbody');
-    const lastRow = tbody.lastElementChild;  // or: tbody.querySelector('tr:last-child')
-    const row = lastRow.cloneNode(true);
-    row.querySelectorAll('input').forEach(i => i.value = '');
-    tbody.append(row);
-});
-document.querySelector('#leave-table').addEventListener('click', e => {
-    if (e.target.classList.contains('remove-row')) {
-        const rows = document.querySelectorAll('#leave-table tbody tr');
-        if (rows.length > 1) e.target.closest('tr').remove();
-    }
-});
+const addRow = document.getElementById('add-row');
+if (addRow) {
+    addRow.addEventListener('click', () => {
+        const tbody = document.querySelector('#leave-table tbody');
+        const lastRow = tbody.lastElementChild;
+        const row = lastRow.cloneNode(true);
+        row.querySelectorAll('input').forEach(i => i.value = '');
+        tbody.append(row);
+    });
+}
+const leaveTable = document.querySelector('#leave-table');
+if (leaveTable) {
+    leaveTable.addEventListener('click', e => {
+        if (e.target.classList.contains('remove-row')) {
+            const rows = document.querySelectorAll('#leave-table tbody tr');
+            if (rows.length > 1) e.target.closest('tr').remove();
+        }
+    });
+}
 
 // Import leaves data function
 (function () {
@@ -493,5 +500,174 @@ document.querySelector('#leave-table').addEventListener('click', e => {
             errorBox.textContent = "Server error. Please try again.";
             errorBox.style.display = "block";
         }
+    });
+})();
+
+document.addEventListener('DOMContentLoaded', function () {
+    // Name & Age validation
+    const nameAgeForm = document.getElementById('name-age-edit-form');
+    if (nameAgeForm) {
+        nameAgeForm.addEventListener('submit', function (e) {
+            const age = nameAgeForm.age.value.trim();
+            if (age && (!/^[0-9]+$/.test(age) || parseInt(age) < 14)) {
+                alert('Age must be a number and at least 14.');
+                e.preventDefault();
+            }
+        });
+    }
+
+    // Email validation
+    const emailForm = document.getElementById('email-edit-form');
+    if (emailForm) {
+        emailForm.addEventListener('submit', function (e) {
+            const email = emailForm.email.value.trim();
+            if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+                alert('Please enter a valid email address.');
+                e.preventDefault();
+            }
+        });
+    }
+
+    // Firm Name validation (not just numbers)
+    const firmInfoForm = document.getElementById('firm-info-edit-form');
+    if (firmInfoForm) {
+        firmInfoForm.addEventListener('submit', function (e) {
+            const firmName = firmInfoForm.firm_name.value.trim();
+            if (firmName && /^[0-9]+$/.test(firmName)) {
+                alert('Firm name cannot be just numbers.');
+                e.preventDefault();
+            }
+        });
+    }
+
+    // Firm Leaves Structure validation (at least one type/count, all counts >= 0)
+    const firmLeavesForm = document.getElementById('firm-leaves-edit-form');
+    if (firmLeavesForm) {
+        firmLeavesForm.addEventListener('submit', function (e) {
+            const types = Array.from(firmLeavesForm.querySelectorAll('input[name="leave_type[]"]')).map(i => i.value.trim());
+            const counts = Array.from(firmLeavesForm.querySelectorAll('input[name="leave_count[]"]')).map(i => i.value.trim());
+            if (!types.length || !counts.length || types.length !== counts.length) {
+                alert('Leave types/counts mismatch.');
+                e.preventDefault();
+                return;
+            }
+            for (let i = 0; i < types.length; i++) {
+                if (!types[i]) {
+                    alert('Leave type required.');
+                    e.preventDefault();
+                    return;
+                }
+                if (!/^[0-9]+$/.test(counts[i]) || parseInt(counts[i]) < 0) {
+                    alert('Leave count must be a non-negative integer.');
+                    e.preventDefault();
+                    return;
+                }
+            }
+        });
+    }
+});
+
+(function () {
+    // Only run on index.html (calendar page)
+    if (!document.getElementById('days')) return;
+
+    // --- Modal Elements ---
+    const leaveModal = document.getElementById('leaveModal');
+    const leaveTypeSelect = document.getElementById('leaveType');
+    const leaveCountInput = document.getElementById('leaveCount');
+    const leaveDateInput = document.getElementById('leaveDate');
+    const leaveForm = document.getElementById('leaveForm');
+    const saveBtn = document.getElementById('saveLeaveBtn');
+    const closeBtn = document.getElementById('closeLeaveModal');
+    const cancelBtn = document.getElementById('cancelLeaveBtn');
+
+    function showLeaveModal() {
+        leaveModal.style.display = 'flex';
+    }
+    function hideLeaveModal() {
+        leaveModal.style.display = 'none';
+    }
+    closeBtn?.addEventListener('click', hideLeaveModal);
+    cancelBtn?.addEventListener('click', function(e) { e.preventDefault(); hideLeaveModal(); });
+
+    // --- Helper: Populate leave types ---
+    function populateLeaveTypes() {
+        leaveTypeSelect.innerHTML = '';
+        const leavesGiven = window.USER_LEAVES?.leaves_given || {};
+        const leavesRemaining = window.USER_LEAVES?.leaves_remaining || {};
+        Object.keys(leavesGiven).forEach(type => {
+            const rem = leavesRemaining[type] ?? leavesGiven[type];
+            const opt = document.createElement('option');
+            opt.value = type;
+            opt.textContent = `${type} (${rem} left)`;
+            opt.dataset.remaining = rem;
+            leaveTypeSelect.appendChild(opt);
+        });
+    }
+
+    // --- Helper: Validate input ---
+    function validateLeaveInput() {
+        const selected = leaveTypeSelect.options[leaveTypeSelect.selectedIndex];
+        const max = parseInt(selected?.dataset.remaining || '0', 10);
+        const val = parseInt(leaveCountInput.value, 10);
+        if (!selected || isNaN(val) || val < 1 || val > max) {
+            leaveCountInput.classList.add('is-invalid');
+            saveBtn.disabled = true;
+            return false;
+        }
+        leaveCountInput.classList.remove('is-invalid');
+        saveBtn.disabled = false;
+        return true;
+    }
+
+    // --- Open modal on date click ---
+    document.getElementById('days').addEventListener('click', function (e) {
+        let cell = e.target;
+        // Find the closest .calendar-day
+        while (cell && !cell.classList.contains('calendar-day') && cell !== this) {
+            cell = cell.parentElement;
+        }
+        if (!cell || !cell.classList.contains('calendar-day')) return;
+        const iso = cell.dataset.date;
+        if (!iso) return;
+        leaveDateInput.value = iso;
+        populateLeaveTypes();
+        leaveCountInput.value = 1;
+        validateLeaveInput();
+        showLeaveModal();
+    });
+
+    // --- Validate on change ---
+    leaveTypeSelect?.addEventListener('change', validateLeaveInput);
+    leaveCountInput?.addEventListener('input', validateLeaveInput);
+
+    // --- Submit leave form via AJAX ---
+    leaveForm?.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!validateLeaveInput()) return;
+        saveBtn.disabled = true;
+        fetch('/take_leave', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                date: leaveDateInput.value,
+                type: leaveTypeSelect.value,
+                days: leaveCountInput.value
+            })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    hideLeaveModal();
+                    window.location.reload();
+                } else {
+                    alert(data.error || 'Failed to take leave');
+                }
+            })
+            .catch(() => alert('Failed to take leave'))
+            .finally(() => { saveBtn.disabled = false; });
     });
 })();
