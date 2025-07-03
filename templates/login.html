@@ -1,17 +1,40 @@
 {% extends "layout.html" %}
+{% set hide_nav = true %}
 
 {% block title %}
-    Log In
+Signin -
 {% endblock %}
 
 {% block main %}
-    <form action="/login" method="post">
-        <div class="mb-3">
-            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" name="username" placeholder="Username" type="text">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+<div class="app-login-root">
+    <div class="app-login-left">
+        <div class="app-login-left-text">Track<br>Your<br>Leaves<br>Any<br>where</div>
+    </div>
+    <div class="app-login-right">
+        <div class="app-login-content">
+            <div class="app-login-logo">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="leave_tracker_logo"
+                    height="60" width="60" />
+            </div>
+            <div class="app-login-title">Log in to Leave-Tracker</div>
+            <!--            <div class="app-login-social-row">-->
+            <!--                <button type="button" class="app-login-social-btn"><i class="fab fa-google"></i></button>-->
+            <!--                <button type="button" class="app-login-social-btn"><i class="fab fa-github"></i></button>-->
+            <!--            </div>-->
+            <form action="/login" method="post" class="app-login-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input autocomplete="off" autofocus class="app-login-input" name="username" placeholder="Email"
+                    type="text">
+                <input class="app-login-input" name="password" placeholder="Password" type="password">
+                <button class="app-login-btn" type="submit">Log In</button>
+            </form>
+            <div class="app-login-links">
+                <a href="#" class="app-login-link">Forgot your password?</a>
+                <a href="/register" class="app-login-link">Create an account</a>
+            </div>
         </div>
-        <div class="mb-3">
-            <input class="form-control mx-auto w-auto" name="password" placeholder="Password" type="password">
-        </div>
-        <button class="btn btn-primary" type="submit">Log In</button>
-    </form>
+    </div>
+</div>
 {% endblock %}

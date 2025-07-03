@@ -2,69 +2,105 @@
 
 <html lang="en">
 
-    <head>
+<head>
 
-        <meta charset="utf-8">
-        <meta name="viewport" content="initial-scale=1, width=device-width">
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1, width=device-width">
 
-        <!-- http://getbootstrap.com/docs/5.1/ -->
-        <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" rel="stylesheet">
-        <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"></script>
+  <!-- http://getbootstrap.com/docs/5.1/ -->
+  <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+    integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" rel="stylesheet">
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"></script>
 
-        <!-- https://favicon.io/emoji-favicons/money-bag/ -->
-        <link href="/static/favicon.ico" rel="icon">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-        <link href="/static/styles.css" rel="stylesheet">
-        <link href='fullcalendar/main.min.css' rel='stylesheet' />
+  <!-- or Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
-        <title>Leaves Tracker: {% block title %}{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;700&display=swap" rel="stylesheet"/>
 
-    </head>
+  <!-- https://favicon.io/emoji-favicons/money-bag/ -->
+  <link href="/static/favicon.ico" rel="icon">
 
-    <body>
+  <link href="/static/styles.css" rel="stylesheet">
+  <link href='fullcalendar/main.min.css' rel='stylesheet' />
 
-        <nav class="bg-dark navbar navbar-expand-md navbar-dark">
-            <div class="container-fluid">
-                <a class="navbar-brand" href="/"><span class="blue">Leaves: </span><span class="red">Tracking & Management</span></a>
-                <button aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation" class="navbar-toggler" data-bs-target="#navbar" data-bs-toggle="collapse" type="button">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbar">
-                    {% if session["user_id"] %}
-                        <ul class="navbar-nav ms-auto mt-2">
-                            <li class="nav-item"><a class="nav-link" href="/account">Account</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/logout">Log Out</a></li>
-                        </ul>
-                    {% else %}
-                        <ul class="navbar-nav ms-auto mt-2">
-                            <li class="nav-item"><a class="nav-link" href="/register">Register</a></li>
-                            <li class="nav-item"><a class="nav-link" href="/login">Log In</a></li>
-                        </ul>
-                    {% endif %}
-                </div>
-            </div>
-        </nav>
+  <title>{% block title %}{% endblock %}Leaves Tracker</title>
 
-        {% if get_flashed_messages() %}
-            <header>
-                <div class="alert alert-primary mb-0 text-center" role="alert">
-                    {{ get_flashed_messages() | join(" ") }}
-                </div>
-            </header>
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+
+</head>
+
+<body>
+
+  {% if not hide_nav %}
+  <nav class="navbar navbar-dark bg-black app-navbar">
+    <div class="app-navbar-inner">
+
+      {% if session["user_id"] %}
+      <div class="firm-chip app-firm-chip ">
+        <span>{{ firms or 'Add firm' }}</span>
+        <i class="fa fa-chevron-down"></i>
+      </div>
+      {% endif %}
+
+      <a class="navbar-brand m-0 app-navbar-brand d-flex align-items-center gap-2" href="/">
+        <span class="app-navbar-logo">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="leave_tracker_logo" height="35" width="35" />
+        </span>
+        <span class="logo_text app-navbar-title">Leaves Tracker</span>
+      </a>
+
+      <div class="app-navbar-links">
+        {% if session["user_id"] %}
+        <ul class="navbar-nav flex-row m-0 align-items-center inter">
+          <li class="nav-item">
+            <a class="nav-link nav-chip d-flex align-items-center gap-2 app-account-link" href="/account">
+              <div class="nav-icon-circle app-account-icon">
+                <img src="{{ url_for('static', filename='images/account.png') }}" alt="Account" />
+              </div>
+              Account
+            </a>
+          </li>
+          <li class="nav-item"><a class="nav-link nav-chip app-logout-link" href="/logout">Logout</a></li>
+        </ul>
+        {% else %}
+        <ul class="navbar-nav flex-row m-0 align-items-center">
+          <li class="nav-item"><a class="nav-link nav-chip app-register-link" href="/register">Register</a></li>
+          <li class="nav-item"><a class="nav-link nav-chip app-login-link" href="/login">Log In</a></li>
+        </ul>
         {% endif %}
+      </div>
+    </div>
+  </nav>
+  {% endif %}
 
-        <main class="container-fluid py-5 text-center">
-            {% block main %}{% endblock %}
-        </main>
+  {% if get_flashed_messages() %}
+  <header>
+    <div class="alert alert-primary mb-0 text-center" role="alert">
+      {{ get_flashed_messages() | join(" ") }}
+    </div>
+  </header>
+  {% endif %}
 
-        <footer class="mb-5 small text-center text-muted">
-            This is a project in development! <a href="https://github.com/Baniya-sen">Baniya</a>
-        </footer>
+  <main class="container-fluid text-center">
+    {% block main %}{% endblock %}
+  </main>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <footer class="mb-5 small text-center text-muted">
+    This is a project in development! <a href="https://github.com/Baniya-sen">Baniya</a>
+  </footer>
 
-    </body>
+  {% block extra_scripts %}
+  <script>window.USER_LEAVES = {};</script>
+  {% endblock %}
 
-    <script src='fullcalendar/main.min.js'></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+
+<script src='fullcalendar/main.min.js'></script>
 
 </html>

@@ -1,46 +1,67 @@
+import json
 import pprint
 import re
 import hmac
 import hashlib
 import base64
-from os import getenv
+from os import getenv, path
 from datetime import datetime, date
 from dotenv import load_dotenv
-
-from flask import (
-    Flask, g, session, request,
-    redirect, url_for, render_template
-)
-from flask_session import Session
 from functools import wraps
 from urllib.parse import quote_plus
+
+from flask import (
+    Flask, g, session, request, render_template,
+    redirect, url_for, jsonify
+)
+from flask_session import Session
+from flask_wtf import CSRFProtect
+from flask_limiter import Limiter
+
 import auth
 import leaves
+import helpers
 
 load_dotenv()
 
+# Reddis
+REDDIS_PASS = quote_plus(getenv('REDDIS_PASS'))
+REDDIS_DB = quote_plus(getenv('REDDIS_DB'))
+REDDIS_PORT = quote_plus(getenv('REDDIS_PORT'))
+REDDIS_URI = f'rediss://default:{REDDIS_PASS}@{REDDIS_DB}.upstash.io:{REDDIS_PORT}'
+
 # Mongo variables
-USER = quote_plus(getenv('MONGO_USER'))
-PASS = quote_plus(getenv('MONGO_PASS'))
-CLUSTER = getenv('MONGO_CLUSTER')
-COLLECTION = getenv('MONGO_COLLECTION')
-HOST = getenv('MONGO_HOST')
-OPTIONS = getenv('MONGO_OPTIONS')
-URI = f"mongodb+srv://{USER}:{PASS}@{CLUSTER}{HOST}/?{OPTIONS}{CLUSTER}"
-# URI = f"mongodb+srv://{USER}:{PASS}@{CLUSTER}.zv9v2ag.mongodb.net/?retryWrites=true&w=majority&appName=leave-tracker"
+MONGO_USER = quote_plus(getenv('MONGO_USER'))
+MONGO_PASS = quote_plus(getenv('MONGO_PASS'))
+MONGO_CLUSTER = getenv('MONGO_CLUSTER')
+MONGO_COLLECTION = getenv('MONGO_COLLECTION')
+MONGO_HOST = getenv('MONGO_HOST')
+MONGO_OPTIONS = getenv('MONGO_OPTIONS')
+MONGO_URI = f"mongodb+srv://{MONGO_USER}:{MONGO_PASS}@{MONGO_CLUSTER}{MONGO_HOST}/?{MONGO_OPTIONS}{MONGO_CLUSTER}"
 
 app = Flask(__name__)
 app.secret_key = getenv('APP_KEY')
 
 app.config['AUTH_DB'] = 'user_auth.db'
-
+app.config['RATELIMIT_STORAGE_URL'] = REDDIS_URI
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_TYPE'] = 'filesystem'
-Session(app)
+app.config['MONGO_URI'] = MONGO_URI
+app.config['MONGO_DB'] = MONGO_CLUSTER
+app.config['MONGO_Coll'] = MONGO_COLLECTION
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=True
+)
 
-app.config['MONGO_URI'] = URI
-app.config['MONGO_DB'] = CLUSTER
-app.config['MONGO_Coll'] = COLLECTION
+limiter = Limiter(
+    app=app,
+    key_func=lambda: session.get('user_id'),
+    storage_uri=REDDIS_URI
+)
+Session(app)
+csrf = CSRFProtect(app)
 
 DATE_FMT = "%Y-%m-%d"
 WEEKEND_RE = re.compile(r'^\d+(?:,\d+)*$')
@@ -50,6 +71,15 @@ WEEKEND_RE = re.compile(r'^\d+(?:,\d+)*$')
 @app.teardown_appcontext
 def teardown(exc):
     auth.close_auth_db(exc)
+
+
+@app.template_filter("from_json")
+def from_json_filter(s):
+    try:
+        return json.loads(s)
+    except Exception as e:
+        print(e)
+        return {}
 
 
 def valid_date(s):
@@ -78,6 +108,7 @@ def login_required(f):
             return redirect(url_for('login'))
 
         return f(*args, **kwargs)
+
     return wrapper
 
 
@@ -104,6 +135,7 @@ def apology(message, code=400):
 
 
 # Routes
+@csrf.exempt
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == "GET":
@@ -117,13 +149,14 @@ def register():
 
         if auth.register_user(request.form.get("username"), request.form.get("password")):
             user = auth.get_user_info_with_username(request.form.get("username"))
-            leaves.init_user_info(user['id'], user['username'])
-            print("User Registered! ", user['username'])
-            return redirect(url_for('login'))
+            if leaves.init_user_info(user['id'], user['username']):
+                print("User Registered! ", user['username'])
+                return redirect(url_for('login'))
 
         return apology('Username taken!')
 
 
+@csrf.exempt
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     session.clear()
@@ -173,62 +206,167 @@ def user_home(username: str, token: str):
     if token != make_daily_token(username):
         apology("Token did not matched! Logout and Re-login.", 404)
 
-    user_leaves = leaves.get_users_leaves(session['user_id'], session['username'])
-    return render_template('index.html', user_leaves=user_leaves)
+    all_firm_leaves = leaves.get_user_key_data(session['user_id'], f"user_leaves")
+    last_firm = list(all_firm_leaves.keys())[-1]
+    firm_leaves = all_firm_leaves[last_firm]
+
+    return render_template(
+        'index.html',
+        firms="Bonanza Interactive",
+        user_leaves=firm_leaves
+    )
 
 
 @app.route('/account', methods=['GET', 'POST'])
 @login_required
-def account():
-    if request.method == "GET":
-        user = auth.get_user_info_with_id(session['user_id'])
-        pprint.pprint(dict(user))
-        return render_template(
-            'account.html',
-            user_info=user or {}
-        )
+def account_root():
+    uname = session['username']
+    token = make_daily_token(uname)
+    return redirect(url_for('account', username=uname, token=token), code=307)
 
-    if request.method == "POST":
-        data = {}
-        for k in ("name", "email", "firm_name"):
-            v = request.form.get(k, "").strip()
-            if v:
-                data[k] = v
-        age = request.form.get("age", "").strip()
-        if age.isdigit():
-            data["age"] = int(age)
-        for k in ("date", "firm_join_date"):
-            v = request.form.get(k, "").strip()
-            if v and valid_date(v):
-                data[k] = v
-            elif v:
-                return apology(f"Invalid {k}", 400)
-        w = request.form.get("firm_weekend_days", "").strip()
-        if w:
-            if WEEKEND_RE.match(w):
-                data["firm_weekend_days"] = w
-            else:
-                return apology("Invalid weekend days", 400)
 
-        if auth.update_user_info(session["user_id"], data) and \
-                leaves.update_user_profile(session["user_id"], data):
-            user = auth.get_user_info_with_id(session["user_id"])
-            return redirect(url_for('account'))
-        else:
-            return apology("Something went wrong!", 401)
+@app.route('/<username>/account/<token>', methods=['GET'])
+@login_required
+def account(username: str, token: str):
+    if username != session['username'] or token != make_daily_token(username):
+        return apology("Verification failed! Logout and Re-login!", 403)
+
+    user = auth.get_user_info_with_id(session['user_id'])
+    pprint.pprint(dict(user))
+    return render_template(
+        'account.html',
+        user_info=user or {}
+    )
+
+
+@app.route('/account/update-info/<info_type>', methods=['POST'])
+@login_required
+def update_account_info(info_type):
+    user_id = session['user_id']
+    data = request.form.to_dict(flat=True)
+
+    validators = {
+        'name_age': helpers.validate_name_age,
+        'email': helpers.validate_email,
+        'dob': helpers.validate_dob,
+        'firm_info': helpers.validate_firm_info,
+        'firm_weekend': helpers.validate_firm_weekend,
+        'firm_leaves': lambda d: helpers.validate_firm_leaves(d, request),
+    }
+
+    if info_type not in validators:
+        return apology('Unknown info type', 400)
+    valid, error, clean_data = validators[info_type](data)
+    if not valid:
+        return apology(error, 400)
+
+    update_data = clean_data
+    if info_type == 'firm_leaves':
+        update_data['leaves_type'] = dict(zip(
+            request.form.getlist('leave_type[]'),
+            map(int, request.form.getlist('leave_count[]'))
+        ))
+
+    if auth.update_user_info(user_id, update_data):
+        return redirect(url_for('account_root'))
+    else:
+        return apology('Update failed', 400)
+
+
+@app.route("/leaves/import", methods=["POST"])
+@limiter.limit("1 per minute")
+@login_required
+def import_leaves():
+    user_id = session["user_id"]
+
+    if not request.is_json:
+        return jsonify(error="Expected application/json"), 415
+
+    data = request.get_json()
+    if "leaves_taken" not in data:
+        return jsonify(error="Missing 'leaves_taken' field."), 400
+
+    leaves_taken = data["leaves_taken"]
+    if not isinstance(leaves_taken, dict):
+        return jsonify(error="'leaves_taken' must be a JSON object."), 400
+
+    firm = leaves.get_user_key_data(user_id, "user_info.firm_name")
+    if not firm:
+        return jsonify(error="Firm not configured."), 400
+
+    firm_data = leaves.get_user_key_data(user_id, f"user_leaves.{firm}")
+    if not firm_data:
+        return jsonify(error="Add leave structure for your firm first."), 400
+
+    allowed_types = set(firm_data.get("leaves_given", {}).keys())
+    allowed_types = [item.title() for item in allowed_types]
+    if not allowed_types:
+        return jsonify(error="No granted leave types found."), 400
+
+    def valid_iso(s):
+        try:
+            date.fromisoformat(s)
+            return True
+        except Exception as e:
+            print(user_id, "Wrong date in import- ", e)
+            return False
+
+    for leave_type, dates in leaves_taken.items():
+        if leave_type.title() not in allowed_types:
+            return jsonify(error=f"Unknown leave type: '{leave_type}'."), 400
+        if not isinstance(dates, list) or not all(
+                isinstance(d, str) and valid_iso(d) for d in dates
+        ):
+            return jsonify(error=f"Invalid dates for leave type '{leave_type}'."), 400
+
+    count, matched = leaves.update_user_leaves_by_import(user_id, leaves_taken)
+    if (count, matched) == (-1, -1):
+        return jsonify(error="One or more leave types exceed available remaining leaves."), 400
+
+    return jsonify(status="ok", updated=count, matched=matched)
 
 
 @app.route('/take_leave', methods=['POST'])
 @login_required
 def take_leave():
+    user_id = session['user_id']
+    username = session['username']
+    data = request.get_json(force=True)
+    date_str = data.get('date')
+    leave_type = data.get('type')
+    days = int(data.get('days', 1))
+    if not date_str or not leave_type or days < 1:
+        return jsonify(error='Invalid input'), 400
+
+    firm = leaves.get_user_key_data(user_id, 'user_info.firm_name')
+    if not firm:
+        return jsonify(error='Firm not configured'), 400
+    firm_data = leaves.get_user_key_data(user_id, f'user_leaves.{firm}')
+    if not firm_data:
+        return jsonify(error='No leave structure found'), 400
+    leaves_given = firm_data.get('leaves_given', {})
+    leaves_remaining = firm_data.get('leaves_remaining', {})
+    if leave_type not in leaves_given:
+        return jsonify(error='Invalid leave type'), 400
+    remaining = leaves_remaining.get(leave_type, leaves_given[leave_type])
+    if days > remaining:
+        return jsonify(error='Not enough leaves left'), 400
+
+    # Update DB: add date to leaves_taken, decrement leaves_remaining
     coll = leaves.get_leaves_collection()
-    coll.insert_one({
-        'user_id': g.user['id'],
-        'date': request.form['date'],
-        'leave_type': request.form['type'],
-        'days': int(request.form['days'])
-    })
-    return redirect(url_for('show_leaves'))
+    taken_key = f'user_leaves.{firm}.leaves_taken.{leave_type}'
+    rem_key = f'user_leaves.{firm}.leaves_remaining.{leave_type}'
+    doc = coll.find_one({'user_id': user_id})
+    taken = doc.get('user_leaves', {}).get(firm, {}).get('leaves_taken', {}).get(leave_type, [])
+    # Prevent duplicate date
+    if date_str in taken:
+        return jsonify(error='Leave already taken for this date'), 400
+    new_taken = taken + [date_str] * days
+    new_remaining = remaining - days
+    if new_remaining < 0:
+        return jsonify(error='Not enough leaves left'), 400
+    coll.update_one({'user_id': user_id}, {'$set': {taken_key: new_taken, rem_key: new_remaining}})
+    return jsonify(status='ok')
 
 
 if __name__ == '__main__':

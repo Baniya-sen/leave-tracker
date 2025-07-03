@@ -1,117 +1,257 @@
 {% extends "layout.html" %}
-{% block title %}Account Information{% endblock %}
+{% block title %}Account - {% endblock %}
 
 {% block main %}
-
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <div class="container-fluid">
   <div class="row page-layout-row">
-    <nav class="col-md-3-custom sidebar">
-      <div class="text-center my-4">
-        <div class="profile-pic-container">
-          <img src="{{ user_info['avatar_url'] or url_for('static', filename='default-avatar.png') }}"
-               alt="Profile" class="profile-pic">
-        </div>
-        <h5>{{ user_info['name'] or '—' }}</h5>
-<!--        <small class="text-muted">{{ user_info['role'] or 'User' }}</small>-->
+    <section class="col-md-9-custom main-right-panel-wrapper mx-auto" style="min-width: 350px; max-width: 900px;">
+      <div class="settings-title-bar">
+        <h1 class="settings-page-title">Account</h1>
       </div>
-<!--      <ul class="nav flex-column">-->
-<!--        <li class="nav-item mb-2">-->
-<!--          <a class="nav-link active" href="#">Profile</a>-->
-<!--        </li>-->
-<!--      </ul>-->
-      <div class="add-button-container">
-        <button class="btn btn-outline-primary" id="edit-account-btn">Change Account Info</button>
-      </div>
-    </nav>
 
-    <section class="col-md-9-custom main-right-panel-wrapper">
-      <div class="content-section-inner">
-        <h4 class="card-title">Your Account Related Information:</h4>
-        <hr>
-        <form id="account-info-form" method="post" action="/account" style="display:none;">
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label for="name" class="form-label">Name</label>
-              <input type="text" class="form-control" id="name" name="name" value="{{ user_info['name'] or '' }}">
-            </div>
-             <div class="col-md-6">
-              <label for="age" class="form-label">Age</label>
-              <input type="number" class="form-control" id="age" name="age" value="{{ user_info['name'] or '' }}">
-            </div>
-            <div class="col-md-6">
-              <label for="email" class="form-label">Email</label>
-              <input type="email" class="form-control" id="email" name="email" value="{{ user_info['email'] or '' }}">
-            </div>
-            <div class="col-md-6">
-              <label for="date" class="form-label">Date of Birth</label>
-              <input type="date" class="form-control" id="date" name="date" value="{{ user_info['date'] or '' }}">
-            </div>
-            <div class="col-md-6">
-              <label for="firm_name" class="form-label">Firm Name</label>
-              <input type="text" class="form-control" id="firm_name" name="firm_name" value="{{ user_info['firm_name'] or '' }}">
-            </div>
-            <div class="col-md-6">
-              <label for="firm_join_date" class="form-label">Firm Join Date</label>
-              <input type="date" class="form-control" id="firm_join_date" name="firm_join_date" value="{{ user_info['firm_join_date'] or '' }}">
-            </div>
-            <div class="col-md-6">
-              <label for="firm_join_date" class="form-label">Firm Leaves</label>
-              <input type="date" class="form-control" id="firm_join_date" name="firm_join_date" value="{{ user_info['firm_join_date'] or '' }}">
-            </div>
-            <div class="col-md-6">
-              <label for="firm_weekend_days" class="form-label">Firm Weekend Days (e.g. 6,7)</label>
-              <input type="text" class="form-control" id="firm_weekend_days" name="firm_weekend_days" value="{{ user_info['firm_weekend_days'] or '' }}">
-            </div>
-          </div>
-          <div class="mt-4 d-flex gap-2 justify-content-end">
-            <button type="submit" class="btn btn-success" id="save-account-btn">Save</button>
-            <button type="button" class="btn btn-secondary" id="cancel-account-btn">Cancel</button>
-          </div>
-        </form>
-        <div id="account-info-view">
-          <div class="info-box shade-1">
-            <span class="info-box-label">Username</span>
-            <span class="info-box-value">{{ user_info['username'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Name</span>
-            <span class="info-box-value">{{ user_info['name'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Age</span>
-            <span class="info-box-value">{{ user_info['age'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Email</span>
-            <span class="info-box-value">{{ user_info['email'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Date of Birth</span>
-            <span class="info-box-value">{{ user_info['date'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Firm Name</span>
-            <span class="info-box-value">{{ user_info['firm_name'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Firm Join Date</span>
-            <span class="info-box-value">{{ user_info['firm_join_date'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Account Created</span>
-            <span class="info-box-value">{{ user_info['account_created'] or '' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Account Verified</span>
-            <span class="info-box-value">{{ 'Yes' if user_info['account_verified'] else 'No' }}</span>
-          </div>
-          <div class="info-box shade-1">
-            <span class="info-box-label">Firm Weekend Days</span>
-            <span class="info-box-value">{{ user_info['firm_weekend_days'] or '' }}</span>
-          </div>
-        </div>
+      <!-- Tab Navigation -->
+      <div class="settings-tabs d-flex gap-4 mb-4">
+        <button class="settings-tab inter active" data-tab="account">Account Settings</button>
+        <button class="settings-tab inter" data-tab="firm">Firm Settings</button>
       </div>
+
+      <!-- Tab Panels -->
+      <div class="settings-tab-panel" id="tab-account">
+        <div class="settings-card mb-4">
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <img src="{{ user_info['avatar_url'] or url_for('static', filename='images/avatar.png') }}" alt="Profile"
+              class="profile-pic" style="width: 100px; height: 100px;">
+            <div>
+              <div class="fw-semibold settings-profile-name">{{ user_info['name'] or '—' }}</div>
+              <div class="text-muted settings-profile-username">@{{ user_info['username'] or '' }}</div>
+            </div>
+          </div>
+
+          <div class="settings-list">
+            <!-- Group: Name & Age -->
+            <div class="settings-row-bg settings-form-group" id="name-age-section">
+              <div style="flex:1; min-width:180px; width:100%;">
+                <label class="settings-label mb-1">Your Basic Info</label>
+                <div id="name-age-display" class="d-flex align-items-center gap-3">
+                  <span>Name: <b>{{ user_info['name'] or 'None' }}</b></span>
+                  <span class="mx-2">|</span>
+                  <span>Age: <b>{{ user_info['age'] or 'None' }}</b></span>
+                </div>
+                <form id="name-age-edit-form" class="d-none d-flex align-items-end gap-3" method="post"
+                  action="/account/update-info/name_age" style="margin-top:0.5rem;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="text" class="form-control name-age-input" id="name-input-edit" name="name"
+                    placeholder="Enter your name" value="{{ user_info['name'] or '' }}">
+                  <input type="text" class="form-control name-age-input" id="age-input-edit" name="age"
+                    placeholder="Enter your age" value="{{ user_info['age'] or '' }}">
+                  <div class="settings-form-actions">
+                    <button type="submit" class="btn btn-success" id="save-name-age">Save</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-name-age">Cancel</button>
+                  </div>
+                </form>
+              </div>
+              <div class="settings-form-actions">
+                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-name-age">Update Info</button>
+              </div>
+            </div>
+
+            <!-- Group: Email & Password -->
+            <div class="settings-row-bg settings-form-group" id="email-section">
+              <div style="flex:2; min-width:220px;">
+                <label class="settings-label mb-1">Account Email Address</label>
+                <div id="email-display">
+                  <span>Your current email address is <b>{{ user_info['email'] or 'None' }}</b></span>
+                </div>
+                <form id="email-edit-form" class="d-none" method="post" action="/account/update-info/email">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="email" class="form-control mb-2" id="email-input-edit" name="email"
+                    placeholder="Enter new email" value="{{ user_info['email'] or '' }}">
+                  <div class="settings-form-actions">
+                    <button type="submit" class="btn btn-success" id="save-email">Save</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-email">Cancel</button>
+                  </div>
+                </form>
+              </div>
+              <div class="settings-form-actions">
+                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-email">Update Email</button>
+              </div>
+            </div>
+
+            <!-- Date of Birth -->
+            <div class="settings-row-bg settings-form-group" id="dob-section">
+              <div style="flex:2; min-width:220px;">
+                <label class="settings-label mb-1">Date of Birth</label>
+                <div id="dob-display">
+                  <span>Your mentioned Date of birth is <b>{{ user_info['date'] or 'None' }}</b></span>
+                </div>
+                <form id="dob-edit-form" class="d-none" method="post" action="/account/update-info/dob">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="date" class="form-control mb-2" id="dob-input-edit" name="date"
+                    value="{{ user_info['date'] or '' }}">
+                  <div class="settings-form-actions">
+                    <button type="submit" class="btn btn-success" id="save-dob">Save</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-dob">Cancel</button>
+                  </div>
+                </form>
+              </div>
+              <div class="settings-form-actions">
+                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-dob">Update DOB</button>
+              </div>
+            </div>
+
+            <!-- Account Verified -->
+            <div class="settings-row-bg">
+              <div class="d-flex align-items-center justify-content-between w-100">
+                <div class="settings-label d-flex align-items-center" style="gap: 8px;">
+                  Account Verified
+                  {% if not user_info['account_verified'] %}
+                    <span class="account-badge account-badge-unverified">UNVERIFIED</span>
+                  {% else %}
+                    <span class="account-badge account-badge-verified">VERIFIED</span>
+                  {% endif %}
+                </div>
+                {% if not user_info['account_verified'] %}
+                  <button class="btn btn-outline-danger btn-sm ms-auto" id="verify-account-btn">Verify Account</button>
+                {% endif %}
+              </div>
+            </div>
+          </div> <!-- .settings-list -->
+        </div> <!-- .settings-card -->
+      </div> <!-- #tab-account -->
+
+      <div class="settings-tab-panel d-none" id="tab-firm">
+        <div class="settings-card mb-4">
+          <div class="settings-list">
+            <!-- Group: Firm Name & Firm Join Date -->
+            <div class="settings-row-bg settings-form-group" id="firm-info-section">
+              <div style="flex:1; min-width:180px; width:100%;">
+                <label class="settings-label mb-1">Your Firm Basic Info</label>
+                <div id="firm-info-display" class="d-flex align-items-center gap-3">
+                  <span>Firm Name: <b>{{ user_info['firm_name'] or 'None' }}</b></span>
+                  <span class="mx-2">|</span>
+                  <span>Joining Date: <b>{{ user_info['firm_join_date'] or 'None' }}</b></span>
+                </div>
+                <form id="firm-info-edit-form" class="d-none d-flex align-items-end gap-3" method="post"
+                  action="/account/update-info/firm_info" style="margin-top:0.5rem;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="text" class="form-control name-age-input" id="firm-name-input-edit" name="firm_name"
+                    placeholder="Enter firm name" value="{{ user_info['firm_name'] or '' }}">
+                  <input type="date" class="form-control name-age-input" id="firm-join-date-input-edit"
+                    name="firm_join_date" placeholder="Enter joining date"
+                    value="{{ user_info['firm_join_date'] or '' }}">
+                  <div class="settings-form-actions">
+                    <button type="submit" class="btn btn-success" id="save-firm-info">Save</button>
+                    <button type="button" class="btn btn-secondary" id="cancel-firm-info">Cancel</button>
+                  </div>
+                </form>
+              </div>
+              <div class="settings-form-actions">
+                <button type="button" class="btn btn-link p-0 settings-edit-btn" id="edit-firm-info">Update
+                  Info</button>
+              </div>
+            </div>
+
+            <!-- Firm Weekend Days -->
+            <div class="settings-row-bg settings-form-group">
+              <div class="d-flex align-items-center w-100">
+                <div style="flex:1;">
+                  <label class="settings-label mb-1">Your Firm Weekend Days</label>
+                  <div id="firm-weekend-display" class="settings-value d-flex align-items-center" style="gap: 10px;">
+                    {% set value_str = user_info['firm_weekend_days'] or '' %}
+                    {% set weekday_map = { '1': 'Monday', '2': 'Tuesday', '3': 'Wednesday', '4': 'Thursday', '5': 'Friday', '6': 'Saturday', '7': 'Sunday' } %}
+                    {% for num in value_str.split(',') if num.strip() %}
+                      <span>{{ num.strip() }}: {{ weekday_map[num.strip()] }}</span>
+                    {% endfor %}
+                  </div>
+                  <form id="firm-weekend-edit-form" class="d-none d-flex align-items-end gap-3 mt-2" method="post"
+                    action="/account/update-info/firm_weekend">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" class="form-control" id="firm-weekend-input-edit" name="firm_weekend_days"
+                      placeholder="Enter weekend days numbers. e.g. 6,7 for Saturday, Sunday"
+                      value="{{ user_info['firm_weekend_days'] or '' }}" style="max-width: 300px;">
+                    <div class="settings-form-actions">
+                      <button type="submit" class="btn btn-success" id="save-firm-weekend">Save</button>
+                      <button type="button" class="btn btn-secondary" id="cancel-firm-weekend">Cancel</button>
+                    </div>
+                  </form>
+                </div>
+                <div class="settings-form-actions">
+                  <button class="btn btn-link p-0 settings-edit-btn" id="edit-firm-weekend" data-panel="edit-firm-weekend">Update Weekend Days</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Firm Leaves Structure -->
+            <div class="settings-row-bg settings-form-group" id="firm-leaves-section">
+              <div class="d-flex align-items-start w-100" style="gap: 1rem;">
+                <!-- Display Grid -->
+                <div class="leaves-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; flex:1;">
+                  <span class="settings-label" style="grid-column: span 2;">Your Firm Leaves Structure</span>
+                  <div class="leaves-items">
+                    {% set granted = user_info['leaves_type'] | from_json %}
+                    {% for lt, count in granted.items() %}
+                      <span class="leave-pair" style="display: inline-block; white-space: nowrap;">
+                        <strong>{{ lt }}</strong>: {{ count }}
+                        {% if loop.index < loop.length %}
+                          <span style="margin-left: -3px; margin-right: 2px;">,</span>
+                        {% endif %}
+                      </span>
+                    {% endfor %}
+                  </div>
+                </div>
+
+                <!-- Edit Button -->
+                <div class="settings-form-actions">
+                  <button class="btn btn-link p-0 settings-edit-btn" data-panel="edit-firm-leaves" id="edit-firm-leaves">Update Firm Leaves</button>
+                </div>
+              </div>
+
+              <!-- Hidden Edit Form -->
+              <form id="firm-leaves-edit-form" class="d-none flex-column gap-3 w-100" method="post" action="/account/update-info/firm_leaves">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div id="firm-leaves-inputs" class="d-flex flex-wrap align-items-end gap-3 w-100" style="padding-bottom: 0px;">
+                  {% if granted and granted|length > 0 %}
+                  {% for lt, count in granted.items() %}
+                    <div class="d-flex align-items-center gap-2 leave-input-set">
+                      <input type="text" class="form-control" name="leave_type[]" value="{{ lt }}" placeholder="Leave type" style="width: 120px;">
+                      <input type="number" class="form-control" name="leave_count[]" value="{{ count }}" placeholder="Number" style="width: 80px;">
+                      <button type="button" class="btn btn-danger btn-sm remove-leave-type">&times;</button>
+                    </div>
+                  {% endfor %}
+                  {% else %}
+                  <div class="w-100 d-flex align-items-center gap-2 leave-input-set">
+                    <input type="text" class="form-control" name="leave_type[]" value="" placeholder="Leave type"
+                      style="width: 120px;">
+                    <input type="number" class="form-control" name="leave_count[]" value="" placeholder="Number"
+                      style="width: 80px;">
+                    <button type="button" class="btn btn-danger btn-sm remove-leave-type">&times;</button>
+                  </div>
+                  {% endif %}
+                </div>
+                <div class="leave-structure-save w-100" style="padding-top: 8px;">
+                  <div class="w-100" style="margin-right: 55%;">
+                    <button type="button" class="btn btn-secondary btn-sm me-auto" id="add-leave-type">
+                      Add Leave Type
+                    </button>
+                  </div>
+                  <div class="d-flex gap-2 w-100">
+                    <button type="submit" class="btn btn-success" id="save-firm-leaves">
+                      Save
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="cancel-firm-leaves">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div> <!-- #tab-firm -->
+
+          </div> <!-- .settings-list -->
+        </div> <!-- .settings-card -->
+      </div> <!-- #tab-firm -->
+
     </section>
-  </div>
-</div>
+  </div> <!-- .row -->
+</div> <!-- .container-fluid -->
 {% endblock %}
