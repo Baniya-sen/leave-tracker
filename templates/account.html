@@ -257,21 +257,42 @@
       </div> <!-- #tab-firm -->
 
       <div class="settings-tab-panel d-none" id="tab-import-leaves">
-        <div id="import-leaves-box" class="card mt-3 p-3">
-          <h5>Paste Your Leave Data JSON</h5>
-          <p class="text-muted small mb-2">
-            Leave types <strong>must match exactly</strong> what you've configured in firm settings.
-            <br>
-            <strong>Example:</strong>
-            <code>{"Casual": ["2025-07-01"], "Sick": ["2025-06-20"]}</code>
-          </p>
+        <div class="settings-card card-style mb-4">
+          <div class="settings-list">
+            <!-- Header + example -->
+            <div class="settings-row-bg settings-form-group pb-0">
+              <h5 class="settings-label mb-2">Paste Your Leave Data JSON</h5>
+              <p class="text-muted small mb-2">
+                Leave types <strong>must match exactly</strong> what you’ve configured in firm settings.<br>
+                <span class="json-example">
+                  <code>{"Casual": ["2025-07-01"], "Sick": ["2025-06-20"]}</code>
+                </span>
+              </p>
+            </div>
+
+            <!-- Textarea -->
+            <div class="settings-row-bg settings-form-group pt-0">
+              <textarea
+                id="leave-json-input"
+                class="form-control"
+                rows="7"
+                placeholder="Leave types must match those in your account…"
+              ></textarea>
+            </div>
+
+            <!-- Buttons -->
+            <div class="settings-form-actions settings-form-group">
+              <button class="btn btn-success" id="submit-leave-json">Save</button>
+              <button type="button" class="btn btn-link btn-cancel" id="cancel-leave-json">Cancel</button>
+            </div>
+
+            <!-- Error message -->
+            <div id="leave-import-error" class="text-danger small mt-1" style="display:none;">
+              <!-- fill in via JS on error -->
+            </div>
+          </div>
         </div>
-        <!-- Error box (initially hidden) -->
-        <div id="leave-import-error" class="text-danger mb-2" style="display: none;"></div>
-        <textarea id="leave-json-input" class="form-control" rows="7" placeholder="Leave types must match those in your account. Existing data will be replaced.&#10;&#10;{&#10;  &quot;Casual&quot;: [&quot;2025-07-01&quot;, &quot;2025-07-15&quot;],&#10;  &quot;Sick&quot;: [&quot;2025-06-20&quot;],&#10;  &quot;Earned&quot;: []&#10;}"></textarea>
-        <button class="btn btn-success mt-2" id="submit-leave-json">Save</button>
-        <button class="btn btn-link mt-2" id="cancel-leave-json">Cancel</button>
-      </div> <!-- #tab-import-leaves -->
+      </div> <!-- #tab-leaves-import -->
 
     </section>
   </div> <!-- .row -->
