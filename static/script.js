@@ -497,6 +497,9 @@
             }
         });
     }
+
+    const importLeavesBtn = document.getElementById('submit-leave-json');
+
 })();
 
 // Leaves types add rows
@@ -757,9 +760,30 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 })();
 
-const promptText = "Generate a JSON with leave types 'Casual', 'Sick', 'Earned' and sample dates in YYYY-MM-DD format.";
-const copyElements = document.querySelectorAll(".ai-bot-copy");
+const promptText = `You are an expert in structuring data. Your task is to convert my raw leave data into a specific JSON format.
+I will provide my leave data in any form (e.g., JSON, spreadsheet text, plain text lists, CSV, etc.).
 
+You will then produce a **single JSON object** where:
+- **Keys** are leave types (e.g., "Earned", "Sick").
+- **Values** are lists of leave dates in \`YYYY-MM-DD\` format.
+
+Example output:
+{"Earned": ["2025-07-01", "2025-03-12"], "Sick": ["2025-06-20"]}
+
+⚠️ If you find any **conflicts** (e.g., the same date listed under multiple leave types), you must ask me for clarification before generating the final output.
+
+Guidelines to follow:
+- JSON keys must be **clean leave type names**, like "Earned", "Sick", "Casual", "Restricted Holidays", or "Optional".
+- **Remove extra words** such as "Leave", "(Festival)", or descriptions from the leave type name. Example: "Optional (Festival)" ➔ "Optional".
+- Easily identified same leaves type can be combined.
+- Dates must be in **YYYY-MM-DD** format.
+- If a **single date appears under multiple leave types**, ask me to clarify before creating the final JSON.
+- ❌ Do not explain anything. Do not give additional examples. Do not describe your process.
+- Output should be formatted JSON, even better in editor if available.
+
+Please ask me to share any leave data I may have saved to track my leaves in my firm.`;
+
+const copyElements = document.querySelectorAll(".ai-bot-copy");
 copyElements.forEach(el => {
     el.addEventListener("click", async function () {
       try {
@@ -786,12 +810,12 @@ copyElements.forEach(el => {
 
 function showCopiedMessage(container) {
     let msg = document.createElement("p");
-    msg.className = "small mb-2 ms-2 pt-1 inter";
+    msg.className = "small mb-0 ms-2 pt-0 inter";
     msg.style.color = "#27d289";
     msg.textContent = "Prompt copied!";
     container.appendChild(msg);
 
     setTimeout(() => {
       msg.remove();
-    }, 5000);
+    }, 2500);
 }

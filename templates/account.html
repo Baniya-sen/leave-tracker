@@ -276,13 +276,13 @@
                 <p>
                   <img src="{{ url_for('static', filename='images/copy.png') }}" class="ms-2 bot-copy-img" style="width: 30px;">
                 </p>
-                <p class="text-muted small mb-2 ms-2 pt-1"><strong>Use this prompt in any AI bot to generate your leave data.</strong></p>
+                <p class="text-muted small mb-0 ms-2 pt-1"><strong>Or better, Copy this prompt in any AI bot to generate your leave data easily.</strong></p>
               </div>
             </div>
 
             <div class="settings-row-bg settings-form-group">
               <textarea
-                id="leave-json-input"
+                id="import-leaves-data-json"
                 class="form-control"
                 rows="8"
                 placeholder="{&#10;  &quot;Casual&quot;: [&quot;2025-07-01&quot;, &quot;2025-07-15&quot;],&#10;  &quot;Sick&quot;: [&quot;2025-06-20&quot;],&#10;  &quot;Earned&quot;: []&#10;}"
@@ -290,8 +290,7 @@
             </div>
 
             <div class="settings-form-actions settings-form-group">
-              <button class="btn btn-success" id="submit-leave-json">Save</button>
-              <button type="button" class="btn btn-link btn-cancel" id="cancel-leave-json">Cancel</button>
+              <button class="btn btn-success" id="submit-leave-json">IMPORT</button>
             </div>
 
             <div id="leave-import-error" class="text-danger small mt-1" style="display:none;">
