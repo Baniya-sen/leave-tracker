@@ -409,6 +409,7 @@ def take_leave():
 
 @app.route("/request-verify-email", methods=["POST"])
 @limiter.limit("1 per 10 minutes")
+@login_required
 def request_verify_email():
     try:
         user_email = auth.get_user_field(session['user_id'], "email")
@@ -427,6 +428,7 @@ def request_verify_email():
 
 @app.route("/confirm-otp", methods=["POST"])
 @limiter.limit("1 per 10 minutes")
+@login_required
 def confirm_otp():
     data = request.get_json()
     if not data or 'otp' not in data:

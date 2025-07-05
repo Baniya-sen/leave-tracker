@@ -756,3 +756,42 @@ document.addEventListener('DOMContentLoaded', function () {
             .finally(() => { saveBtn.disabled = false; });
     });
 })();
+
+const promptText = "Generate a JSON with leave types 'Casual', 'Sick', 'Earned' and sample dates in YYYY-MM-DD format.";
+const copyElements = document.querySelectorAll(".ai-bot-copy");
+
+copyElements.forEach(el => {
+    el.addEventListener("click", async function () {
+      try {
+        // Modern clipboard API with fallback
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(promptText);
+        } else {
+          const textArea = document.createElement("textarea");
+          textArea.value = promptText;
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+        }
+
+        // Show confirmation message near the clicked element
+        showCopiedMessage(el.parentElement);
+      } catch (err) {
+        alert("Failed to copy prompt. Please copy manually:\n" + promptText);
+      }
+    });
+});
+
+function showCopiedMessage(container) {
+    let msg = document.createElement("p");
+    msg.className = "small mb-2 ms-2 pt-1 inter";
+    msg.style.color = "#27d289";
+    msg.textContent = "Prompt copied!";
+    container.appendChild(msg);
+
+    setTimeout(() => {
+      msg.remove();
+    }, 5000);
+}

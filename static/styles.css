@@ -1876,6 +1876,21 @@ nav .navbar-brand .logo_text::first-letter {
     padding: 0;
 }
 
+.ai-bot-copy {
+    color: #777777;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+.bot-copy-img:hover {
+    transform: scale(1.003);
+}
+
+.ai-bot-copy:hover {
+    color: #d8d8d8;
+    text-decoration: underline;
+}
+
 @media (max-width: 700px) {
     .settings-card {
         padding: 18px 6px;
