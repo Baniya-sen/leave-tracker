@@ -4,6 +4,8 @@ import re
 import hmac
 import hashlib
 import base64
+from secrets import token_hex
+
 from os import getenv, path
 from datetime import datetime, date, timezone, timedelta
 from dotenv import load_dotenv
@@ -101,33 +103,37 @@ def make_daily_token(username: str) -> str:
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if 'user_id' not in session:
+        if 'user_id' not in session or 'session_token' not in session:
             return redirect(url_for('login'))
 
         user = auth.get_user_info_with_id(session['user_id'])
-        if user is None or user['id'] != session['user_id']:
+        if user is None or dict(user).get('session_token') != session.get('session_token'):
+            session.clear()
             return redirect(url_for('login'))
 
         return f(*args, **kwargs)
-
     return wrapper
+
+
+def verified_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user_id = session.get('user_id')
+        if not user_id:
+            # Optional: handle unauthenticated users separately
+            return apology('You must be logged in first!', 401)
+
+        if not helpers.account_verified(user_id):
+            return apology('Please verify your email first!', 301)
+
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 @app.errorhandler(500)
 def internal_error(exception):
     app.logger.exception(exception)
     return jsonify(error="Internal server error"), 500
-
-
-@app.before_request
-def load_user():
-    user_id = session.get('user_id')
-    g.user = None
-    if user_id:
-        db = auth.get_auth_db()
-        g.user = db.execute(
-            'SELECT * FROM users WHERE id = ?', (user_id,)
-        ).fetchone()
 
 
 def apology(message, code=400):
@@ -179,8 +185,12 @@ def login():
             request.form['username'], request.form['password']
         )
         if user:
+            token = token_hex(32)
+            auth.update_user_info(user['id'], {'session_token': token})
+
             session['user_id'] = user['id']
             session['username'] = user['username']
+            session['session_token'] = token
             return redirect('/')
 
         return apology('Invalid credentials', 401)
@@ -214,8 +224,10 @@ def user_home(username: str, token: str):
         apology("Token did not matched! Logout and Re-login.", 404)
 
     all_firm_leaves = leaves.get_user_key_data(session['user_id'], f"user_leaves")
-    last_firm = list(all_firm_leaves.keys())[-1]
-    firm_leaves = all_firm_leaves[last_firm]
+    if all_firm_leaves:
+        last_firm = list(all_firm_leaves.keys())[-1]
+        firm_leaves = all_firm_leaves[last_firm]
+    firm_leaves = {}
 
     return render_template(
         'index.html',
@@ -241,12 +253,13 @@ def account(username: str, token: str):
     user = auth.get_user_info_with_id(session['user_id'])
     return render_template(
         'account.html',
-        user_info=user or {}
+        user_info=dict(user) or {}
     )
 
 
 @app.route('/account/update-info/<info_type>', methods=['POST'])
 @login_required
+@verified_required
 def update_account_info(info_type):
     user_id = session['user_id']
     data = request.form.to_dict(flat=True)
@@ -262,7 +275,8 @@ def update_account_info(info_type):
 
     if info_type not in validators:
         return apology('Unknown info type', 400)
-    valid, error, clean_data = validators[info_type](data)
+
+    valid, error, clean_data = validators[info_type](data, session['user_id'])
     if not valid:
         return apology(error, 400)
 
@@ -283,6 +297,7 @@ def update_account_info(info_type):
 @app.route("/leaves/import", methods=["POST"])
 @limiter.limit("1 per minute")
 @login_required
+@verified_required
 def import_leaves():
     user_id = session["user_id"]
 
@@ -335,6 +350,7 @@ def import_leaves():
 
 @app.route('/take_leave', methods=['POST'])
 @login_required
+@verified_required
 def take_leave():
     user_id = session['user_id']
     data = request.get_json(force=True)
@@ -392,6 +408,7 @@ def take_leave():
 
 
 @app.route("/request-verify-email", methods=["POST"])
+@limiter.limit("1 per 10 minutes")
 def request_verify_email():
     try:
         user_email = auth.get_user_field(session['user_id'], "email")
@@ -409,6 +426,7 @@ def request_verify_email():
 
 
 @app.route("/confirm-otp", methods=["POST"])
+@limiter.limit("1 per 10 minutes")
 def confirm_otp():
     data = request.get_json()
     if not data or 'otp' not in data:

@@ -76,11 +76,11 @@ def get_user_info_with_username(username: str):
     return None
 
 
-def get_user_field(idm: int, column_name: str):
+def get_user_field(user_id: int, column_name: str):
     allowed = {
         "id",
         "username",
-        "passhash",
+        "session_token",
         "name",
         "age",
         "date",
@@ -97,7 +97,7 @@ def get_user_field(idm: int, column_name: str):
 
     db = get_auth_db()
     sql = f"SELECT {column_name} FROM users WHERE id = ?"
-    row = db.execute(sql, (idm,)).fetchone()
+    row = db.execute(sql, (user_id,)).fetchone()
 
     if row is None:
         return None
@@ -108,7 +108,7 @@ def get_user_field(idm: int, column_name: str):
 def update_user_info(user_id: int, data: dict) -> bool:
     db = get_auth_db()
     allowed_fields = [
-        'name', 'age', 'email', 'date',
+        'name', 'age', 'session_token', 'email', 'date',
         'firm_name', 'firm_join_date', 'firm_weekend_days',
         'leaves_type', 'account_verified'
     ]

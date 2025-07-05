@@ -14,6 +14,7 @@
       <div class="settings-tabs d-flex gap-4 mb-4">
         <button class="settings-tab inter active" data-tab="account">Account Settings</button>
         <button class="settings-tab inter" data-tab="firm">Firm Settings</button>
+        <button class="settings-tab inter" data-tab="import-leaves">Import Leaves</button>
       </div>
 
       <!-- Tab Panels -->
@@ -105,14 +106,18 @@
               <div class="d-flex align-items-center justify-content-between w-100">
                 <div class="settings-label d-flex align-items-center w-100" id="verifyDiv" style="gap: 8px;">
                   Account Verified
-                  <span id="account-status" class="account-badge account-badge-unverified">UNVERIFIED</span>
+                  <span id="account-status" class="account-badge {% if 'account_verified' in user_info and (user_info['account_verified']|int != 0) %}account-badge-verified{% endif %}">
+                    {{ 'VERIFIED' if user_info.get('account_verified', 0)|int != 0 else 'UNVERIFIED' }}
+                  </span>
                   <div id="otp-input-container" class="d-flex d-none ms-3">
                     <input type="text" class="form-control form-control-sm" id="otp-input" placeholder="Enter OTP" maxlength="6" style="width:200px; margin-right: 2%">
                     <button class="btn btn-success btn-sm ms-2" id="save-otp-btn">Save</button>
                     <button class="btn btn-secondary btn-sm ms-1" id="cancel-otp-btn">Cancel</button>
                   </div>
                 </div>
-                <button class="btn btn-outline-danger btn-sm ms-auto verify-button" id="verify-account-btn" style="padding: 3px 25px;">Verify</button>
+                {% if 'account_verified' not in user_info or (user_info['account_verified']|int == 0) %}
+                  <button class="btn btn-outline-danger btn-sm ms-auto verify-button" id="verify-account-btn" style="padding: 3px 25px;">Verify</button>
+                {% endif %}
               </div>
             </div>
 
@@ -250,6 +255,23 @@
           </div> <!-- .settings-list -->
         </div> <!-- .settings-card -->
       </div> <!-- #tab-firm -->
+
+      <div class="settings-tab-panel d-none" id="tab-import-leaves">
+        <div id="import-leaves-box" class="card mt-3 p-3">
+          <h5>Paste Your Leave Data JSON</h5>
+          <p class="text-muted small mb-2">
+            Leave types <strong>must match exactly</strong> what you've configured in firm settings.
+            <br>
+            <strong>Example:</strong>
+            <code>{"Casual": ["2025-07-01"], "Sick": ["2025-06-20"]}</code>
+          </p>
+        </div>
+        <!-- Error box (initially hidden) -->
+        <div id="leave-import-error" class="text-danger mb-2" style="display: none;"></div>
+        <textarea id="leave-json-input" class="form-control" rows="7" placeholder="Leave types must match those in your account. Existing data will be replaced.&#10;&#10;{&#10;  &quot;Casual&quot;: [&quot;2025-07-01&quot;, &quot;2025-07-15&quot;],&#10;  &quot;Sick&quot;: [&quot;2025-06-20&quot;],&#10;  &quot;Earned&quot;: []&#10;}"></textarea>
+        <button class="btn btn-success mt-2" id="submit-leave-json">Save</button>
+        <button class="btn btn-link mt-2" id="cancel-leave-json">Cancel</button>
+      </div> <!-- #tab-import-leaves -->
 
     </section>
   </div> <!-- .row -->

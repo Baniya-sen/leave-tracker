@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS users (
   id                       INTEGER PRIMARY KEY AUTOINCREMENT,
   username                 TEXT    UNIQUE NOT NULL,
   passhash                 TEXT    NOT NULL,
+  session_token            TEXT,
   name                     TEXT,
   age                      INTEGER,
   date                     DATE,       -- optional generic date field

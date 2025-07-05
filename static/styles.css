@@ -1761,15 +1761,10 @@ nav .navbar-brand .logo_text::first-letter {
     font-weight: 400;
 }
 
-.account-badge .account-badge-verified {
-    display: inline-block;
-    background-color: #e9fee2;
-    color: #53b91c;
-    border: 1px solid #edfde7;
-    padding: 4px;
-    font-size: 0.72rem;
-    border-radius: 6px;
-    font-weight: 400;
+.account-badge-verified {
+    background-color: #e9fee2 !important;
+    color: #53b91c !important;
+    border: 1px solid #edfde7 !important;
 }
 
 .verify-account-btn {
@@ -2143,6 +2138,9 @@ nav .navbar-brand .logo_text::first-letter {
     background: none;
     box-shadow: none;
     padding: 0;
+    max-height: calc(100vh - 300px); /* Adjust for navbar + tabs + title bar */
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .settings-form-group {
