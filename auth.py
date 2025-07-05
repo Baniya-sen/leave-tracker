@@ -76,24 +76,54 @@ def get_user_info_with_username(username: str):
     return None
 
 
+def get_user_field(idm: int, column_name: str):
+    allowed = {
+        "id",
+        "username",
+        "passhash",
+        "name",
+        "age",
+        "date",
+        "email",
+        "firm_name",
+        "firm_join_date",
+        "account_created",
+        "account_verified",
+        "firm_weekend_days",
+        "leaves_type",
+    }
+    if column_name not in allowed:
+        raise ValueError(f"Invalid column name: {column_name!r}")
+
+    db = get_auth_db()
+    sql = f"SELECT {column_name} FROM users WHERE id = ?"
+    row = db.execute(sql, (idm,)).fetchone()
+
+    if row is None:
+        return None
+
+    return row[column_name]
+
+
 def update_user_info(user_id: int, data: dict) -> bool:
     db = get_auth_db()
-    existing = db.execute(
-        "SELECT leaves_type FROM users WHERE id = ?", (user_id,)
-    ).fetchone()
-    existing_leaves = {}
-    if existing and existing["leaves_type"]:
-        try:
-            existing_leaves = json.loads(existing["leaves_type"])
-        except Exception as e:
-            print(e)
-            existing_leaves = {}
-
     allowed_fields = [
         'name', 'age', 'email', 'date',
         'firm_name', 'firm_join_date', 'firm_weekend_days',
-        'leaves_type'
+        'leaves_type', 'account_verified'
     ]
+
+    if "leaves_type" in data:
+        existing = db.execute(
+            "SELECT leaves_type FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        existing_leaves = {}
+        if existing and existing["leaves_type"]:
+            try:
+                existing_leaves = json.loads(existing["leaves_type"])
+            except Exception as e:
+                print(e)
+                existing_leaves = {}
 
     fields = []
     values = []

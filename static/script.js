@@ -327,6 +327,91 @@
         });
     }
 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const verifyDiv = document.getElementById("verifyDiv");
+    const verifyBtn = document.getElementById("verify-account-btn");
+      if (verifyBtn) {
+        verifyBtn.addEventListener("click", async () => {
+          verifyBtn.disabled = true;
+          verifyBtn.textContent = "Wait!";
+
+          try {
+            const response = await fetch('/request-verify-email', {
+              method: 'POST',
+              headers: { 'X-CSRFToken': csrfToken }
+            });
+
+            let data;
+            const contentType = response.headers.get("Content-Type") || "";
+            if (contentType.includes("application/json")) {
+              data = await response.json();
+            } else {
+              data = { error: await response.text() };
+            }
+
+            if (response.ok) {
+              verifyBtn.classList.add("d-none");
+              verifyDiv.classList.add("justify-content-between");
+              document.getElementById("account-status").classList.add("d-none");
+              document
+                .getElementById("otp-input-container")
+                .classList.remove("d-none");
+            } else {
+              console.error("Server error:", response.status, data.error);
+              alert(data.error || "Failed to send verification email. Try again later.");
+            }
+          } catch (err) {
+            console.error("Fetch error:", err);
+            alert("Error sending request.");
+          }
+        });
+      }
+
+    const cancelVerifyBtn = document.getElementById("cancel-otp-btn");
+    if (cancelVerifyBtn) {
+        cancelVerifyBtn.addEventListener("click", () => {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = "Verify";
+            verifyDiv.classList.remove("justify-content-between");
+            document.getElementById("account-status").classList.remove("d-none");
+            document.getElementById("otp-input").value = "";
+            document.getElementById("otp-input-container").classList.add("d-none");
+            document.getElementById("verify-account-btn").classList.remove("d-none");
+        });
+    }
+
+    const saveOTPBtn = document.getElementById("save-otp-btn");
+    if (saveOTPBtn) {
+        saveOTPBtn.addEventListener("click", async () => {
+            const otp = document.getElementById("otp-input").value.trim();
+            if (!/^\d{6}$/.test(otp)) {
+                alert("OTP must be 6 digits");
+                return;
+            }
+            try {
+                const response = await fetch("/confirm-otp", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ otp })
+                });
+                if (response.ok) {
+                    document.getElementById("account-status").textContent = "VERIFIED";
+                    document.getElementById("account-status").classList.remove("account-badge-unverified");
+                    document.getElementById("account-status").classList.add("account-badge-verified");
+                    document.getElementById("otp-input-container").classList.add("d-none");
+                } else {
+                    alert("Invalid OTP");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Error verifying OTP.");
+            }
+        });
+    }
+
     // Inline editing for firm info (like name & age)
     const editFirmInfoBtn = document.getElementById('edit-firm-info');
     const firmInfoDisplay = document.getElementById('firm-info-display');

@@ -5,7 +5,7 @@ import hmac
 import hashlib
 import base64
 from os import getenv, path
-from datetime import datetime, date
+from datetime import datetime, date, timezone, timedelta
 from dotenv import load_dotenv
 from functools import wraps
 from urllib.parse import quote_plus
@@ -21,6 +21,7 @@ from flask_limiter import Limiter
 import auth
 import leaves
 import helpers
+import email_otp
 
 load_dotenv()
 
@@ -110,6 +111,12 @@ def login_required(f):
         return f(*args, **kwargs)
 
     return wrapper
+
+
+@app.errorhandler(500)
+def internal_error(exception):
+    app.logger.exception(exception)
+    return jsonify(error="Internal server error"), 500
 
 
 @app.before_request
@@ -232,7 +239,6 @@ def account(username: str, token: str):
         return apology("Verification failed! Logout and Re-login!", 403)
 
     user = auth.get_user_info_with_id(session['user_id'])
-    pprint.pprint(dict(user))
     return render_template(
         'account.html',
         user_info=user or {}
@@ -267,7 +273,8 @@ def update_account_info(info_type):
             map(int, request.form.getlist('leave_count[]'))
         ))
 
-    if auth.update_user_info(user_id, update_data):
+    if auth.update_user_info(user_id, update_data) and \
+            leaves.update_user_profile(user_id, update_data):
         return redirect(url_for('account_root'))
     else:
         return apology('Update failed', 400)
@@ -330,43 +337,98 @@ def import_leaves():
 @login_required
 def take_leave():
     user_id = session['user_id']
-    username = session['username']
     data = request.get_json(force=True)
     date_str = data.get('date')
     leave_type = data.get('type')
     days = int(data.get('days', 1))
+
     if not date_str or not leave_type or days < 1:
         return jsonify(error='Invalid input'), 400
 
     firm = leaves.get_user_key_data(user_id, 'user_info.firm_name')
     if not firm:
         return jsonify(error='Firm not configured'), 400
+
     firm_data = leaves.get_user_key_data(user_id, f'user_leaves.{firm}')
     if not firm_data:
         return jsonify(error='No leave structure found'), 400
+
     leaves_given = firm_data.get('leaves_given', {})
     leaves_remaining = firm_data.get('leaves_remaining', {})
     if leave_type not in leaves_given:
         return jsonify(error='Invalid leave type'), 400
+
     remaining = leaves_remaining.get(leave_type, leaves_given[leave_type])
     if days > remaining:
         return jsonify(error='Not enough leaves left'), 400
 
-    # Update DB: add date to leaves_taken, decrement leaves_remaining
     coll = leaves.get_leaves_collection()
     taken_key = f'user_leaves.{firm}.leaves_taken.{leave_type}'
     rem_key = f'user_leaves.{firm}.leaves_remaining.{leave_type}'
     doc = coll.find_one({'user_id': user_id})
-    taken = doc.get('user_leaves', {}).get(firm, {}).get('leaves_taken', {}).get(leave_type, [])
-    # Prevent duplicate date
+    taken = (doc.get('user_leaves', {})
+             .get(firm, {})
+             .get('leaves_taken', {})
+             .get(leave_type, []))
+
     if date_str in taken:
         return jsonify(error='Leave already taken for this date'), 400
+
     new_taken = taken + [date_str] * days
     new_remaining = remaining - days
+
     if new_remaining < 0:
         return jsonify(error='Not enough leaves left'), 400
-    coll.update_one({'user_id': user_id}, {'$set': {taken_key: new_taken, rem_key: new_remaining}})
+
+    coll.update_one(
+        {'user_id': user_id},
+        {'$set': {
+            taken_key: new_taken,
+            rem_key: new_remaining
+        }}
+    )
+
     return jsonify(status='ok')
+
+
+@app.route("/request-verify-email", methods=["POST"])
+def request_verify_email():
+    try:
+        user_email = auth.get_user_field(session['user_id'], "email")
+        if not user_email:
+            return jsonify(error="Email is required! Register in accounts tab."), 400
+
+        otp = email_otp.send_otp(session['username'], user_email)
+        session["email_otp"] = otp
+        session["email_otp_sent_at"] = datetime.now(timezone.utc).isoformat()
+        return jsonify(status="ok", message="OTP sent to your email.")
+
+    except Exception as e:
+        app.logger.exception(e)
+        return jsonify(error="Something went wrong, please try again."), 500
+
+
+@app.route("/confirm-otp", methods=["POST"])
+def confirm_otp():
+    data = request.get_json()
+    if not data or 'otp' not in data:
+        return jsonify(error="OTP missing"), 400
+
+    user_otp = data['otp']
+    real_otp = session.get("email_otp")
+    sent_at = session.get("email_otp_sent_at")
+
+    if (not sent_at or datetime.fromisoformat(sent_at) +
+            timedelta(minutes=email_otp.OTP_EXPIRY_MINUTES) < datetime.now(
+                timezone.utc)):
+        return jsonify(error="OTP expired"), 400
+
+    if user_otp == real_otp:
+        if auth.update_user_info(session['user_id'], {'account_verified': 1}) and \
+                leaves.update_user_profile(session['user_id'], {'account_verified': 1}):
+            return redirect(url_for('account_root'))
+
+    return jsonify(error="Invalid code/ Some error occurred!"), 400
 
 
 if __name__ == '__main__':

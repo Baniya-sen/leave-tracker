@@ -103,19 +103,19 @@
             <!-- Account Verified -->
             <div class="settings-row-bg">
               <div class="d-flex align-items-center justify-content-between w-100">
-                <div class="settings-label d-flex align-items-center" style="gap: 8px;">
+                <div class="settings-label d-flex align-items-center w-100" id="verifyDiv" style="gap: 8px;">
                   Account Verified
-                  {% if not user_info['account_verified'] %}
-                    <span class="account-badge account-badge-unverified">UNVERIFIED</span>
-                  {% else %}
-                    <span class="account-badge account-badge-verified">VERIFIED</span>
-                  {% endif %}
+                  <span id="account-status" class="account-badge account-badge-unverified">UNVERIFIED</span>
+                  <div id="otp-input-container" class="d-flex d-none ms-3">
+                    <input type="text" class="form-control form-control-sm" id="otp-input" placeholder="Enter OTP" maxlength="6" style="width:200px; margin-right: 2%">
+                    <button class="btn btn-success btn-sm ms-2" id="save-otp-btn">Save</button>
+                    <button class="btn btn-secondary btn-sm ms-1" id="cancel-otp-btn">Cancel</button>
+                  </div>
                 </div>
-                {% if not user_info['account_verified'] %}
-                  <button class="btn btn-outline-danger btn-sm ms-auto" id="verify-account-btn">Verify Account</button>
-                {% endif %}
+                <button class="btn btn-outline-danger btn-sm ms-auto verify-button" id="verify-account-btn" style="padding: 3px 25px;">Verify</button>
               </div>
             </div>
+
           </div> <!-- .settings-list -->
         </div> <!-- .settings-card -->
       </div> <!-- #tab-account -->
