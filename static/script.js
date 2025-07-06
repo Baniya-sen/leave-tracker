@@ -242,13 +242,41 @@
     const cancelNameAgeBtn = document.getElementById('cancel-name-age');
     const nameInputEdit = document.getElementById('name-input-edit');
     const ageInputEdit = document.getElementById('age-input-edit');
-    let agePopup = null;
+    const upperDeck = document.getElementById('upper-deck');
+    const agePopup = document.createElement('div');
+    ageInputEdit.parentElement.style.position = 'relative';
+    agePopup.className = 'age-popup';
+
+    let popupTimeoutId = null;
+
+    function emailVerification() {
+        const emailDisplay = document.getElementById('email-display');
+        const boldTag = emailDisplay.querySelector('b');
+        const emailText = boldTag ? boldTag.textContent.trim() : '';
+        upperDeck.appendChild(agePopup);
+
+        if (emailText === "None") {
+            closeAllEditModes();
+            agePopup.innerText = 'You must add a email first.';
+            agePopup.classList.add('active');
+
+            if (popupTimeoutId) {
+              clearTimeout(popupTimeoutId);
+              popupTimeoutId = null;
+            }
+            popupTimeoutId = setTimeout(() => {
+                agePopup.classList.remove('active');
+                popupTimeoutId = null;
+            }, 2500);
+
+            return false;
+        }
+
+        return true;
+    }
+
     if (editNameAgeBtn && nameAgeDisplay && nameAgeEditForm && cancelNameAgeBtn && nameInputEdit && ageInputEdit) {
-        agePopup = document.createElement('div');
-        agePopup.className = 'age-popup';
-        agePopup.innerText = 'Age must be valid be at least 14.';
-        ageInputEdit.parentElement.style.position = 'relative';
-        ageInputEdit.parentElement.appendChild(agePopup);
+        agePopup.innerText = 'Age must be valid, at least 14.';
 
         function validateAgePopup() {
             const age = ageInputEdit.value;
@@ -312,7 +340,11 @@
     const cancelDobBtn = document.getElementById('cancel-dob');
     const dobInputEdit = document.getElementById('dob-input-edit');
     if (editDobBtn && dobDisplay && dobEditForm && cancelDobBtn && dobInputEdit) {
-        editDobBtn.addEventListener('click', function () {
+        editDobBtn.addEventListener('click', function (e) {
+            if (!emailVerification()) {
+                e.preventDefault();
+                return
+            }
             closeAllEditModes();
             dobDisplay.style.display = 'none';
             dobEditForm.classList.remove('d-none');
@@ -332,6 +364,9 @@
     const verifyBtn = document.getElementById("verify-account-btn");
       if (verifyBtn) {
         verifyBtn.addEventListener("click", async () => {
+          if (!emailVerification()) {
+              return
+          }
           verifyBtn.disabled = true;
           verifyBtn.textContent = "Wait!";
 
@@ -353,12 +388,13 @@
               verifyBtn.classList.add("d-none");
               verifyDiv.classList.add("justify-content-between");
               document.getElementById("account-status").classList.add("d-none");
-              document
-                .getElementById("otp-input-container")
-                .classList.remove("d-none");
+              document.getElementById("otp-input-container").classList.remove("d-none");
+              document.getElementById("otp-input").focus();
             } else {
               console.error("Server error:", response.status, data.error);
               alert(data.error || "Failed to send verification email. Try again later.");
+              verifyBtn.disabled = false;
+              verifyBtn.textContent = "Verify";
             }
           } catch (err) {
             console.error("Fetch error:", err);
@@ -421,6 +457,9 @@
     const firmJoinDateInputEdit = document.querySelector('input[name="firm_join_date"]');
     if (editFirmInfoBtn && firmInfoDisplay && firmInfoEditForm && cancelFirmInfoBtn && firmNameInputEdit && firmJoinDateInputEdit) {
         editFirmInfoBtn.addEventListener('click', function () {
+            if (!emailVerification()) {
+                return
+            }
             closeAllEditModes();
             firmInfoDisplay.style.display = 'none';
             firmInfoEditForm.classList.remove('d-none');
@@ -444,6 +483,9 @@
     const firmWeekendInputEdit = document.querySelector('input[name="firm_weekend_days"]');
     if (editFirmWeekendBtn && firmWeekendDisplay && firmWeekendEditForm && cancelFirmWeekendBtn && firmWeekendInputEdit) {
         editFirmWeekendBtn.addEventListener('click', function () {
+            if (!emailVerification()) {
+                return
+            }
             closeAllEditModes();
             firmWeekendDisplay.style.display = 'none';
             firmWeekendEditForm.classList.remove('d-none');
@@ -467,6 +509,9 @@
     const addLeaveTypeBtn = document.getElementById('add-leave-type');
     if (editFirmLeavesBtn && firmLeavesDisplay && firmLeavesEditForm && cancelFirmLeavesBtn && addLeaveTypeBtn) {
         editFirmLeavesBtn.addEventListener('click', function () {
+            if (!emailVerification()) {
+                return
+            }
             closeAllEditModes();
             firmLeavesDisplay.style.display = 'none';
             firmLeavesEditForm.classList.remove('d-none');
@@ -497,9 +542,6 @@
             }
         });
     }
-
-    const importLeavesBtn = document.getElementById('submit-leave-json');
-
 })();
 
 // Leaves types add rows
@@ -525,37 +567,34 @@ if (leaveTable) {
 
 // Import leaves data function
 (function () {
-    const importBtn = document.getElementById("import-leaves-btn");
-    const box = document.getElementById("import-leaves-box");
-    const input = document.getElementById("leave-json-input");
-    const submit = document.getElementById("submit-leave-json");
-    const cancel = document.getElementById("cancel-leave-json");
+    const importBtn = document.getElementById("submit-leave-json");
+    const text = document.getElementById("import-leaves-data-json");
     const errorBox = document.getElementById("leave-import-error");
 
-    if (!importBtn || !box || !input || !submit || !cancel || !errorBox) return;
+    if (!importBtn || !text || !errorBox) return;
 
-    importBtn.addEventListener("click", () => {
-        box.style.display = "block";
-        errorBox.style.display = "none";
-        input.focus();
-    });
-
-    cancel.addEventListener("click", () => {
-        input.value = "";
-        box.style.display = "none";
-        errorBox.style.display = "none";
-    });
-
-    submit.addEventListener("click", async () => {
+    importBtn.addEventListener("click", async () => {
+        importBtn.disabled = true;
+        text.disabled = true;
         errorBox.style.display = "none";
         errorBox.textContent = "";
 
+        if (text.value === "") {
+            errorBox.textContent = "No data provided.";
+            errorBox.style.display = "block";
+            importBtn.disabled = false;
+            text.disabled = false;
+            return;
+        }
+
         let parsed;
         try {
-            parsed = JSON.parse(input.value);
+            parsed = JSON.parse(text.value);
         } catch {
             errorBox.textContent = "Invalid JSON format.";
             errorBox.style.display = "block";
+            importBtn.disabled = false;
+            text.disabled = false;
             return;
         }
 
@@ -579,13 +618,12 @@ if (leaveTable) {
             }
 
             // Optional: show toast/alert
-            alert("Leaves data imported successfully.");
-            box.style.display = "none";
-            input.value = "";
-            location.reload(); // or reload part of the UI
+            errorBox.textContent = "Leaves data imported successfully.";
+            errorBox.style.display = "block";
+            text.value = "";
+            location.reload();
         } catch (err) {
-            console.error("Fetch error during leave import:", err);
-            errorBox.textContent = "Server error. Please try again.";
+            errorBox.textContent = "Server error. Please try again after few minutes.";
             errorBox.style.display = "block";
         }
     });
@@ -759,6 +797,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .finally(() => { saveBtn.disabled = false; });
     });
 })();
+
 
 const promptText = `You are an expert in structuring data. Your task is to convert my raw leave data into a specific JSON format.
 I will provide my leave data in any form (e.g., JSON, spreadsheet text, plain text lists, CSV, etc.).

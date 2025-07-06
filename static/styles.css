@@ -1504,10 +1504,6 @@ nav .navbar-brand .logo_text::first-letter {
 
 /* Modern side popup for age validation */
 .age-popup {
-    position: absolute;
-    left: 105%;
-    top: 50%;
-    transform: translateY(-50%);
     background: #fff6f6;
     color: #d7263d;
     border: 1.5px solid #ffb3b3;
@@ -1518,10 +1514,15 @@ nav .navbar-brand .logo_text::first-letter {
     font-family: 'Inter', sans-serif;
     font-weight: 500;
     z-index: 100;
+    margin-left: 100%;
     min-width: 180px;
-    max-width: 260px;
+    max-width: 220px;
     display: none;
     animation: fadeInSlide 0.3s cubic-bezier(.4, 1.4, .6, 1) 1;
+}
+
+.age-popup.active {
+    display: block;
 }
 
 @keyframes fadeInSlide {
@@ -1534,10 +1535,6 @@ nav .navbar-brand .logo_text::first-letter {
         opacity: 1;
         transform: translateY(-50%) translateX(0);
     }
-}
-
-.age-popup.active {
-    display: block;
 }
 
 .leave-structure-save{
@@ -2153,7 +2150,7 @@ nav .navbar-brand .logo_text::first-letter {
     background: none;
     box-shadow: none;
     padding: 0;
-    max-height: calc(100vh - 300px); /* Adjust for navbar + tabs + title bar */
+    max-height: calc(100vh - 300px);
     overflow-y: auto;
     overflow-x: hidden;
 }
@@ -2176,28 +2173,6 @@ nav .navbar-brand .logo_text::first-letter {
     font-weight: 500;
 }
 
-/* Modern side popup for age validation */
-.age-popup {
-    position: absolute;
-    left: 105%;
-    top: 50%;
-    transform: translateY(-50%);
-    background: #fff6f6;
-    color: #d7263d;
-    border: 1.5px solid #ffb3b3;
-    border-radius: 10px;
-    box-shadow: 0 4px 16px 0 rgba(215, 38, 61, 0.08);
-    padding: 12px 18px;
-    font-size: 1.05rem;
-    font-family: 'Inter', sans-serif;
-    font-weight: 500;
-    z-index: 100;
-    min-width: 180px;
-    max-width: 260px;
-    display: none;
-    animation: fadeInSlide 0.3s cubic-bezier(.4, 1.4, .6, 1) 1;
-}
-
 @keyframes fadeInSlide {
     from {
         opacity: 0;
@@ -2208,8 +2183,4 @@ nav .navbar-brand .logo_text::first-letter {
         opacity: 1;
         transform: translateY(-50%) translateX(0);
     }
-}
-
-.age-popup.active {
-    display: block;
 }

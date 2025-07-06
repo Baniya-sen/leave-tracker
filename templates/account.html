@@ -17,6 +17,8 @@
         <button class="settings-tab inter" data-tab="import-leaves">Import Leaves</button>
       </div>
 
+      <div id="upper-deck"></div>
+
       <!-- Tab Panels -->
       <div class="settings-tab-panel" id="tab-account">
         <div class="settings-card mb-4">
@@ -62,7 +64,7 @@
               <div style="flex:2; min-width:220px;">
                 <label class="settings-label mb-1">Account Email Address</label>
                 <div id="email-display">
-                  <span>Your current email address is <b>{{ user_info['email'] or 'None' }}</b></span>
+                  <span>Your current email address is: <b>{{ user_info['email'] or 'None' }}</b></span>
                 </div>
                 <form id="email-edit-form" class="d-none" method="post" action="/account/update-info/email">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -84,7 +86,7 @@
               <div style="flex:2; min-width:220px;">
                 <label class="settings-label mb-1">Date of Birth</label>
                 <div id="dob-display">
-                  <span>Your mentioned Date of birth is <b>{{ user_info['date'] or 'None' }}</b></span>
+                  <span>Your mentioned Date of birth is: <b>{{ user_info['date'] or 'None' }}</b></span>
                 </div>
                 <form id="dob-edit-form" class="d-none" method="post" action="/account/update-info/dob">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -105,7 +107,7 @@
             <div class="settings-row-bg">
               <div class="d-flex align-items-center justify-content-between w-100">
                 <div class="settings-label d-flex align-items-center w-100" id="verifyDiv" style="gap: 8px;">
-                  Account Verified
+                  Account Verification
                   <span id="account-status" class="account-badge {% if 'account_verified' in user_info and (user_info['account_verified']|int != 0) %}account-badge-verified{% endif %}">
                     {{ 'VERIFIED' if user_info.get('account_verified', 0)|int != 0 else 'UNVERIFIED' }}
                   </span>

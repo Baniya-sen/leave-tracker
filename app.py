@@ -118,13 +118,9 @@ def login_required(f):
 def verified_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        user_id = session.get('user_id')
-        if not user_id:
-            # Optional: handle unauthenticated users separately
-            return apology('You must be logged in first!', 401)
 
-        if not helpers.account_verified(user_id):
-            return apology('Please verify your email first!', 301)
+        if not helpers.account_verified(session['user_id']):
+            return jsonify(error='Please verify your email first!'), 301
 
         return f(*args, **kwargs)
     return decorated_function
@@ -294,36 +290,36 @@ def update_account_info(info_type):
         return apology('Update failed', 400)
 
 
-@app.route("/leaves/import", methods=["POST"])
-@limiter.limit("1 per minute")
+@app.route("/leaves/import", methods=["POST"], strict_slashes=False)
+@limiter.limit("4 per minute")
 @login_required
 @verified_required
 def import_leaves():
     user_id = session["user_id"]
 
     if not request.is_json:
-        return jsonify(error="Expected application/json"), 415
+        return jsonify(error="Expected JSON format."), 415
 
     data = request.get_json()
     if "leaves_taken" not in data:
-        return jsonify(error="Missing 'leaves_taken' field."), 400
+        return jsonify(error="Missing 'leaves_taken' field."), 403
 
     leaves_taken = data["leaves_taken"]
     if not isinstance(leaves_taken, dict):
-        return jsonify(error="'leaves_taken' must be a JSON object."), 400
+        return jsonify(error="'leaves_taken' must be a JSON object."), 403
 
     firm = leaves.get_user_key_data(user_id, "user_info.firm_name")
     if not firm:
-        return jsonify(error="Firm not configured."), 400
+        return jsonify(error="No Firm is configured in you account."), 400
 
     firm_data = leaves.get_user_key_data(user_id, f"user_leaves.{firm}")
     if not firm_data:
-        return jsonify(error="Add leave structure for your firm first."), 400
+        return jsonify(error="Add leave structure for your firm first in firm settings."), 400
 
     allowed_types = set(firm_data.get("leaves_given", {}).keys())
     allowed_types = [item.title() for item in allowed_types]
     if not allowed_types:
-        return jsonify(error="No granted leave types found."), 400
+        return jsonify(error="No leave structure types found."), 400
 
     def valid_iso(s):
         try:
@@ -345,7 +341,7 @@ def import_leaves():
     if (count, matched) == (-1, -1):
         return jsonify(error="One or more leave types exceed available remaining leaves."), 400
 
-    return jsonify(status="ok", updated=count, matched=matched)
+    return jsonify(status="ok"), 200
 
 
 @app.route('/take_leave', methods=['POST'])
@@ -408,7 +404,7 @@ def take_leave():
 
 
 @app.route("/request-verify-email", methods=["POST"])
-@limiter.limit("1 per 10 minutes")
+@limiter.limit("4 per minute")
 @login_required
 def request_verify_email():
     try:
@@ -419,7 +415,7 @@ def request_verify_email():
         otp = email_otp.send_otp(session['username'], user_email)
         session["email_otp"] = otp
         session["email_otp_sent_at"] = datetime.now(timezone.utc).isoformat()
-        return jsonify(status="ok", message="OTP sent to your email.")
+        return jsonify(status="ok", message="OTP sent to your email. Please check you spam if not found.")
 
     except Exception as e:
         app.logger.exception(e)
@@ -427,7 +423,7 @@ def request_verify_email():
 
 
 @app.route("/confirm-otp", methods=["POST"])
-@limiter.limit("1 per 10 minutes")
+@limiter.limit("4 per minute")
 @login_required
 def confirm_otp():
     data = request.get_json()
