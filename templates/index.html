@@ -55,9 +55,10 @@
 </div>
 
 {% block extra_scripts %}
- <script>
-   window.USER_LEAVES = {{ user_leaves | tojson }};
- </script>
+<script>
+ window.USER_LEAVES = {{ user_leaves | tojson }};
+</script>
+<script src='fullcalendar/main.min.js'></script>
 {% endblock %}
 
 {% endblock %}

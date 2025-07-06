@@ -1505,14 +1505,14 @@ nav .navbar-brand .logo_text::first-letter {
 /* Modern side popup for age validation */
 .age-popup {
     background: #fff6f6;
-    color: #d7263d;
-    border: 1.5px solid #ffb3b3;
-    border-radius: 10px;
+    color: #df112c;
+    border: 1.5px solid #df112c;
+    border-radius: 5px;
     box-shadow: 0 4px 16px 0 rgba(215, 38, 61, 0.08);
-    padding: 12px 18px;
-    font-size: 1.05rem;
+    padding: 4px 6px;
+    font-size: 0.7rem;
     font-family: 'Inter', sans-serif;
-    font-weight: 500;
+    font-weight: 200;
     z-index: 100;
     margin-left: 100%;
     min-width: 180px;

@@ -192,9 +192,30 @@
 })();
 
 // Account page logic (only runs on account.html)
-(function () {
-    // Only run if on account page
+(async function () {
     if (!document.querySelector('.settings-card') || !document.getElementById('tab-account')) return;
+
+    async function fetchUserInfo() {
+      const csrf = document.querySelector('meta[name="csrf-token"]').content;
+      const res = await fetch('/user-info', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken':   csrf
+        },
+        body: JSON.stringify({})
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      return res.json();
+    }
+
+    const user_info = await fetchUserInfo();
 
     // Helper to close all edit modes
     function closeAllEditModes() {
@@ -246,16 +267,33 @@
     const agePopup = document.createElement('div');
     ageInputEdit.parentElement.style.position = 'relative';
     agePopup.className = 'age-popup';
+    upperDeck.appendChild(agePopup);
 
     let popupTimeoutId = null;
 
-    function emailVerification() {
-        const email = window.USER_INFO['email'].trim();
-        upperDeck.appendChild(agePopup);
+    function emailVerification(dob=false) {
+        const email = user_info['email'] ?? '';
+        const verified = user_info['account_verified'] ?? '';
 
-        if (!email || email === "None") {
-            closeAllEditModes();
+        if (!email.trim() || email.trim() === "None") {
             agePopup.innerText = 'You must add a email first.';
+            agePopup.classList.add('active');
+            closeAllEditModes();
+
+            if (popupTimeoutId) {
+              clearTimeout(popupTimeoutId);
+              popupTimeoutId = null;
+            }
+            popupTimeoutId = setTimeout(() => {
+                agePopup.classList.remove('active');
+                popupTimeoutId = null;
+            }, 2500);
+
+            return false;
+
+        } else if (dob && (!verified || verified.trim() === 0)) {
+            closeAllEditModes();
+            agePopup.innerText = 'You must verify your email first.';
             agePopup.classList.add('active');
 
             if (popupTimeoutId) {
@@ -290,7 +328,6 @@
             }
         }
         ageInputEdit.addEventListener('input', validateAgePopup);
-        // Also validate on open
         editNameAgeBtn.addEventListener('click', function () {
             closeAllEditModes();
             nameAgeDisplay.style.display = 'none';
@@ -339,7 +376,7 @@
     const dobInputEdit = document.getElementById('dob-input-edit');
     if (editDobBtn && dobDisplay && dobEditForm && cancelDobBtn && dobInputEdit) {
         editDobBtn.addEventListener('click', function (e) {
-            if (!emailVerification()) {
+            if (!emailVerification(true)) {
                 e.preventDefault();
                 return
             }
@@ -454,8 +491,9 @@
     const firmNameInputEdit = document.querySelector('input[name="firm_name"]');
     const firmJoinDateInputEdit = document.querySelector('input[name="firm_join_date"]');
     if (editFirmInfoBtn && firmInfoDisplay && firmInfoEditForm && cancelFirmInfoBtn && firmNameInputEdit && firmJoinDateInputEdit) {
-        editFirmInfoBtn.addEventListener('click', function () {
-            if (!emailVerification()) {
+        editFirmInfoBtn.addEventListener('click', function (e) {
+            if (!emailVerification(true)) {
+                e.preventDefault();
                 return
             }
             closeAllEditModes();
@@ -480,8 +518,9 @@
     const cancelFirmWeekendBtn = document.getElementById('cancel-firm-weekend');
     const firmWeekendInputEdit = document.querySelector('input[name="firm_weekend_days"]');
     if (editFirmWeekendBtn && firmWeekendDisplay && firmWeekendEditForm && cancelFirmWeekendBtn && firmWeekendInputEdit) {
-        editFirmWeekendBtn.addEventListener('click', function () {
-            if (!emailVerification()) {
+        editFirmWeekendBtn.addEventListener('click', function (e) {
+            if (!emailVerification(true)) {
+                e.preventDefault();
                 return
             }
             closeAllEditModes();
@@ -506,8 +545,9 @@
     const cancelFirmLeavesBtn = document.getElementById('cancel-firm-leaves');
     const addLeaveTypeBtn = document.getElementById('add-leave-type');
     if (editFirmLeavesBtn && firmLeavesDisplay && firmLeavesEditForm && cancelFirmLeavesBtn && addLeaveTypeBtn) {
-        editFirmLeavesBtn.addEventListener('click', function () {
-            if (!emailVerification()) {
+        editFirmLeavesBtn.addEventListener('click', function (e) {
+            if (!emailVerification(true)) {
+                e.preventDefault();
                 return
             }
             closeAllEditModes();

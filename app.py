@@ -199,6 +199,21 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/user-info', methods=['POST'])
+@login_required
+def user_info_route():
+    user = auth.get_user_info_with_id(session['user_id'])
+    if not user:
+        return jsonify(error="User not found"), 404
+
+    safe = {
+        "email": user["email"],
+        "name":  user["name"],
+        "account_verified": user['account_verified']
+    }
+    return jsonify(safe), 200
+
+
 @app.route('/')
 @login_required
 def home():
@@ -256,11 +271,10 @@ def account(username: str, token: str):
 
 @app.route('/account/update-info/<info_type>', methods=['POST'])
 @login_required
-@verified_required
 @limiter.limit("15 per minute")
 def update_account_info(info_type):
     user_id = session['user_id']
-    data = request.form.to_dict(flat=True)
+    data = request.form.to_dict()
 
     validators = {
         'name_age': helpers.validate_name_age,
@@ -453,7 +467,6 @@ def confirm_otp():
 
 
 @app.route('/admin', methods=['GET'])
-@login_required
 def admin_dashboard():
     """
     Admin dashboard page
@@ -463,7 +476,6 @@ def admin_dashboard():
 
 # Admin Routes
 @app.route('/admin/delete-all-data', methods=['POST'])
-@login_required
 def admin_delete_all_data():
     """
     Route to delete all user data from both SQL and MongoDB
@@ -476,11 +488,7 @@ def admin_delete_all_data():
 
 
 @app.route('/admin/download-database', methods=['GET'])
-@login_required
 def admin_download_database():
-    """
-    Route to download the SQL database file
-    """
     result = admin.download_sql_database()
     if isinstance(result, tuple):
         success, message = result
@@ -491,16 +499,13 @@ def admin_download_database():
 
 
 @app.route('/admin/upload-database', methods=['GET', 'POST'])
-@login_required
 def admin_upload_database():
-    """
-    Route to upload and replace the SQL database file
-    """
     if request.method == 'GET':
         return render_template('admin_upload.html')
 
     if request.method == 'POST':
         success, message = admin.upload_sql_database()
+        print("yes yes", success)
         if success:
             return jsonify(status="success", message=message), 200
         else:

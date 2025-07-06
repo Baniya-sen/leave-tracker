@@ -116,11 +116,11 @@ def update_user_info(user_id: int, data: dict) -> bool:
         'leaves_type', 'account_verified'
     ]
 
+    existing_leaves = {}
     if "leaves_type" in data:
         existing = db.execute(
             "SELECT leaves_type FROM users WHERE id = ?", (user_id,)
         ).fetchone()
-        existing_leaves = {}
         if existing and existing["leaves_type"]:
             try:
                 existing_leaves = json.loads(existing["leaves_type"])
