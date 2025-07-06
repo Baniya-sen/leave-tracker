@@ -250,12 +250,10 @@
     let popupTimeoutId = null;
 
     function emailVerification() {
-        const emailDisplay = document.getElementById('email-display');
-        const boldTag = emailDisplay.querySelector('b');
-        const emailText = boldTag ? boldTag.textContent.trim() : '';
+        const email = window.USER_INFO['email'].trim();
         upperDeck.appendChild(agePopup);
 
-        if (emailText === "None") {
+        if (!email || email === "None") {
             closeAllEditModes();
             agePopup.innerText = 'You must add a email first.';
             agePopup.classList.add('active');

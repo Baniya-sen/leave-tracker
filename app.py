@@ -24,6 +24,7 @@ import auth
 import leaves
 import helpers
 import email_otp
+import admin
 
 load_dotenv()
 
@@ -256,6 +257,7 @@ def account(username: str, token: str):
 @app.route('/account/update-info/<info_type>', methods=['POST'])
 @login_required
 @verified_required
+@limiter.limit("15 per minute")
 def update_account_info(info_type):
     user_id = session['user_id']
     data = request.form.to_dict(flat=True)
@@ -282,6 +284,9 @@ def update_account_info(info_type):
             request.form.getlist('leave_type[]'),
             map(int, request.form.getlist('leave_count[]'))
         ))
+
+    if info_type == "email":
+        update_data['account_verified'] = 0
 
     if auth.update_user_info(user_id, update_data) and \
             leaves.update_user_profile(user_id, update_data):
@@ -445,6 +450,61 @@ def confirm_otp():
             return redirect(url_for('account_root'))
 
     return jsonify(error="Invalid code/ Some error occurred!"), 400
+
+
+@app.route('/admin', methods=['GET'])
+@login_required
+def admin_dashboard():
+    """
+    Admin dashboard page
+    """
+    return render_template('admin_dashboard.html')
+
+
+# Admin Routes
+@app.route('/admin/delete-all-data', methods=['POST'])
+@login_required
+def admin_delete_all_data():
+    """
+    Route to delete all user data from both SQL and MongoDB
+    """
+    success, message = admin.delete_all_user_data()
+    if success:
+        return jsonify(status="success", message=message), 200
+    else:
+        return jsonify(status="error", message=message), 500
+
+
+@app.route('/admin/download-database', methods=['GET'])
+@login_required
+def admin_download_database():
+    """
+    Route to download the SQL database file
+    """
+    result = admin.download_sql_database()
+    if isinstance(result, tuple):
+        success, message = result
+        return jsonify(status="error", message=message), 500
+    else:
+        # result is a Flask response object (file download)
+        return result
+
+
+@app.route('/admin/upload-database', methods=['GET', 'POST'])
+@login_required
+def admin_upload_database():
+    """
+    Route to upload and replace the SQL database file
+    """
+    if request.method == 'GET':
+        return render_template('admin_upload.html')
+
+    if request.method == 'POST':
+        success, message = admin.upload_sql_database()
+        if success:
+            return jsonify(status="success", message=message), 200
+        else:
+            return jsonify(status="error", message=message), 400
 
 
 if __name__ == '__main__':

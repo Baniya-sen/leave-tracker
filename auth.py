@@ -57,13 +57,16 @@ def authenticate_user(username: str, password: str):
 
 
 def get_user_info_with_id(user_id: int):
-    db = get_auth_db()
-    user = db.execute(
-        'SELECT * FROM users WHERE id = ?', (user_id,)
-    ).fetchone()
-    if user and user['id'] == session['user_id']:
-        return user
-    return None
+    try:
+        db = get_auth_db()
+        user = db.execute(
+            'SELECT * FROM users WHERE id = ?', (user_id,)
+        ).fetchone()
+        if user and user['id'] == session['user_id']:
+            return user
+        return None
+    except sqlite3.IntegrityError:
+        return None
 
 
 def get_user_info_with_username(username: str):

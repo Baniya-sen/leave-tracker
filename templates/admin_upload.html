@@ -1,0 +1,143 @@
+{% extends "layout.html" %}
+
+{% block title %}Admin - Upload Database{% endblock %}
+
+{% block main %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Admin - Upload Database</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning" role="alert">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning:</strong> This will replace the current database file. Make sure to backup your data first.
+                    </div>
+
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="databaseFile" class="form-label">Select Database File (.db)</label>
+                            <input type="file" class="form-control" id="databaseFile" name="file" accept=".db" required>
+                            <div class="form-text">Please select a valid SQLite database file (.db extension)</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Upload Database
+                            </button>
+                        </div>
+                    </form>
+
+                    <div id="result" class="mt-3" style="display: none;">
+                        <div id="successMessage" class="alert alert-success" style="display: none;">
+                            <i class="fas fa-check-circle"></i>
+                            <span id="successText"></span>
+                        </div>
+                        <div id="errorMessage" class="alert alert-danger" style="display: none;">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <span id="errorText"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h4 class="mb-0">Other Admin Actions</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <button id="downloadBtn" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-download"></i> Download Database
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <button id="deleteBtn" class="btn btn-outline-danger w-100 mb-2">
+                                <i class="fas fa-trash"></i> Delete All Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('uploadForm');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const resultDiv = document.getElementById('result');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+    const successText = document.getElementById('successText');
+    const errorText = document.getElementById('errorText');
+
+    function showResult(success, message) {
+        resultDiv.style.display = 'block';
+        if (success) {
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+            successText.textContent = message;
+        } else {
+            successMessage.style.display = 'none';
+            errorMessage.style.display = 'block';
+            errorText.textContent = message;
+        }
+    }
+
+    uploadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(uploadForm);
+
+        const csrf = document.querySelector('meta[name="csrf-token"]').content;
+        fetch('/admin/upload-database', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrf
+            }
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            showResult(data.status === 'success', data.message);
+            if (data.status === 'success') {
+                uploadForm.reset();
+            }
+        })
+        .catch(error => {
+            showResult(false, 'An error occurred while uploading the file.', error.message);
+        });
+    });
+
+    downloadBtn.addEventListener('click', function() {
+        window.location.href = '/admin/download-database';
+    });
+
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    deleteBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to delete ALL user data? This action cannot be undone!')) {
+            fetch('/admin/delete-all-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                showResult(data.status === 'success', data.message);
+            })
+            .catch(error => {
+                showResult(false, 'An error occurred while deleting data.', error.message);
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

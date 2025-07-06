@@ -305,4 +305,11 @@
     </section>
   </div> <!-- .row -->
 </div> <!-- .container-fluid -->
+
+{% block extra_scripts %}
+ <script>
+   window.USER_INFO = {{ user_info | tojson }};
+ </script>
+{% endblock %}
+
 {% endblock %}
