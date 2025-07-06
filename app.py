@@ -1,5 +1,4 @@
 import json
-import pprint
 import re
 import hmac
 import hashlib
@@ -35,6 +34,7 @@ REDDIS_PORT = quote_plus(getenv('REDDIS_PORT'))
 REDDIS_URI = f'rediss://default:{REDDIS_PASS}@{REDDIS_DB}.upstash.io:{REDDIS_PORT}'
 
 # Mongo variables
+MONGO_FILE = getenv('MONGO_FILE')
 MONGO_USER = quote_plus(getenv('MONGO_USER'))
 MONGO_PASS = quote_plus(getenv('MONGO_PASS'))
 MONGO_CLUSTER = getenv('MONGO_CLUSTER')
@@ -46,13 +46,16 @@ MONGO_URI = f"mongodb+srv://{MONGO_USER}:{MONGO_PASS}@{MONGO_CLUSTER}{MONGO_HOST
 app = Flask(__name__)
 app.secret_key = getenv('APP_KEY')
 
-app.config['AUTH_DB'] = 'user_auth.db'
+app.config['ADMIN_DB'] = getenv('ADMIN_DB')
+app.config['AUTH_DB'] = getenv('USER_DB')
+app.config['BACKUP_DATABASE'] = getenv('BACKUP_DATABASE')
 app.config['RATELIMIT_STORAGE_URL'] = REDDIS_URI
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['MONGO_URI'] = MONGO_URI
 app.config['MONGO_DB'] = MONGO_CLUSTER
 app.config['MONGO_Coll'] = MONGO_COLLECTION
+app.config['MONGO_FILE'] = MONGO_FILE
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
@@ -236,10 +239,10 @@ def user_home(username: str, token: str):
         apology("Token did not matched! Logout and Re-login.", 404)
 
     all_firm_leaves = leaves.get_user_key_data(session['user_id'], f"user_leaves")
+    firm_leaves = {}
     if all_firm_leaves:
         last_firm = list(all_firm_leaves.keys())[-1]
         firm_leaves = all_firm_leaves[last_firm]
-    firm_leaves = {}
 
     return render_template(
         'index.html',
@@ -466,20 +469,65 @@ def confirm_otp():
     return jsonify(error="Invalid code/ Some error occurred!"), 400
 
 
+@app.route('/admin_register', methods=['GET'])
+def admin_register():
+    if request.method == "GET":
+        return render_template('admin_register.html')
+
+    if request.method == 'POST':
+        if not request.form.get("username") or not request.form.get("password"):
+            return apology("At-least enter user/password", 401)
+        elif request.form.get("password") != request.form.get("confirmPassword"):
+            return apology("Passwords mismatch!", 401)
+
+        if admin.register_admin(request.form.get("username"), request.form.get("password")):
+            admin_added = admin.get_admin_info_with_id(request.form.get("username"))
+            # if leaves.init_user_info(admin_added['id'], admin_added['username']):
+            #     print("User Registered! ", admin_added['username'])
+            #     return redirect(url_for('login'))
+
+        return apology('Admin Username taken!')
+
+
 @app.route('/admin', methods=['GET'])
-def admin_dashboard():
-    """
-    Admin dashboard page
-    """
-    return render_template('admin_dashboard.html')
+def admin_login():
+    session.clear()
+
+    if request.method == "GET":
+        return render_template('admin_login.html')
+
+    if request.method == 'POST':
+        if not request.form.get("username") or not request.form.get("password"):
+            return apology("At-least provide a username/password!", 401)
+
+        admin_added = admin.register_admin(
+            request.form['username'], request.form['password']
+        )
+        if admin_added:
+            token = token_hex(32)
+            admin.update_admin_info(admin_added['id'], {'session_token': token})
+
+            session['admin_id'] = admin_added['id']
+            session['admin_username'] = admin_added['username']
+            session['admin_session_token'] = token
+            return redirect(url_for('admin_dashboard', admin_id=session['admin_id'], token=token))
+
+        return apology('Invalid credentials', 401)
+
+
+@app.route('/admin/admin-dashboard/<admin_name>/<token>')
+def admin_dashboard(admin_name, token):
+    admin_added = admin.get_admin_field(session['admin_id'], 'admin_session_token')
+    if session['admin_session_token'] != session['admin_session_token']:
+        return apology('There is some mismatch in token. Re-login!', 403)
+    if admin_name != session['admin_id'] or token != session['admin_session_token']:
+        return apology('Admin credentials do not match!', 401)
+    return render_template('admin_dashboard')
 
 
 # Admin Routes
 @app.route('/admin/delete-all-data', methods=['POST'])
 def admin_delete_all_data():
-    """
-    Route to delete all user data from both SQL and MongoDB
-    """
     success, message = admin.delete_all_user_data()
     if success:
         return jsonify(status="success", message=message), 200
@@ -489,13 +537,11 @@ def admin_delete_all_data():
 
 @app.route('/admin/download-database', methods=['GET'])
 def admin_download_database():
-    result = admin.download_sql_database()
+    result = admin.download_all_data_as_zip()
     if isinstance(result, tuple):
         success, message = result
         return jsonify(status="error", message=message), 500
-    else:
-        # result is a Flask response object (file download)
-        return result
+    return result
 
 
 @app.route('/admin/upload-database', methods=['GET', 'POST'])
@@ -504,7 +550,7 @@ def admin_upload_database():
         return render_template('admin_upload.html')
 
     if request.method == 'POST':
-        success, message = admin.upload_sql_database()
+        success, message = admin.upload_databases()
         print("yes yes", success)
         if success:
             return jsonify(status="success", message=message), 200
@@ -513,6 +559,9 @@ def admin_upload_database():
 
 
 if __name__ == '__main__':
+    with app.app_context():
+        admin.init_admin_db()
+
     with app.app_context():
         auth.init_auth_db()
 

@@ -1,13 +1,137 @@
 import os
-from datetime import datetime
-from flask import current_app, send_file, request, jsonify
+import json
+from datetime import datetime, timezone
+from flask import g, current_app, send_file, request, jsonify, session, redirect, url_for
 import sqlite3
+import tempfile
+import zipfile
+from functools import wraps
+
+from werkzeug.security import generate_password_hash
 
 from leaves import get_mongo_client
 
 
+def admin_login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if 'admin_id' not in session or 'admin_session_token' not in session:
+            return redirect(url_for('admin_login'))
+
+        admin = get_admin_info_with_id(session['admin_id'])
+        if admin is None or dict(admin).get('session_token') != session['admin_session_token']:
+            session.clear()
+            return redirect(url_for('admin_login'))
+
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def get_admin_db():
+    if 'admin_db' not in g:
+        g.admin_db = sqlite3.connect(
+            current_app.config['ADMIN_DB'],
+            detect_types=sqlite3.PARSE_DECLTYPES
+        )
+        g.admin_db.row_factory = sqlite3.Row
+    return g.admin_db
+
+
+def close_admin_db(e=None):
+    db = g.pop('admin_db', None)
+    if db:
+        db.close()
+
+
+def init_admin_db():
+    db = get_admin_db()
+    with current_app.open_resource('schema_admin.sql') as f:
+        db.executescript(f.read().decode())
+
+
+def register_admin(username: str, password: str) -> bool:
+    pw_hash = generate_password_hash(password)
+    db = get_admin_db()
+    try:
+        db.execute(
+            '''
+            INSERT INTO admin_users (username, passhash)
+            VALUES (?, ?, ?)
+            ''',
+            (username, pw_hash)
+        )
+        db.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+
+
+def get_admin_info_with_id(admin_id, db=None):
+    if db is None:
+        db = get_admin_db()
+
+    cur = db.execute(
+        "SELECT * FROM admin_users WHERE id = ?",
+        (admin_id,)
+    )
+    return cur.fetchone()
+
+
+def get_admin_field(admin_id: int, column_name: str):
+    allowed = {
+        "id",
+        "username",
+        "session_token",
+        "name",
+        "email",
+        "last_login",
+        "is_superadmin"
+    }
+    if column_name not in allowed:
+        raise ValueError(f"Invalid column name: {column_name!r}")
+
+    db = get_admin_db()
+    sql = f"SELECT {column_name} FROM admin_users WHERE id = ?"
+    row = db.execute(sql, (admin_id,)).fetchone()
+
+    if row is None:
+        return None
+
+    return row[column_name]
+
+
+def update_admin_info(user_id: int, data: dict) -> bool:
+    db = get_admin_db()
+    allowed_fields = [
+        'name', 'session_token', 'email',
+        'last_login', 'is_superadmin'
+    ]
+
+    fields = []
+    values = []
+    for field in allowed_fields:
+        if field in data:
+            fields.append(f"{field} = ?")
+
+    if not fields:
+        return False
+
+    values.append(user_id)
+    query = f"UPDATE admin_users SET {', '.join(fields)} WHERE id = ?"
+
+    try:
+        cur = db.execute(query, values)
+        db.commit()
+        return cur.rowcount > 0
+    except sqlite3.Error:
+        print("User not updated to sql!", session['admin_id'])
+        return False
+
+
+
 def delete_all_user_data():
     try:
+        # --- SQL cleanup ---
         db_path = current_app.config['AUTH_DB']
         if os.path.exists(db_path):
             conn = sqlite3.connect(db_path)
@@ -17,13 +141,14 @@ def delete_all_user_data():
             conn.close()
             print(f"All users deleted from SQL database: {db_path}")
 
+        # --- MongoDB cleanup ---
         client = get_mongo_client()
         db_name = current_app.config['MONGO_DB']
-        collection_name = current_app.config['MONGO_Coll']
-        collection = client[db_name][collection_name]
+        coll_name = current_app.config['MONGO_Coll']
+        collection = client[db_name][coll_name]
 
         result = collection.delete_many({})
-        print(f"Deleted {result.deleted_count} documents from MongoDB collection: {collection_name}")
+        print(f"Deleted {result.deleted_count} documents from MongoDB collection: {coll_name}")
 
         return True, f"Successfully deleted all user data. SQL: all users, MongoDB: {result.deleted_count} documents"
 
@@ -32,59 +157,89 @@ def delete_all_user_data():
         return False, f"Error deleting user data: {str(e)}"
 
 
-def download_sql_database():
+def download_all_data_as_zip():
     try:
+        client = get_mongo_client()
+        db_name = current_app.config['MONGO_DB']
+        coll_name = current_app.config['MONGO_Coll']
+        collection = client[db_name][coll_name]
+        mongo_docs = list(collection.find({}, {'_id': False}))
+        mongo_json = json.dumps(mongo_docs, indent=2)
+
         db_path = current_app.config['AUTH_DB']
-
         if not os.path.exists(db_path):
-            return False, "Database file not found"
+            return False, "SQL database file not found"
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"user_auth_backup_{timestamp}.db"
+        with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as tmp_zip:
+            with zipfile.ZipFile(tmp_zip, 'w') as zipf:
+                zipf.write(db_path, arcname=current_app.config['AUTH_DB'])
+                zipf.writestr(current_app.config['MONGO_FILE'], mongo_json)
+            zip_path = tmp_zip.name
 
-        return send_file(
-            db_path,
-            as_attachment=True,
-            download_name=filename,
-            mimetype='application/octet-stream'
-        )
+        download_name = f"{current_app.config['BACKUP_DATABASE']}_{datetime.now():%Y%m%d_%H%M%S}.zip"
+        return send_file(zip_path, as_attachment=True, download_name=download_name,
+                         mimetype='application/zip')
 
     except Exception as e:
-        print(f"Error downloading database: {e}")
-        return False, f"Error downloading database: {str(e)}"
+        current_app.logger.exception("Error creating ZIP backup")
+        return False, f"Error creating ZIP backup: {e}"
 
 
-def upload_sql_database():
+def upload_databases():
     if 'file' not in request.files:
-        return False, "No file uploaded"
-    file = request.files['file']
-    if file.filename == '':
-        return False, "No file selected"
-    if not file.filename.lower().endswith('.db'):
+        return False, "No SQL file uploaded"
+    sql_file = request.files['file']
+    if sql_file.filename == '':
+        return False, "No SQL file selected"
+    if not sql_file.filename.lower().endswith('.db'):
         return False, "Please upload a .db file"
 
     db_path = current_app.config['AUTH_DB']
-    tmp_path = db_path + f".uploading_{datetime.now():%Y%m%d_%H%M%S}"
-    file.save(tmp_path)
+    tmp_sql = db_path + f".uploading_{datetime.now():%Y%m%d_%H%M%S}"
+    sql_file.save(tmp_sql)
 
     try:
-        conn = sqlite3.connect(tmp_path)
+        conn = sqlite3.connect(tmp_sql)
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = [row[0] for row in cursor.fetchall()]
+        tables = [r[0] for r in cursor.fetchall()]
         conn.close()
-
         if not tables:
-            raise sqlite3.Error("no tables")
-
-    except sqlite3.Error as e:
-        os.remove(tmp_path)
+            raise sqlite3.Error("no tables in SQL file")
+    except Exception as e:
+        os.remove(tmp_sql)
         return False, f"Invalid SQLite DB: {e}"
 
-    try:
-        os.replace(tmp_path, db_path)
-    except OSError as e:
-        os.remove(tmp_path)
-        return False, f"Could’t replace DB: {e}"
+    mongo_count = None
+    if 'mongo_file' in request.files and request.files['mongo_file'].filename:
+        mongo_file = request.files['mongo_file']
+        if not mongo_file.filename.lower().endswith(('.json', '.txt')):
+            os.remove(tmp_sql)
+            return False, "Please upload a JSON file for Mongo data"
+        try:
+            data = json.load(mongo_file)
+            if not isinstance(data, list):
+                raise ValueError("Root JSON must be an array of documents")
+        except Exception as e:
+            os.remove(tmp_sql)
+            return False, f"Invalid Mongo JSON file: {e}"
 
-    return True, f"Database replaced successfully. Tables: {tables}"
+        client = get_mongo_client()
+        db_name = current_app.config['MONGO_DB']
+        coll_name = current_app.config['MONGO_Coll']
+        collection = client[db_name][coll_name]
+        collection.drop()
+        res = collection.insert_many(data)
+        mongo_count = len(res.inserted_ids)
+
+    try:
+        os.replace(tmp_sql, db_path)
+    except OSError as e:
+        os.remove(tmp_sql)
+        return False, f"Could’t replace SQL DB: {e}"
+
+    msg = f"Replaced SQL DB with tables: {tables}."
+    if mongo_count is not None:
+        msg += f" Imported {mongo_count} Mongo documents."
+
+    return True, msg

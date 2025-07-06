@@ -896,3 +896,31 @@ function showCopiedMessage(container) {
       msg.remove();
     }, 2500);
 }
+
+// Admin-panel
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const user = document.getElementById('username').value.trim();
+    const pass = document.getElementById('password').value.trim();
+    const errorEl = document.getElementById('error');
+    errorEl.style.display = 'none';
+
+    if (!user || !pass) {
+      errorEl.textContent = 'Please enter both username and password.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    // TODO: Replace with real authentication call
+    const validUsers = {
+      "admin": "admin123",
+      "user": "pass123"
+    };
+
+    if (validUsers[user] && validUsers[user] === pass) {
+      window.location.href = '/dashboard';
+    } else {
+      errorEl.textContent = 'Invalid username or password.';
+      errorEl.style.display = 'block';
+    }
+});
