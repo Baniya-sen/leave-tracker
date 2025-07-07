@@ -45,6 +45,7 @@
               </div>
             </div>
 
+            <a href="{{ upload_route }}" style="display: none;" id="upload_route"></a>
             <button type="submit" class="btn btn-primary">
               Upload
             </button>
@@ -56,38 +57,4 @@
     </div>
   </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('upload-form');
-  const deleteBtn = document.getElementById('delete-all');
-  const resultDiv = document.getElementById('result');
-  const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-  function showResult(success, message, extra='') {
-    resultDiv.innerHTML = `
-      <div class="alert alert-${success ? 'success' : 'danger'}">
-        ${message}${extra ? ': ' + extra : ''}
-      </div>
-    `;
-  }
-
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    const data = new FormData(form);
-    fetch('/admin/upload-database', {
-      method: 'POST',
-      headers: { 'X-CSRFToken': csrf },
-      body: data
-    })
-    .then(res => res.json())
-    .then(payload => {
-      showResult(payload.status === 'success', payload.message);
-    })
-    .catch(err => {
-      showResult(false, 'Upload failed', err.message);
-    });
-  });
-});
-</script>
 {% endblock %}

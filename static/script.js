@@ -897,30 +897,128 @@ function showCopiedMessage(container) {
     }, 2500);
 }
 
-// Admin-panel
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const user = document.getElementById('username').value.trim();
-    const pass = document.getElementById('password').value.trim();
-    const errorEl = document.getElementById('error');
-    errorEl.style.display = 'none';
 
-    if (!user || !pass) {
-      errorEl.textContent = 'Please enter both username and password.';
-      errorEl.style.display = 'block';
-      return;
-    }
+// Admin-Login
+const loginForm = document.getElementById('loginForm');
+if (loginForm) {
+    loginForm.addEventListener('submit', function(e) {
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value.trim();
+        const errorEl = document.getElementById('error');
+        errorEl.style.display = 'none';
 
-    // TODO: Replace with real authentication call
-    const validUsers = {
-      "admin": "admin123",
-      "user": "pass123"
-    };
+        if (!user || !pass) {
+          errorEl.textContent = 'Please enter both username and password.';
+          errorEl.style.display = 'block';
+          e.preventDefault();
+          return;
+        }
+    });
+}
 
-    if (validUsers[user] && validUsers[user] === pass) {
-      window.location.href = '/dashboard';
+
+// Admin-Register
+const registerForm = document.getElementById('registerForm');
+if (registerForm) {
+    registerForm.addEventListener('submit', function(e) {
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value.trim();
+        const confirm = document.getElementById('confirmPassword').value.trim();
+        const errorEl = document.getElementById('error');
+
+        // Reset
+        errorEl.style.display = 'none';
+
+        // Basic validation
+        if (!user || !pass || !confirm) {
+          e.preventDefault();
+          errorEl.textContent = 'All fields are required.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        if (pass !== confirm) {
+          e.preventDefault();
+          errorEl.textContent = 'Passwords do not match.';
+          errorEl.style.display = 'block';
+          return;
+        }
+    });
+}
+
+
+// Admin-delete
+const deleteBtn = document.getElementById('deleteBtn');
+const resultDivDelete = document.getElementById('result');
+const successMessage = document.getElementById('successMessage');
+const errorMessage = document.getElementById('errorMessage');
+const successText = document.getElementById('successText');
+const errorText = document.getElementById('errorText');
+
+function showResult(success, message) {
+    resultDivDelete.style.display = 'block';
+    if (success) {
+        successMessage.style.display = 'block';
+        errorMessage.style.display = 'none';
+        successText.textContent = message;
     } else {
-      errorEl.textContent = 'Invalid username or password.';
-      errorEl.style.display = 'block';
+        successMessage.style.display = 'none';
+        errorMessage.style.display = 'block';
+        errorText.textContent = message;
     }
-});
+}
+
+const csrf = document.querySelector('meta[name="csrf-token"]').content;
+if (deleteBtn) {
+    deleteBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to delete ALL user data? This action cannot be undone!')) {
+            const deleteRoute = document.getElementById('delete_route').href;
+            fetch(deleteRoute, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                showResult(data.status === 'success', data.message);
+            })
+            .catch(error => {
+                showResult(false, 'An error occurred while deleting data.', error.message);
+            });
+        }
+    });
+}
+
+
+// Admin-Upload
+const formUploadDB = document.getElementById('upload-form');
+const resultDivUpload = document.getElementById('result');
+
+function showResult(success, message, extra='') {
+    resultDivUpload.innerHTML = `
+      <div class="alert alert-${success ? 'success' : 'danger'}">
+        ${message}${extra ? ': ' + extra : ''}
+      </div>
+    `;
+}
+
+if (formUploadDB) {
+    formUploadDB.addEventListener('submit', e => {
+        e.preventDefault();
+        const data = new FormData(formUploadDB);
+        const uploadRoute = document.getElementById('upload_route').href;
+        fetch(uploadRoute, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrf },
+          body: data
+        })
+        .then(res => res.json())
+        .then(payload => {
+          showResult(payload.status === 'success', payload.message);
+        })
+        .catch(err => {
+          showResult(false, 'Upload failed', err.message);
+        });
+    });
+}

@@ -148,8 +148,8 @@ def apology(message, code=400):
 
 
 # Routes
-@csrf.exempt
 @app.route('/register', methods=['GET', 'POST'])
+@csrf.exempt
 def register():
     if request.method == "GET":
         return render_template("register.html")
@@ -169,8 +169,8 @@ def register():
         return apology('Username taken!')
 
 
-@csrf.exempt
 @app.route('/login', methods=['GET', 'POST'])
+@csrf.exempt
 def login():
     session.clear()
 
@@ -469,7 +469,8 @@ def confirm_otp():
     return jsonify(error="Invalid code/ Some error occurred!"), 400
 
 
-@app.route('/admin_register', methods=['GET'])
+@app.route('/admin_register', methods=['GET', 'POST'])
+@csrf.exempt
 def admin_register():
     if request.method == "GET":
         return render_template('admin_register.html')
@@ -481,15 +482,17 @@ def admin_register():
             return apology("Passwords mismatch!", 401)
 
         if admin.register_admin(request.form.get("username"), request.form.get("password")):
-            admin_added = admin.get_admin_info_with_id(request.form.get("username"))
+            admin_added = admin.get_user_info_with_username(request.form.get("username"))
             # if leaves.init_user_info(admin_added['id'], admin_added['username']):
             #     print("User Registered! ", admin_added['username'])
             #     return redirect(url_for('login'))
+            return redirect(url_for('admin_login'))
 
         return apology('Admin Username taken!')
 
 
-@app.route('/admin', methods=['GET'])
+@app.route('/admin', methods=['GET', 'POST'])
+@csrf.exempt
 def admin_login():
     session.clear()
 
@@ -500,62 +503,115 @@ def admin_login():
         if not request.form.get("username") or not request.form.get("password"):
             return apology("At-least provide a username/password!", 401)
 
-        admin_added = admin.register_admin(
+        admin_added = admin.authenticate_admin(
             request.form['username'], request.form['password']
         )
         if admin_added:
             token = token_hex(32)
-            admin.update_admin_info(admin_added['id'], {'session_token': token})
+            admin.update_admin_info(admin_added['id'], {'admin_session_token': token})
 
             session['admin_id'] = admin_added['id']
             session['admin_username'] = admin_added['username']
             session['admin_session_token'] = token
-            return redirect(url_for('admin_dashboard', admin_id=session['admin_id'], token=token))
-
+            return redirect(
+                url_for('admin_dashboard',
+                        admin_name=session['admin_username'],
+                        token=token)
+            )
         return apology('Invalid credentials', 401)
 
 
-@app.route('/admin/admin-dashboard/<admin_name>/<token>')
-def admin_dashboard(admin_name, token):
-    admin_added = admin.get_admin_field(session['admin_id'], 'admin_session_token')
-    if session['admin_session_token'] != session['admin_session_token']:
-        return apology('There is some mismatch in token. Re-login!', 403)
-    if admin_name != session['admin_id'] or token != session['admin_session_token']:
-        return apology('Admin credentials do not match!', 401)
-    return render_template('admin_dashboard')
-
-
 # Admin Routes
-@app.route('/admin/delete-all-data', methods=['POST'])
-def admin_delete_all_data():
-    success, message = admin.delete_all_user_data()
-    if success:
-        return jsonify(status="success", message=message), 200
-    else:
-        return jsonify(status="error", message=message), 500
+@app.route('/admin/admin-dashboard/<admin_name>/<token>')
+@admin.admin_login_required
+def admin_dashboard(admin_name, token):
+    admin_session = admin.get_admin_field(session['admin_id'], 'admin_session_token')
+    if admin_session != session['admin_session_token']:
+        return apology('There is some mismatch in token. Re-login!', 403)
+    if admin_name != session['admin_username'] or token != session['admin_session_token']:
+        return apology('Admin credentials do not match!', 401)
+
+    session['ADMIN_DOWNLOAD_TOKEN'] = token_hex(32)
+    session['ADMIN_UPLOAD_TOKEN'] = token_hex(32)
+    session['ADMIN_DELETE_TOKEN'] = token_hex(32)
+
+    return render_template(
+        'admin_dashboard.html',
+        download_route=url_for(
+            'admin_download_database',
+            token=session['ADMIN_DOWNLOAD_TOKEN']
+        ),
+        upload_route=url_for(
+            'admin_upload_database',
+            token=session['ADMIN_UPLOAD_TOKEN']
+        ),
+        delete_route=url_for(
+            'admin_delete_all_data',
+            token=session['ADMIN_DELETE_TOKEN']
+        ),
+    )
 
 
-@app.route('/admin/download-database', methods=['GET'])
-def admin_download_database():
-    result = admin.download_all_data_as_zip()
-    if isinstance(result, tuple):
-        success, message = result
-        return jsonify(status="error", message=message), 500
-    return result
+@app.route('/admin/admin-spacing/delete/<string:token>', methods=['POST'])
+@admin.admin_login_required
+def admin_delete_all_data(token):
+    if token != session.get('ADMIN_DELETE_TOKEN'):
+        return jsonify(status="error", message="Invalid token!"), 403
 
-
-@app.route('/admin/upload-database', methods=['GET', 'POST'])
-def admin_upload_database():
-    if request.method == 'GET':
-        return render_template('admin_upload.html')
-
-    if request.method == 'POST':
-        success, message = admin.upload_databases()
-        print("yes yes", success)
+    admin_added = admin.get_admin_info_with_id(session['admin_id'])
+    if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
+        success, message = admin.delete_all_user_data()
         if success:
             return jsonify(status="success", message=message), 200
         else:
-            return jsonify(status="error", message=message), 400
+            return jsonify(status="error", message=message), 500
+    else:
+        return jsonify(status="error", message="Invalid credentials!"), 403
+
+
+@app.route('/admin/admin-spacing/download/<string:token>', methods=['GET'])
+@admin.admin_login_required
+def admin_download_database(token):
+    if token != session.get('ADMIN_DOWNLOAD_TOKEN'):
+        return jsonify(status="error", message="Invalid token!"), 403
+
+    admin_added = admin.get_admin_info_with_id(session['admin_id'])
+    if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
+        result = admin.download_all_data_as_zip()
+        if isinstance(result, tuple):
+            success, message = result
+            return jsonify(status="error", message=message), 500
+        return result
+    else:
+        return jsonify(status="error", message="Invalid credentials!"), 403
+
+
+@app.route('/admin/admin-spacing/upload/<string:token>', methods=['GET', 'POST'])
+@admin.admin_login_required
+def admin_upload_database(token):
+    if token != session.get('ADMIN_UPLOAD_TOKEN'):
+        return jsonify(status="error", message="Invalid token!"), 403
+
+    admin_added = admin.get_admin_info_with_id(session['admin_id'])
+    if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
+        if request.method == 'GET':
+            return render_template(
+                'admin_upload.html',
+                upload_route=url_for(
+                    'admin_upload_database',
+                    token=session['ADMIN_UPLOAD_TOKEN']
+                )
+            )
+
+        if request.method == 'POST':
+            success, message = admin.upload_databases()
+            print("yes yes", success)
+            if success:
+                return jsonify(status="success", message=message), 200
+            else:
+                return jsonify(status="error", message=message), 400
+    else:
+        return jsonify(status="error", message="Invalid credentials!"), 403
 
 
 if __name__ == '__main__':

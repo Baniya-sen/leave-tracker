@@ -25,7 +25,7 @@
                                     <i class="fas fa-download fa-3x text-primary mb-3"></i>
                                     <h5 class="card-title">Download Database</h5>
                                     <p class="card-text">Download a backup of your SQL database file.</p>
-                                    <a href="/admin/download-database" class="btn btn-primary">
+                                    <a href="{{ download_route }}" class="btn btn-primary">
                                         <i class="fas fa-download"></i> Download
                                     </a>
                                 </div>
@@ -38,7 +38,7 @@
                                     <i class="fas fa-upload fa-3x text-warning mb-3"></i>
                                     <h5 class="card-title">Upload Database</h5>
                                     <p class="card-text">Upload and replace the current database file.</p>
-                                    <a href="/admin/upload-database" class="btn btn-warning">
+                                    <a href="{{ upload_route }}" class="btn btn-warning">
                                         <i class="fas fa-upload"></i> Upload
                                     </a>
                                 </div>
@@ -51,6 +51,7 @@
                                     <i class="fas fa-trash fa-3x text-danger mb-3"></i>
                                     <h5 class="card-title">Delete All Data</h5>
                                     <p class="card-text">Delete all user data from both SQL and MongoDB.</p>
+                                    <a href="{{ delete_route }}" style="display: none;" id="delete_route"></a>
                                     <button id="deleteBtn" class="btn btn-danger">
                                         <i class="fas fa-trash"></i> Delete All
                                     </button>
@@ -75,47 +76,4 @@
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const deleteBtn = document.getElementById('deleteBtn');
-    const resultDiv = document.getElementById('result');
-    const successMessage = document.getElementById('successMessage');
-    const errorMessage = document.getElementById('errorMessage');
-    const successText = document.getElementById('successText');
-    const errorText = document.getElementById('errorText');
-
-    function showResult(success, message) {
-        resultDiv.style.display = 'block';
-        if (success) {
-            successMessage.style.display = 'block';
-            errorMessage.style.display = 'none';
-            successText.textContent = message;
-        } else {
-            successMessage.style.display = 'none';
-            errorMessage.style.display = 'block';
-            errorText.textContent = message;
-        }
-    }
-
-    const csrf = document.querySelector('meta[name="csrf-token"]').content;
-    deleteBtn.addEventListener('click', function() {
-        if (confirm('Are you sure you want to delete ALL user data? This action cannot be undone!')) {
-            fetch('/admin/delete-all-data', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrf
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                showResult(data.status === 'success', data.message);
-            })
-            .catch(error => {
-                showResult(false, 'An error occurred while deleting data.', error.message);
-            });
-        }
-    });
-});
-</script>
 {% endblock %}

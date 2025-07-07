@@ -7,7 +7,7 @@ import tempfile
 import zipfile
 from functools import wraps
 
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from leaves import get_mongo_client
 
@@ -16,12 +16,14 @@ def admin_login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if 'admin_id' not in session or 'admin_session_token' not in session:
-            return redirect(url_for('admin_login'))
+            print("whyyyyyyy")
+            return redirect(url_for('login'))
 
-        admin = get_admin_info_with_id(session['admin_id'])
-        if admin is None or dict(admin).get('session_token') != session['admin_session_token']:
+        admin_added = get_admin_info_with_id(session['admin_id'])
+        if admin_added is None or dict(admin_added).get('admin_session_token') != session['admin_session_token']:
+            print("whyy whyyyyyyyy")
             session.clear()
-            return redirect(url_for('admin_login'))
+            return redirect(url_for('login'))
 
         return f(*args, **kwargs)
     return wrapper
@@ -56,7 +58,7 @@ def register_admin(username: str, password: str) -> bool:
         db.execute(
             '''
             INSERT INTO admin_users (username, passhash)
-            VALUES (?, ?, ?)
+            VALUES (?, ?)
             ''',
             (username, pw_hash)
         )
@@ -66,10 +68,18 @@ def register_admin(username: str, password: str) -> bool:
         return False
 
 
-def get_admin_info_with_id(admin_id, db=None):
-    if db is None:
-        db = get_admin_db()
+def authenticate_admin(username: str, password: str):
+    db = get_admin_db()
+    admin_added = db.execute(
+        'SELECT * FROM admin_users WHERE username = ?', (username,)
+    ).fetchone()
+    if admin_added and check_password_hash(admin_added['passhash'], password):
+        return admin_added
+    return None
 
+
+def get_admin_info_with_id(admin_id):
+    db = get_admin_db()
     cur = db.execute(
         "SELECT * FROM admin_users WHERE id = ?",
         (admin_id,)
@@ -77,11 +87,21 @@ def get_admin_info_with_id(admin_id, db=None):
     return cur.fetchone()
 
 
+def get_user_info_with_username(username: str):
+    db = get_admin_db()
+    admin_added = db.execute(
+        'SELECT * FROM admin_users WHERE username = ?', (username,)
+    ).fetchone()
+    if admin_added and admin_added['username'] == username:
+        return admin_added
+    return None
+
+
 def get_admin_field(admin_id: int, column_name: str):
     allowed = {
         "id",
         "username",
-        "session_token",
+        "admin_session_token",
         "name",
         "email",
         "last_login",
@@ -103,7 +123,7 @@ def get_admin_field(admin_id: int, column_name: str):
 def update_admin_info(user_id: int, data: dict) -> bool:
     db = get_admin_db()
     allowed_fields = [
-        'name', 'session_token', 'email',
+        'name', 'admin_session_token', 'email',
         'last_login', 'is_superadmin'
     ]
 
@@ -112,6 +132,7 @@ def update_admin_info(user_id: int, data: dict) -> bool:
     for field in allowed_fields:
         if field in data:
             fields.append(f"{field} = ?")
+            values.append(data[field])
 
     if not fields:
         return False
@@ -124,9 +145,8 @@ def update_admin_info(user_id: int, data: dict) -> bool:
         db.commit()
         return cur.rowcount > 0
     except sqlite3.Error:
-        print("User not updated to sql!", session['admin_id'])
+        print("User not updated to sql!", user_id)
         return False
-
 
 
 def delete_all_user_data():
@@ -168,11 +188,15 @@ def download_all_data_as_zip():
 
         db_path = current_app.config['AUTH_DB']
         if not os.path.exists(db_path):
-            return False, "SQL database file not found"
+            return False, "SQL user database file not found!"
+        admin_db_path = current_app.config['ADMIN_DB']
+        if not os.path.exists(admin_db_path):
+            return False, "SQL admin database file not found!"
 
         with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as tmp_zip:
             with zipfile.ZipFile(tmp_zip, 'w') as zipf:
                 zipf.write(db_path, arcname=current_app.config['AUTH_DB'])
+                zipf.write(admin_db_path, arcname=current_app.config['ADMIN_DB'])
                 zipf.writestr(current_app.config['MONGO_FILE'], mongo_json)
             zip_path = tmp_zip.name
 

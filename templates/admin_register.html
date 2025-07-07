@@ -17,15 +17,15 @@ Admin Register -
       <!-- Replace with your Leave Tracker logo -->
       <img src="{{ url_for('static', filename='logo.png') }}" alt="Leave Tracker" class="logo">
       <div id="error" class="error-message">Please fix the errors below.</div>
-      <form id="registerForm">
+      <form action="/admin_register" method="post" id="registerForm">
         <div class="form-group">
-          <input type="text" id="username" placeholder="Username" required>
+          <input type="text" id="username" name="username" placeholder="Username" required>
         </div>
         <div class="form-group">
-          <input type="password" id="password" placeholder="Password" required>
+          <input type="password" id="password" name="password" placeholder="Password" required>
         </div>
         <div class="form-group">
-          <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+          <input type="password" id="confirmation" name="confirmPassword" placeholder="Confirm Password" required>
         </div>
         <div class="form-group">
           <button class="admin-login-btn" type="submit" id="registerBtn">Register</button>
@@ -33,36 +33,5 @@ Admin Register -
       </form>
     </div>
   </div>
-{% endblock %}
 
-{% block scripts %}
-<script>
-  document.getElementById('registerForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const user = document.getElementById('username').value.trim();
-    const pass = document.getElementById('password').value.trim();
-    const confirm = document.getElementById('confirmPassword').value.trim();
-    const errorEl = document.getElementById('error');
-
-    // Reset
-    errorEl.style.display = 'none';
-
-    // Basic validation
-    if (!user || !pass || !confirm) {
-      errorEl.textContent = 'All fields are required.';
-      errorEl.style.display = 'block';
-      return;
-    }
-    if (pass !== confirm) {
-      errorEl.textContent = 'Passwords do not match.';
-      errorEl.style.display = 'block';
-      return;
-    }
-
-    // TODO: Send registration data to backend
-    // For demo purposes, simulate success
-    alert('Registration successful! Redirecting to login.');
-    window.location.href = '/admin/login';
-  });
-</script>
 {% endblock %}

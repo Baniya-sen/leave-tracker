@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     username      TEXT UNIQUE NOT NULL,
     passhash      TEXT NOT NULL,
-    session_token TEXT,
+    admin_session_token TEXT,
     name          TEXT,
     email         TEXT,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
