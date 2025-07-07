@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 import auth
 
@@ -74,7 +74,7 @@ def validate_firm_weekend(data, user_id) -> any:
     return True, None, {'firm_weekend_days': normalized}
 
 
-def validate_firm_leaves(data, request=None) -> any:
+def validate_firm_leaves(data, request=None, user_id=None) -> any:
     # request: pass flask.request if available, else None
     if request is not None:
         types = request.form.getlist('leave_type[]')

@@ -122,6 +122,9 @@
             cell.dataset.date = iso;
             if (leaveMap[iso]) {
                 cell.classList.add('leave-day');
+                cell.classList.add('leave-day-disabled');
+                cell.style.pointerEvents = 'none';
+                cell.style.opacity = '0.8';
                 cell.style.position = 'relative';
                 cell.style.overflow = 'hidden';
                 cell.style.backgroundColor = 'red';
@@ -291,7 +294,7 @@
 
             return false;
 
-        } else if (dob && (!verified || verified.trim() === 0)) {
+        } else if (dob && (!verified || verified === 0)) {
             closeAllEditModes();
             agePopup.innerText = 'You must verify your email first.';
             agePopup.classList.add('active');
@@ -792,8 +795,63 @@ document.addEventListener('DOMContentLoaded', function () {
             cell = cell.parentElement;
         }
         if (!cell || !cell.classList.contains('calendar-day')) return;
+        if (cell.classList.contains('leave-day-disabled')) return; // Prevent modal for taken days
         const iso = cell.dataset.date;
         if (!iso) return;
+
+        // Check user info
+        const info = window.USER_INFO || {};
+        let message = '';
+        if (!info.email || info.email === 'None') {
+            message = 'You have not added an email. Please add and verify your email to start adding leaves.';
+        } else if (!info.account_verified || info.account_verified === 0 || info.account_verified === '0') {
+            message = 'Your email is not verified. Please verify your email to use this feature.';
+        } else if (!info.firm_name || info.firm_name === 'None') {
+            message = 'You have not added your firm info. Without it, whats the use? Add all in the Accounts tab.';
+        } else if (!info.leaves_type || Object.keys(info.leaves_type).length === 0) {
+            message = 'You have not set up your leave structure, so there is not data. Visit accounts tab!';
+        }
+
+        if (message) {
+            // Show modal with message only
+            document.querySelector('.custom-leave-modal-title').textContent = 'Cannot Add Leaves';
+            document.getElementById('leaveForm').style.display = 'none';
+            let msgDiv = document.getElementById('leaveModalMsg');
+            if (!msgDiv) {
+                msgDiv = document.createElement('div');
+                msgDiv.id = 'leaveModalMsg';
+                msgDiv.style.margin = '2em 0';
+                msgDiv.style.fontSize = '1.1em';
+                msgDiv.style.color = '#b00';
+                document.querySelector('.custom-leave-modal-content').appendChild(msgDiv);
+            }
+            msgDiv.textContent = message;
+            let okBtn = document.getElementById('leaveModalOkBtn');
+            if (!okBtn) {
+                okBtn = document.createElement('button');
+                okBtn.id = 'leaveModalOkBtn';
+                okBtn.type = 'button';
+                okBtn.textContent = 'OK';
+                okBtn.className = 'btn btn-primary';
+                okBtn.style.margin = '1em auto 0 auto';
+                okBtn.style.display = 'block';
+                okBtn.onclick = hideLeaveModal;
+                document.querySelector('.custom-leave-modal-content').appendChild(okBtn);
+            } else {
+                okBtn.style.display = 'block';
+            }
+            showLeaveModal();
+            return;
+        } else {
+            // Show normal leave form
+            document.querySelector('.custom-leave-modal-title').textContent = 'Take Leave';
+            document.getElementById('leaveForm').style.display = '';
+            let msgDiv = document.getElementById('leaveModalMsg');
+            if (msgDiv) msgDiv.textContent = '';
+            let okBtn = document.getElementById('leaveModalOkBtn');
+            if (okBtn) okBtn.style.display = 'none';
+        }
+
         leaveDateInput.value = iso;
         populateLeaveTypes();
         leaveCountInput.value = 1;
@@ -805,11 +863,41 @@ document.addEventListener('DOMContentLoaded', function () {
     leaveTypeSelect?.addEventListener('change', validateLeaveInput);
     leaveCountInput?.addEventListener('input', validateLeaveInput);
 
+    function buildLeaveMap() {
+        const leaveMap = {};
+        if (window.USER_LEAVES && window.USER_LEAVES.leaves_taken) {
+            const taken = window.USER_LEAVES.leaves_taken;
+            Object.entries(taken).forEach(([type, dates]) => {
+                dates.forEach(dateStr => {
+                    if (!leaveMap[dateStr]) leaveMap[dateStr] = [];
+                    leaveMap[dateStr].push(type);
+                });
+            });
+        }
+        return leaveMap;
+    }
+
     // --- Submit leave form via AJAX ---
     leaveForm?.addEventListener('submit', function (e) {
         e.preventDefault();
         if (!validateLeaveInput()) return;
         saveBtn.disabled = true;
+
+        // Calculate consecutive dates
+        const startDate = leaveDateInput.value;
+        const days = parseInt(leaveCountInput.value, 10);
+        const selectedType = leaveTypeSelect.value;
+        const leaveMap = buildLeaveMap();
+        let dates = [];
+        let d = new Date(startDate);
+        while (dates.length < days) {
+            const iso = d.toISOString().slice(0, 10);
+            if (!leaveMap[iso]) {
+                dates.push(iso);
+            }
+            d.setDate(d.getDate() + 1);
+        }
+
         fetch('/take_leave', {
             method: 'POST',
             headers: {
@@ -817,9 +905,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
             },
             body: JSON.stringify({
-                date: leaveDateInput.value,
-                type: leaveTypeSelect.value,
-                days: leaveCountInput.value
+                dates: dates,
+                type: selectedType
             })
         })
             .then(r => r.json())
@@ -954,7 +1041,7 @@ const errorMessage = document.getElementById('errorMessage');
 const successText = document.getElementById('successText');
 const errorText = document.getElementById('errorText');
 
-function showResult(success, message) {
+function showResultDelete(success, message) {
     resultDivDelete.style.display = 'block';
     if (success) {
         successMessage.style.display = 'block';
@@ -981,10 +1068,10 @@ if (deleteBtn) {
             })
             .then(response => response.json())
             .then(data => {
-                showResult(data.status === 'success', data.message);
+                showResultDelete(data.status === 'success', data.message);
             })
             .catch(error => {
-                showResult(false, 'An error occurred while deleting data.', error.message);
+                showResultDelete(false, 'An error occurred while deleting data.', error.message);
             });
         }
     });
@@ -995,7 +1082,7 @@ if (deleteBtn) {
 const formUploadDB = document.getElementById('upload-form');
 const resultDivUpload = document.getElementById('result');
 
-function showResult(success, message, extra='') {
+function showResultUpload(success, message, extra='') {
     resultDivUpload.innerHTML = `
       <div class="alert alert-${success ? 'success' : 'danger'}">
         ${message}${extra ? ': ' + extra : ''}
@@ -1015,10 +1102,10 @@ if (formUploadDB) {
         })
         .then(res => res.json())
         .then(payload => {
-          showResult(payload.status === 'success', payload.message);
+          showResultUpload(payload.status === 'success', payload.message);
         })
         .catch(err => {
-          showResult(false, 'Upload failed', err.message);
+          showResultUpload(false, 'Upload failed', err.message);
         });
     });
 }

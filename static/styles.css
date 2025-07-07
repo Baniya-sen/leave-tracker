@@ -301,26 +301,6 @@ nav .navbar-brand .logo_text::first-letter {
     margin: 0 auto !important;
 }
 
-.main-right-panel-wrapper {
-    background-color: #ffffff;
-    /* White background for the RIGHT content area */
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-    /* Subtle shadow for the RIGHT panel */
-    padding: 30px;
-    /* Padding for content inside the right panel */
-    margin-top: 5px;
-    /* Space from the top header */
-    max-width: 50%;
-    /* Approx 50% of viewport width */
-    margin-left: auto;
-    /* Center the panel or push it to the right with specific margins */
-    margin-right: auto;
-    /* Center the panel */
-    float: none;
-    /* Ensure it doesn't float when centered with auto margins */
-}
-
 /* Specific styling for the row containing the sidebar and content */
 .page-layout-row {
     display: flex;
@@ -1192,19 +1172,6 @@ nav .navbar-brand .logo_text::first-letter {
     margin-left: 25px;
 }
 
-/* Center the main card on the page */
-.main-right-panel-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    min-height: 600px;
-    background: none;
-    box-shadow: none;
-    border-radius: 0;
-    padding: 0;
-}
-
 @media (max-width: 700px) {
     .settings-card {
         padding: 18px 6px;
@@ -1410,18 +1377,6 @@ nav .navbar-brand .logo_text::first-letter {
     object-fit: cover;
     border: 2px solid #1ec28b;
     background: #f6fcfa;
-}
-
-.main-right-panel-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    min-height: 600px;
-    background: none;
-    box-shadow: none;
-    border-radius: 0;
-    padding: 0;
 }
 
 @media (max-width: 700px) {
@@ -2093,18 +2048,6 @@ nav .navbar-brand .logo_text::first-letter {
     object-fit: cover;
     border: 2px solid #1ec28b;
     background: #f6fcfa;
-}
-
-.main-right-panel-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    min-height: 600px;
-    background: none;
-    box-shadow: none;
-    border-radius: 0;
-    padding: 0;
 }
 
 @media (max-width: 700px) {

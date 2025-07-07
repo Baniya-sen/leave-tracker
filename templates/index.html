@@ -56,7 +56,8 @@
 
 {% block extra_scripts %}
 <script>
- window.USER_LEAVES = {{ user_leaves | tojson }};
+  window.USER_LEAVES = {{ user_leaves | tojson }};
+  window.USER_INFO = {{ user_info | tojson }};
 </script>
 <script src='fullcalendar/main.min.js'></script>
 {% endblock %}

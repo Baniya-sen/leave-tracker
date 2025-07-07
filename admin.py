@@ -1,27 +1,40 @@
 import os
+import hashlib
 import json
-from datetime import datetime, timezone
-from flask import g, current_app, send_file, request, jsonify, session, redirect, url_for
 import sqlite3
 import tempfile
 import zipfile
+from dotenv import load_dotenv
+from time import time
 from functools import wraps
-
+from datetime import datetime, timezone
+from flask import g, current_app, send_file, request, jsonify, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from leaves import get_mongo_client
+
+
+load_dotenv()
+
+
+def hash_to_admin(period_seconds: int = 10*60, when: float = None) -> str:
+    h1 = os.getenv('H1')
+    h2 = os.getenv('H2')
+    h3 = os.getenv('H3')
+    ts = when if when is not None else time()
+    bucket = int(ts // period_seconds)
+    data = h1 + h2 + h3 + str(bucket)
+    return hashlib.sha256(data.encode('utf-8')).hexdigest()
 
 
 def admin_login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if 'admin_id' not in session or 'admin_session_token' not in session:
-            print("whyyyyyyy")
             return redirect(url_for('login'))
 
         admin_added = get_admin_info_with_id(session['admin_id'])
         if admin_added is None or dict(admin_added).get('admin_session_token') != session['admin_session_token']:
-            print("whyy whyyyyyyyy")
             session.clear()
             return redirect(url_for('login'))
 

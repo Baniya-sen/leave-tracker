@@ -15,9 +15,11 @@ Admin Register -
   <div class="login-container">
     <div class="login-card inter">
       <!-- Replace with your Leave Tracker logo -->
-      <img src="{{ url_for('static', filename='logo.png') }}" alt="Leave Tracker" class="logo">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Leave Tracker" class="logo">
+      <div class="app-login-title">Register as Admin to Leave-Tracker</div>
       <div id="error" class="error-message">Please fix the errors below.</div>
       <form action="/admin_register" method="post" id="registerForm">
+        <input type="hidden" value="{{ register_admin_token }}" name="regisHash"></input>
         <div class="form-group">
           <input type="text" id="username" name="username" placeholder="Username" required>
         </div>

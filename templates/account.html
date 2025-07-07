@@ -165,6 +165,9 @@
                 <div style="flex:1;">
                   <label class="settings-label mb-1">Your Firm Weekend Days</label>
                   <div id="firm-weekend-display" class="settings-value d-flex align-items-center" style="gap: 10px;">
+                    {% if not user_info['firm_weekend_days'] %}
+                      Numbers separated by comma, e.g. 6, 7 - For Saturday and Sunday
+                    {% endif %}
                     {% set value_str = user_info['firm_weekend_days'] or '' %}
                     {% set weekday_map = { '1': 'Monday', '2': 'Tuesday', '3': 'Wednesday', '4': 'Thursday', '5': 'Friday', '6': 'Saturday', '7': 'Sunday' } %}
                     {% for num in value_str.split(',') if num.strip() %}
@@ -175,7 +178,7 @@
                     action="/account/update-info/firm_weekend">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="text" class="form-control" id="firm-weekend-input-edit" name="firm_weekend_days"
-                      placeholder="Enter weekend days numbers. e.g. 6,7 for Saturday, Sunday"
+                      placeholder="7 for Sunday"
                       value="{{ user_info['firm_weekend_days'] or '' }}" style="max-width: 300px;">
                     <div class="settings-form-actions">
                       <button type="submit" class="btn btn-success" id="save-firm-weekend">Save</button>
@@ -196,6 +199,9 @@
                 <div class="leaves-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; flex:1;">
                   <span class="settings-label" style="grid-column: span 2;">Your Firm Leaves Structure</span>
                   <div class="leaves-items">
+                    {% if not user_info['leaves_type'] | from_json %}
+                      e.g. Sick: 5
+                    {% endif %}
                     {% set granted = user_info['leaves_type'] | from_json %}
                     {% for lt, count in granted.items() %}
                       <span class="leave-pair" style="display: inline-block; white-space: nowrap;">
