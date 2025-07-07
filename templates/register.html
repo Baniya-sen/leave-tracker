@@ -1,6 +1,7 @@
 {% extends "layout.html" %}
+{% set hide_nav = true %}
 
-{% block title %} Register -{% endblock %}
+{% block title %} Signup - {% endblock %}
 
 {% block main %}
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
@@ -16,6 +17,9 @@
                     height="60" width="60" />
             </div>
             <div class="app-login-title">Sign up to Leave Tracker</div>
+            <div id="log-display" class="text-danger small mt-1" style="display:none;">
+                {{ log_display if log_display else '' }}
+            </div>
             <!-- <div class="app-login-social-row">
                 <button type="button" class="app-login-social-btn"><i class="fab fa-google"></i></button>
                 <button type="button" class="app-login-social-btn"><i class="fab fa-github"></i></button>

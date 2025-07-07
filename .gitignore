@@ -6,5 +6,7 @@ __pycache__/
 *.py[cod]
 
 .env
-user_auth.db
+*.db
 flask_session
+
+hashed.py

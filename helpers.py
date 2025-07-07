@@ -1,8 +1,14 @@
 import re
-from datetime import datetime
+from datetime import datetime, timezone
+
+import auth
 
 
-def validate_name_age(data):
+def account_verified(user_id) -> bool:
+    return auth.get_user_field(user_id, 'account_verified') == 1
+
+
+def validate_name_age(data, user_id) -> any:
     name = data.get('name', '').strip()
     age = data.get('age', '').strip()
     if not name:
@@ -12,23 +18,40 @@ def validate_name_age(data):
     return True, None, {'name': name, 'age': int(age)}
 
 
-def validate_email(data):
+def validate_email(data, user_id) -> any:
     email = data.get('email', '').strip()
     if not email or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
         return False, 'Invalid email', None
     return True, None, {'email': email}
 
 
-def validate_dob(data):
-    date = data.get('date', '').strip()
+def validate_dob(data, user_id) -> any:
+    date_str = data.get('date', '').strip()
+
     try:
-        datetime.strptime(date, '%Y-%m-%d')
-    except Exception:
+        dob = datetime.strptime(date_str, '%Y-%m-%d').date()
+    except ValueError:
         return False, 'Invalid date format', None
-    return True, None, {'date': date}
+
+    age = auth.get_user_field(user_id, 'age')
+    if not age:
+        return False, 'Please enter your Age first!', None
+
+    try:
+        age = int(age)
+    except ValueError:
+        return False, 'Age is invalid', None
+
+    today = datetime.today().date()
+    calculated_age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+    if calculated_age != age:
+        return False, 'Birth date and Age do not match!', None
+
+    return True, None, {'date': date_str}
 
 
-def validate_firm_info(data):
+def validate_firm_info(data, user_id) -> any:
     firm_name = data.get('firm_name', '').strip()
     firm_join_date = data.get('firm_join_date', '').strip()
     if not firm_name:
@@ -40,7 +63,7 @@ def validate_firm_info(data):
     return True, None, {'firm_name': firm_name, 'firm_join_date': firm_join_date}
 
 
-def validate_firm_weekend(data):
+def validate_firm_weekend(data, user_id) -> any:
     days = data.get('firm_weekend_days', '').strip()
     if not days or not re.match(r'^([1-7])(?:\s*,\s*(?!\\1)[1-7])?\s*$', days):
         return False, 'Weekend days must be a single number 1-7 or two numbers 1-7 separated by a comma.', None
@@ -51,7 +74,7 @@ def validate_firm_weekend(data):
     return True, None, {'firm_weekend_days': normalized}
 
 
-def validate_firm_leaves(data, request=None):
+def validate_firm_leaves(data, request=None, user_id=None) -> any:
     # request: pass flask.request if available, else None
     if request is not None:
         types = request.form.getlist('leave_type[]')

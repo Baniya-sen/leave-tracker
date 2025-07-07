@@ -122,6 +122,9 @@
             cell.dataset.date = iso;
             if (leaveMap[iso]) {
                 cell.classList.add('leave-day');
+                cell.classList.add('leave-day-disabled');
+                cell.style.pointerEvents = 'none';
+                cell.style.opacity = '0.8';
                 cell.style.position = 'relative';
                 cell.style.overflow = 'hidden';
                 cell.style.backgroundColor = 'red';
@@ -192,9 +195,30 @@
 })();
 
 // Account page logic (only runs on account.html)
-(function () {
-    // Only run if on account page
+(async function () {
     if (!document.querySelector('.settings-card') || !document.getElementById('tab-account')) return;
+
+    async function fetchUserInfo() {
+      const csrf = document.querySelector('meta[name="csrf-token"]').content;
+      const res = await fetch('/user-info', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken':   csrf
+        },
+        body: JSON.stringify({})
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+
+      return res.json();
+    }
+
+    const user_info = await fetchUserInfo();
 
     // Helper to close all edit modes
     function closeAllEditModes() {
@@ -242,13 +266,56 @@
     const cancelNameAgeBtn = document.getElementById('cancel-name-age');
     const nameInputEdit = document.getElementById('name-input-edit');
     const ageInputEdit = document.getElementById('age-input-edit');
-    let agePopup = null;
+    const upperDeck = document.getElementById('upper-deck');
+    const agePopup = document.createElement('div');
+    ageInputEdit.parentElement.style.position = 'relative';
+    agePopup.className = 'age-popup';
+    upperDeck.appendChild(agePopup);
+
+    let popupTimeoutId = null;
+
+    function emailVerification(dob=false) {
+        const email = user_info['email'] ?? '';
+        const verified = user_info['account_verified'] ?? '';
+
+        if (!email.trim() || email.trim() === "None") {
+            agePopup.innerText = 'You must add a email first.';
+            agePopup.classList.add('active');
+            closeAllEditModes();
+
+            if (popupTimeoutId) {
+              clearTimeout(popupTimeoutId);
+              popupTimeoutId = null;
+            }
+            popupTimeoutId = setTimeout(() => {
+                agePopup.classList.remove('active');
+                popupTimeoutId = null;
+            }, 2500);
+
+            return false;
+
+        } else if (dob && (!verified || verified === 0)) {
+            closeAllEditModes();
+            agePopup.innerText = 'You must verify your email first.';
+            agePopup.classList.add('active');
+
+            if (popupTimeoutId) {
+              clearTimeout(popupTimeoutId);
+              popupTimeoutId = null;
+            }
+            popupTimeoutId = setTimeout(() => {
+                agePopup.classList.remove('active');
+                popupTimeoutId = null;
+            }, 2500);
+
+            return false;
+        }
+
+        return true;
+    }
+
     if (editNameAgeBtn && nameAgeDisplay && nameAgeEditForm && cancelNameAgeBtn && nameInputEdit && ageInputEdit) {
-        agePopup = document.createElement('div');
-        agePopup.className = 'age-popup';
-        agePopup.innerText = 'Age must be valid be at least 14.';
-        ageInputEdit.parentElement.style.position = 'relative';
-        ageInputEdit.parentElement.appendChild(agePopup);
+        agePopup.innerText = 'Age must be valid, at least 14.';
 
         function validateAgePopup() {
             const age = ageInputEdit.value;
@@ -264,7 +331,6 @@
             }
         }
         ageInputEdit.addEventListener('input', validateAgePopup);
-        // Also validate on open
         editNameAgeBtn.addEventListener('click', function () {
             closeAllEditModes();
             nameAgeDisplay.style.display = 'none';
@@ -312,7 +378,11 @@
     const cancelDobBtn = document.getElementById('cancel-dob');
     const dobInputEdit = document.getElementById('dob-input-edit');
     if (editDobBtn && dobDisplay && dobEditForm && cancelDobBtn && dobInputEdit) {
-        editDobBtn.addEventListener('click', function () {
+        editDobBtn.addEventListener('click', function (e) {
+            if (!emailVerification(true)) {
+                e.preventDefault();
+                return
+            }
             closeAllEditModes();
             dobDisplay.style.display = 'none';
             dobEditForm.classList.remove('d-none');
@@ -327,6 +397,95 @@
         });
     }
 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const verifyDiv = document.getElementById("verifyDiv");
+    const verifyBtn = document.getElementById("verify-account-btn");
+      if (verifyBtn) {
+        verifyBtn.addEventListener("click", async () => {
+          if (!emailVerification()) {
+              return
+          }
+          verifyBtn.disabled = true;
+          verifyBtn.textContent = "Wait!";
+
+          try {
+            const response = await fetch('/request-verify-email', {
+              method: 'POST',
+              headers: { 'X-CSRFToken': csrfToken }
+            });
+
+            let data;
+            const contentType = response.headers.get("Content-Type") || "";
+            if (contentType.includes("application/json")) {
+              data = await response.json();
+            } else {
+              data = { error: await response.text() };
+            }
+
+            if (response.ok) {
+              verifyBtn.classList.add("d-none");
+              verifyDiv.classList.add("justify-content-between");
+              document.getElementById("account-status").classList.add("d-none");
+              document.getElementById("otp-input-container").classList.remove("d-none");
+              document.getElementById("otp-input").focus();
+            } else {
+              console.error("Server error:", response.status, data.error);
+              alert(data.error || "Failed to send verification email. Try again later.");
+              verifyBtn.disabled = false;
+              verifyBtn.textContent = "Verify";
+            }
+          } catch (err) {
+            console.error("Fetch error:", err);
+            alert("Error sending request.");
+          }
+        });
+      }
+
+    const cancelVerifyBtn = document.getElementById("cancel-otp-btn");
+    if (cancelVerifyBtn) {
+        cancelVerifyBtn.addEventListener("click", () => {
+            verifyBtn.disabled = false;
+            verifyBtn.textContent = "Verify";
+            verifyDiv.classList.remove("justify-content-between");
+            document.getElementById("account-status").classList.remove("d-none");
+            document.getElementById("otp-input").value = "";
+            document.getElementById("otp-input-container").classList.add("d-none");
+            document.getElementById("verify-account-btn").classList.remove("d-none");
+        });
+    }
+
+    const saveOTPBtn = document.getElementById("save-otp-btn");
+    if (saveOTPBtn) {
+        saveOTPBtn.addEventListener("click", async () => {
+            const otp = document.getElementById("otp-input").value.trim();
+            if (!/^\d{6}$/.test(otp)) {
+                alert("OTP must be 6 digits");
+                return;
+            }
+            try {
+                const response = await fetch("/confirm-otp", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ otp })
+                });
+                if (response.ok) {
+                    document.getElementById("account-status").textContent = "VERIFIED";
+                    document.getElementById("account-status").classList.remove("account-badge-unverified");
+                    document.getElementById("account-status").classList.add("account-badge-verified");
+                    document.getElementById("otp-input-container").classList.add("d-none");
+                } else {
+                    alert("Invalid OTP");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Error verifying OTP.");
+            }
+        });
+    }
+
     // Inline editing for firm info (like name & age)
     const editFirmInfoBtn = document.getElementById('edit-firm-info');
     const firmInfoDisplay = document.getElementById('firm-info-display');
@@ -335,7 +494,11 @@
     const firmNameInputEdit = document.querySelector('input[name="firm_name"]');
     const firmJoinDateInputEdit = document.querySelector('input[name="firm_join_date"]');
     if (editFirmInfoBtn && firmInfoDisplay && firmInfoEditForm && cancelFirmInfoBtn && firmNameInputEdit && firmJoinDateInputEdit) {
-        editFirmInfoBtn.addEventListener('click', function () {
+        editFirmInfoBtn.addEventListener('click', function (e) {
+            if (!emailVerification(true)) {
+                e.preventDefault();
+                return
+            }
             closeAllEditModes();
             firmInfoDisplay.style.display = 'none';
             firmInfoEditForm.classList.remove('d-none');
@@ -358,7 +521,11 @@
     const cancelFirmWeekendBtn = document.getElementById('cancel-firm-weekend');
     const firmWeekendInputEdit = document.querySelector('input[name="firm_weekend_days"]');
     if (editFirmWeekendBtn && firmWeekendDisplay && firmWeekendEditForm && cancelFirmWeekendBtn && firmWeekendInputEdit) {
-        editFirmWeekendBtn.addEventListener('click', function () {
+        editFirmWeekendBtn.addEventListener('click', function (e) {
+            if (!emailVerification(true)) {
+                e.preventDefault();
+                return
+            }
             closeAllEditModes();
             firmWeekendDisplay.style.display = 'none';
             firmWeekendEditForm.classList.remove('d-none');
@@ -381,7 +548,11 @@
     const cancelFirmLeavesBtn = document.getElementById('cancel-firm-leaves');
     const addLeaveTypeBtn = document.getElementById('add-leave-type');
     if (editFirmLeavesBtn && firmLeavesDisplay && firmLeavesEditForm && cancelFirmLeavesBtn && addLeaveTypeBtn) {
-        editFirmLeavesBtn.addEventListener('click', function () {
+        editFirmLeavesBtn.addEventListener('click', function (e) {
+            if (!emailVerification(true)) {
+                e.preventDefault();
+                return
+            }
             closeAllEditModes();
             firmLeavesDisplay.style.display = 'none';
             firmLeavesEditForm.classList.remove('d-none');
@@ -437,37 +608,34 @@ if (leaveTable) {
 
 // Import leaves data function
 (function () {
-    const importBtn = document.getElementById("import-leaves-btn");
-    const box = document.getElementById("import-leaves-box");
-    const input = document.getElementById("leave-json-input");
-    const submit = document.getElementById("submit-leave-json");
-    const cancel = document.getElementById("cancel-leave-json");
+    const importBtn = document.getElementById("submit-leave-json");
+    const text = document.getElementById("import-leaves-data-json");
     const errorBox = document.getElementById("leave-import-error");
 
-    if (!importBtn || !box || !input || !submit || !cancel || !errorBox) return;
+    if (!importBtn || !text || !errorBox) return;
 
-    importBtn.addEventListener("click", () => {
-        box.style.display = "block";
-        errorBox.style.display = "none";
-        input.focus();
-    });
-
-    cancel.addEventListener("click", () => {
-        input.value = "";
-        box.style.display = "none";
-        errorBox.style.display = "none";
-    });
-
-    submit.addEventListener("click", async () => {
+    importBtn.addEventListener("click", async () => {
+        importBtn.disabled = true;
+        text.disabled = true;
         errorBox.style.display = "none";
         errorBox.textContent = "";
 
+        if (text.value === "") {
+            errorBox.textContent = "No data provided.";
+            errorBox.style.display = "block";
+            importBtn.disabled = false;
+            text.disabled = false;
+            return;
+        }
+
         let parsed;
         try {
-            parsed = JSON.parse(input.value);
+            parsed = JSON.parse(text.value);
         } catch {
             errorBox.textContent = "Invalid JSON format.";
             errorBox.style.display = "block";
+            importBtn.disabled = false;
+            text.disabled = false;
             return;
         }
 
@@ -491,13 +659,12 @@ if (leaveTable) {
             }
 
             // Optional: show toast/alert
-            alert("Leaves data imported successfully.");
-            box.style.display = "none";
-            input.value = "";
-            location.reload(); // or reload part of the UI
+            errorBox.textContent = "Leaves data imported successfully.";
+            errorBox.style.display = "block";
+            text.value = "";
+            location.reload();
         } catch (err) {
-            console.error("Fetch error during leave import:", err);
-            errorBox.textContent = "Server error. Please try again.";
+            errorBox.textContent = "Server error. Please try again after few minutes.";
             errorBox.style.display = "block";
         }
     });
@@ -628,8 +795,63 @@ document.addEventListener('DOMContentLoaded', function () {
             cell = cell.parentElement;
         }
         if (!cell || !cell.classList.contains('calendar-day')) return;
+        if (cell.classList.contains('leave-day-disabled')) return; // Prevent modal for taken days
         const iso = cell.dataset.date;
         if (!iso) return;
+
+        // Check user info
+        const info = window.USER_INFO || {};
+        let message = '';
+        if (!info.email || info.email === 'None') {
+            message = 'You have not added an email. Please add and verify your email to start adding leaves.';
+        } else if (!info.account_verified || info.account_verified === 0 || info.account_verified === '0') {
+            message = 'Your email is not verified. Please verify your email to use this feature.';
+        } else if (!info.firm_name || info.firm_name === 'None') {
+            message = 'You have not added your firm info. Without it, whats the use? Add all in the Accounts tab.';
+        } else if (!info.leaves_type || Object.keys(info.leaves_type).length === 0) {
+            message = 'You have not set up your leave structure, so there is not data. Visit accounts tab!';
+        }
+
+        if (message) {
+            // Show modal with message only
+            document.querySelector('.custom-leave-modal-title').textContent = 'Cannot Add Leaves';
+            document.getElementById('leaveForm').style.display = 'none';
+            let msgDiv = document.getElementById('leaveModalMsg');
+            if (!msgDiv) {
+                msgDiv = document.createElement('div');
+                msgDiv.id = 'leaveModalMsg';
+                msgDiv.style.margin = '2em 0';
+                msgDiv.style.fontSize = '1.1em';
+                msgDiv.style.color = '#b00';
+                document.querySelector('.custom-leave-modal-content').appendChild(msgDiv);
+            }
+            msgDiv.textContent = message;
+            let okBtn = document.getElementById('leaveModalOkBtn');
+            if (!okBtn) {
+                okBtn = document.createElement('button');
+                okBtn.id = 'leaveModalOkBtn';
+                okBtn.type = 'button';
+                okBtn.textContent = 'OK';
+                okBtn.className = 'btn btn-primary';
+                okBtn.style.margin = '1em auto 0 auto';
+                okBtn.style.display = 'block';
+                okBtn.onclick = hideLeaveModal;
+                document.querySelector('.custom-leave-modal-content').appendChild(okBtn);
+            } else {
+                okBtn.style.display = 'block';
+            }
+            showLeaveModal();
+            return;
+        } else {
+            // Show normal leave form
+            document.querySelector('.custom-leave-modal-title').textContent = 'Take Leave';
+            document.getElementById('leaveForm').style.display = '';
+            let msgDiv = document.getElementById('leaveModalMsg');
+            if (msgDiv) msgDiv.textContent = '';
+            let okBtn = document.getElementById('leaveModalOkBtn');
+            if (okBtn) okBtn.style.display = 'none';
+        }
+
         leaveDateInput.value = iso;
         populateLeaveTypes();
         leaveCountInput.value = 1;
@@ -641,11 +863,41 @@ document.addEventListener('DOMContentLoaded', function () {
     leaveTypeSelect?.addEventListener('change', validateLeaveInput);
     leaveCountInput?.addEventListener('input', validateLeaveInput);
 
+    function buildLeaveMap() {
+        const leaveMap = {};
+        if (window.USER_LEAVES && window.USER_LEAVES.leaves_taken) {
+            const taken = window.USER_LEAVES.leaves_taken;
+            Object.entries(taken).forEach(([type, dates]) => {
+                dates.forEach(dateStr => {
+                    if (!leaveMap[dateStr]) leaveMap[dateStr] = [];
+                    leaveMap[dateStr].push(type);
+                });
+            });
+        }
+        return leaveMap;
+    }
+
     // --- Submit leave form via AJAX ---
     leaveForm?.addEventListener('submit', function (e) {
         e.preventDefault();
         if (!validateLeaveInput()) return;
         saveBtn.disabled = true;
+
+        // Calculate consecutive dates
+        const startDate = leaveDateInput.value;
+        const days = parseInt(leaveCountInput.value, 10);
+        const selectedType = leaveTypeSelect.value;
+        const leaveMap = buildLeaveMap();
+        let dates = [];
+        let d = new Date(startDate);
+        while (dates.length < days) {
+            const iso = d.toISOString().slice(0, 10);
+            if (!leaveMap[iso]) {
+                dates.push(iso);
+            }
+            d.setDate(d.getDate() + 1);
+        }
+
         fetch('/take_leave', {
             method: 'POST',
             headers: {
@@ -653,9 +905,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
             },
             body: JSON.stringify({
-                date: leaveDateInput.value,
-                type: leaveTypeSelect.value,
-                days: leaveCountInput.value
+                dates: dates,
+                type: selectedType
             })
         })
             .then(r => r.json())
@@ -671,3 +922,190 @@ document.addEventListener('DOMContentLoaded', function () {
             .finally(() => { saveBtn.disabled = false; });
     });
 })();
+
+
+const promptText = `You are an expert in structuring data. Your task is to convert my raw leave data into a specific JSON format.
+I will provide my leave data in any form (e.g., JSON, spreadsheet text, plain text lists, CSV, etc.).
+
+You will then produce a **single JSON object** where:
+- **Keys** are leave types (e.g., "Earned", "Sick").
+- **Values** are lists of leave dates in \`YYYY-MM-DD\` format.
+
+Example output:
+{"Earned": ["2025-07-01", "2025-03-12"], "Sick": ["2025-06-20"]}
+
+⚠️ If you find any **conflicts** (e.g., the same date listed under multiple leave types), you must ask me for clarification before generating the final output.
+
+Guidelines to follow:
+- JSON keys must be **clean leave type names**, like "Earned", "Sick", "Casual", "Restricted Holidays", or "Optional".
+- **Remove extra words** such as "Leave", "(Festival)", or descriptions from the leave type name. Example: "Optional (Festival)" ➔ "Optional".
+- Easily identified same leaves type can be combined.
+- Dates must be in **YYYY-MM-DD** format.
+- If a **single date appears under multiple leave types**, ask me to clarify before creating the final JSON.
+- ❌ Do not explain anything. Do not give additional examples. Do not describe your process.
+- Output should be formatted JSON, even better in editor if available.
+
+Please ask me to share any leave data I may have saved to track my leaves in my firm.`;
+
+const copyElements = document.querySelectorAll(".ai-bot-copy");
+copyElements.forEach(el => {
+    el.addEventListener("click", async function () {
+      try {
+        // Modern clipboard API with fallback
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(promptText);
+        } else {
+          const textArea = document.createElement("textarea");
+          textArea.value = promptText;
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textArea);
+        }
+
+        // Show confirmation message near the clicked element
+        showCopiedMessage(el.parentElement);
+      } catch (err) {
+        alert("Failed to copy prompt. Please copy manually:\n" + promptText);
+      }
+    });
+});
+
+function showCopiedMessage(container) {
+    let msg = document.createElement("p");
+    msg.className = "small mb-0 ms-2 pt-0 inter";
+    msg.style.color = "#27d289";
+    msg.textContent = "Prompt copied!";
+    container.appendChild(msg);
+
+    setTimeout(() => {
+      msg.remove();
+    }, 2500);
+}
+
+
+// Admin-Login
+const loginForm = document.getElementById('loginForm');
+if (loginForm) {
+    loginForm.addEventListener('submit', function(e) {
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value.trim();
+        const errorEl = document.getElementById('error');
+        errorEl.style.display = 'none';
+
+        if (!user || !pass) {
+          errorEl.textContent = 'Please enter both username and password.';
+          errorEl.style.display = 'block';
+          e.preventDefault();
+          return;
+        }
+    });
+}
+
+
+// Admin-Register
+const registerForm = document.getElementById('registerForm');
+if (registerForm) {
+    registerForm.addEventListener('submit', function(e) {
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value.trim();
+        const confirm = document.getElementById('confirmPassword').value.trim();
+        const errorEl = document.getElementById('error');
+
+        // Reset
+        errorEl.style.display = 'none';
+
+        // Basic validation
+        if (!user || !pass || !confirm) {
+          e.preventDefault();
+          errorEl.textContent = 'All fields are required.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        if (pass !== confirm) {
+          e.preventDefault();
+          errorEl.textContent = 'Passwords do not match.';
+          errorEl.style.display = 'block';
+          return;
+        }
+    });
+}
+
+
+// Admin-delete
+const deleteBtn = document.getElementById('deleteBtn');
+const resultDivDelete = document.getElementById('result');
+const successMessage = document.getElementById('successMessage');
+const errorMessage = document.getElementById('errorMessage');
+const successText = document.getElementById('successText');
+const errorText = document.getElementById('errorText');
+
+function showResultDelete(success, message) {
+    resultDivDelete.style.display = 'block';
+    if (success) {
+        successMessage.style.display = 'block';
+        errorMessage.style.display = 'none';
+        successText.textContent = message;
+    } else {
+        successMessage.style.display = 'none';
+        errorMessage.style.display = 'block';
+        errorText.textContent = message;
+    }
+}
+
+const csrf = document.querySelector('meta[name="csrf-token"]').content;
+if (deleteBtn) {
+    deleteBtn.addEventListener('click', function() {
+        if (confirm('Are you sure you want to delete ALL user data? This action cannot be undone!')) {
+            const deleteRoute = document.getElementById('delete_route').href;
+            fetch(deleteRoute, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrf
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                showResultDelete(data.status === 'success', data.message);
+            })
+            .catch(error => {
+                showResultDelete(false, 'An error occurred while deleting data.', error.message);
+            });
+        }
+    });
+}
+
+
+// Admin-Upload
+const formUploadDB = document.getElementById('upload-form');
+const resultDivUpload = document.getElementById('result');
+
+function showResultUpload(success, message, extra='') {
+    resultDivUpload.innerHTML = `
+      <div class="alert alert-${success ? 'success' : 'danger'}">
+        ${message}${extra ? ': ' + extra : ''}
+      </div>
+    `;
+}
+
+if (formUploadDB) {
+    formUploadDB.addEventListener('submit', e => {
+        e.preventDefault();
+        const data = new FormData(formUploadDB);
+        const uploadRoute = document.getElementById('upload_route').href;
+        fetch(uploadRoute, {
+          method: 'POST',
+          headers: { 'X-CSRFToken': csrf },
+          body: data
+        })
+        .then(res => res.json())
+        .then(payload => {
+          showResultUpload(payload.status === 'success', payload.message);
+        })
+        .catch(err => {
+          showResultUpload(false, 'Upload failed', err.message);
+        });
+    });
+}

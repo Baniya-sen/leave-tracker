@@ -14,7 +14,10 @@
       <div class="settings-tabs d-flex gap-4 mb-4">
         <button class="settings-tab inter active" data-tab="account">Account Settings</button>
         <button class="settings-tab inter" data-tab="firm">Firm Settings</button>
+        <button class="settings-tab inter" data-tab="import-leaves">Import Leaves</button>
       </div>
+
+      <div id="upper-deck"></div>
 
       <!-- Tab Panels -->
       <div class="settings-tab-panel" id="tab-account">
@@ -61,7 +64,7 @@
               <div style="flex:2; min-width:220px;">
                 <label class="settings-label mb-1">Account Email Address</label>
                 <div id="email-display">
-                  <span>Your current email address is <b>{{ user_info['email'] or 'None' }}</b></span>
+                  <span>Your current email address is: <b>{{ user_info['email'] or 'None' }}</b></span>
                 </div>
                 <form id="email-edit-form" class="d-none" method="post" action="/account/update-info/email">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -83,7 +86,7 @@
               <div style="flex:2; min-width:220px;">
                 <label class="settings-label mb-1">Date of Birth</label>
                 <div id="dob-display">
-                  <span>Your mentioned Date of birth is <b>{{ user_info['date'] or 'None' }}</b></span>
+                  <span>Your mentioned Date of birth is: <b>{{ user_info['date'] or 'None' }}</b></span>
                 </div>
                 <form id="dob-edit-form" class="d-none" method="post" action="/account/update-info/dob">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -103,19 +106,23 @@
             <!-- Account Verified -->
             <div class="settings-row-bg">
               <div class="d-flex align-items-center justify-content-between w-100">
-                <div class="settings-label d-flex align-items-center" style="gap: 8px;">
-                  Account Verified
-                  {% if not user_info['account_verified'] %}
-                    <span class="account-badge account-badge-unverified">UNVERIFIED</span>
-                  {% else %}
-                    <span class="account-badge account-badge-verified">VERIFIED</span>
-                  {% endif %}
+                <div class="settings-label d-flex align-items-center w-100" id="verifyDiv" style="gap: 8px;">
+                  Account Verification
+                  <span id="account-status" class="account-badge {% if 'account_verified' in user_info and (user_info['account_verified']|int != 0) %}account-badge-verified{% endif %}">
+                    {{ 'VERIFIED' if user_info.get('account_verified', 0)|int != 0 else 'UNVERIFIED' }}
+                  </span>
+                  <div id="otp-input-container" class="d-flex d-none ms-3">
+                    <input type="text" class="form-control form-control-sm" id="otp-input" placeholder="Enter OTP" maxlength="6" style="width:200px; margin-right: 2%">
+                    <button class="btn btn-success btn-sm ms-2" id="save-otp-btn">Save</button>
+                    <button class="btn btn-secondary btn-sm ms-1" id="cancel-otp-btn">Cancel</button>
+                  </div>
                 </div>
-                {% if not user_info['account_verified'] %}
-                  <button class="btn btn-outline-danger btn-sm ms-auto" id="verify-account-btn">Verify Account</button>
+                {% if 'account_verified' not in user_info or (user_info['account_verified']|int == 0) %}
+                  <button class="btn btn-outline-danger btn-sm ms-auto verify-button" id="verify-account-btn" style="padding: 3px 25px;">Verify</button>
                 {% endif %}
               </div>
             </div>
+
           </div> <!-- .settings-list -->
         </div> <!-- .settings-card -->
       </div> <!-- #tab-account -->
@@ -158,6 +165,9 @@
                 <div style="flex:1;">
                   <label class="settings-label mb-1">Your Firm Weekend Days</label>
                   <div id="firm-weekend-display" class="settings-value d-flex align-items-center" style="gap: 10px;">
+                    {% if not user_info['firm_weekend_days'] %}
+                      Numbers separated by comma, e.g. 6, 7 - For Saturday and Sunday
+                    {% endif %}
                     {% set value_str = user_info['firm_weekend_days'] or '' %}
                     {% set weekday_map = { '1': 'Monday', '2': 'Tuesday', '3': 'Wednesday', '4': 'Thursday', '5': 'Friday', '6': 'Saturday', '7': 'Sunday' } %}
                     {% for num in value_str.split(',') if num.strip() %}
@@ -168,7 +178,7 @@
                     action="/account/update-info/firm_weekend">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="text" class="form-control" id="firm-weekend-input-edit" name="firm_weekend_days"
-                      placeholder="Enter weekend days numbers. e.g. 6,7 for Saturday, Sunday"
+                      placeholder="7 for Sunday"
                       value="{{ user_info['firm_weekend_days'] or '' }}" style="max-width: 300px;">
                     <div class="settings-form-actions">
                       <button type="submit" class="btn btn-success" id="save-firm-weekend">Save</button>
@@ -189,6 +199,9 @@
                 <div class="leaves-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; flex:1;">
                   <span class="settings-label" style="grid-column: span 2;">Your Firm Leaves Structure</span>
                   <div class="leaves-items">
+                    {% if not user_info['leaves_type'] | from_json %}
+                      e.g. Sick: 5
+                    {% endif %}
                     {% set granted = user_info['leaves_type'] | from_json %}
                     {% for lt, count in granted.items() %}
                       <span class="leave-pair" style="display: inline-block; white-space: nowrap;">
@@ -251,7 +264,52 @@
         </div> <!-- .settings-card -->
       </div> <!-- #tab-firm -->
 
+      <div class="settings-tab-panel d-none" id="tab-import-leaves">
+        <div class="settings-card card-style mb-4">
+          <div class="settings-list">
+            <!-- Header + example -->
+            <div class="settings-row-bg settings-form-group d-flex">
+              <div class="d-flex flex-column w-100 inter">
+                <h5 class="settings-label w-100 mb-0 inter pb-2">Paste Your Leave Data JSON</h5>
+                <p class="text-muted small mb-2">
+                  Leave types <strong>must match exactly</strong> what you’ve configured in firm settings.
+                  Otherwise, they'll be <strong>Replaced</strong>.<br>
+                  <span class="json-example">
+                    An Example would be:
+                    <code>{"Casual": ["2025-07-01", "2025-03-12"], "Sick": ["2025-06-20"]}<br></code>
+                  </span>
+                </p>
+              </div>
+              <div class="d-flex w-100 inter ai-bot-copy">
+                <p>
+                  <img src="{{ url_for('static', filename='images/copy.png') }}" class="ms-2 bot-copy-img" style="width: 30px;">
+                </p>
+                <p class="text-muted small mb-0 ms-2 pt-1"><strong>Or better, Copy this prompt in any AI bot to generate your leave data easily.</strong></p>
+              </div>
+            </div>
+
+            <div class="settings-row-bg settings-form-group">
+              <textarea
+                id="import-leaves-data-json"
+                class="form-control"
+                rows="8"
+                placeholder="{&#10;  &quot;Casual&quot;: [&quot;2025-07-01&quot;, &quot;2025-07-15&quot;],&#10;  &quot;Sick&quot;: [&quot;2025-06-20&quot;],&#10;  &quot;Earned&quot;: []&#10;}"
+              ></textarea>
+            </div>
+
+            <div class="settings-form-actions settings-form-group">
+              <button class="btn btn-success" id="submit-leave-json">IMPORT</button>
+            </div>
+
+            <div id="leave-import-error" class="text-danger small mt-1" style="display:none;">
+              <!-- fill in via JS on error -->
+            </div>
+          </div>
+        </div>
+      </div> <!-- #tab-leaves-import -->
+
     </section>
   </div> <!-- .row -->
 </div> <!-- .container-fluid -->
+
 {% endblock %}

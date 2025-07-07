@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% set hide_nav = true %}
+
+{% block title %}
+Admin Login -
+{% endblock %}
+
+{% block main %}
+  <style>
+    body {
+      background: #3cb478;
+    }
+  </style>
+
+  <div class="login-container">
+    <div class="login-card inter">
+      <!-- Replace with your Leave Tracker logo -->
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Leave Tracker" class="logo">
+      <div class="app-login-title">Log in as Admin to Leave-Tracker</div>
+      <div id="error" class="error-message">Invalid username or password.</div>
+      <form action="/admin" method="post" id="loginForm" >
+        <input type="hidden" name="hash" value="{{ hash }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <input type="text" id="username" name="username" placeholder="Username" required>
+        </div>
+        <div class="form-group">
+          <input type="password" id="password" name="password" placeholder="Password" required>
+        </div>
+        <div class="form-group">
+          <button class="admin-login-btn" type="submit" id="loginBtn">Login</button>
+        </div>
+      </form>
+      <div class="app-login-links">
+          <a href="/admin_register/{{ register_token }}" class="app-login-link">Create an account</a>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}
