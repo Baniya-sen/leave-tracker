@@ -102,13 +102,10 @@
         for (let d = 1; d <= daysInMonth; d++) {
             const cell = document.createElement('div');
             cell.classList.add('calendar-day');
-            // 1) Wrap the date in its own element
             const num = document.createElement('span');
             num.classList.add('date-number');
             num.style.zIndex = '2';
             num.style.position = 'relative';
-
-            // 2) Highlight today if needed
             if (
                 d === today.getDate() &&
                 currentMonth === today.getMonth() &&
@@ -116,15 +113,10 @@
             ) {
                 cell.classList.add('today');
             }
-
-            // 3) Leaves logic
             const iso = `${currentYear}-${pad(currentMonth + 1)}-${pad(d)}`;
             cell.dataset.date = iso;
             if (leaveMap[iso]) {
                 cell.classList.add('leave-day');
-                cell.classList.add('leave-day-disabled');
-                cell.style.pointerEvents = 'none';
-                cell.style.opacity = '0.8';
                 cell.style.position = 'relative';
                 cell.style.overflow = 'hidden';
                 cell.style.backgroundColor = 'red';
@@ -132,8 +124,6 @@
                 cell.style.flexDirection = 'column';
                 cell.style.justifyContent = 'space-between';
                 cell.title = leaveMap[iso].join(', ');
-
-                // 4) Build the badges container
                 const labelsContainer = document.createElement('div');
                 labelsContainer.classList.add('leave-labels');
                 Object.assign(labelsContainer.style, {
@@ -150,23 +140,18 @@
                     background: 'transparent',
                     zIndex: '1'
                 });
-
                 leaveMap[iso].forEach(type => {
                     const span = document.createElement('span');
                     span.classList.add('leave-label');
                     span.textContent = type;
                     labelsContainer.append(span);
                 });
-
                 cell.append(labelsContainer);
             }
-
             num.textContent = d;
             cell.append(num);
             daysContainer.append(cell);
         }
-
-        // Update active year class (still based on currentYear, which is updated on click/nav)
         document.querySelectorAll('.year-item').forEach(item => {
             item.classList.remove('active');
         });
@@ -199,25 +184,19 @@
     if (!document.querySelector('.settings-card') || !document.getElementById('tab-account')) return;
 
     async function fetchUserInfo() {
-      const csrf = document.querySelector('meta[name="csrf-token"]').content;
-      const res = await fetch('/user-info', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken':   csrf
-        },
-        body: JSON.stringify({})
-      });
+        const csrf = document.querySelector('meta[name="csrf-token"]').content;
+        const res = await fetch('/user-info', {
+            method: 'GET',
+            credentials: 'include',
+        });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `HTTP ${res.status}`);
+        }
 
-      return res.json();
+        return res.json();
     }
-
     const user_info = await fetchUserInfo();
 
     // Helper to close all edit modes
@@ -274,7 +253,7 @@
 
     let popupTimeoutId = null;
 
-    function emailVerification(dob=false) {
+    function emailVerification(dob = false) {
         const email = user_info['email'] ?? '';
         const verified = user_info['account_verified'] ?? '';
 
@@ -284,8 +263,8 @@
             closeAllEditModes();
 
             if (popupTimeoutId) {
-              clearTimeout(popupTimeoutId);
-              popupTimeoutId = null;
+                clearTimeout(popupTimeoutId);
+                popupTimeoutId = null;
             }
             popupTimeoutId = setTimeout(() => {
                 agePopup.classList.remove('active');
@@ -300,8 +279,8 @@
             agePopup.classList.add('active');
 
             if (popupTimeoutId) {
-              clearTimeout(popupTimeoutId);
-              popupTimeoutId = null;
+                clearTimeout(popupTimeoutId);
+                popupTimeoutId = null;
             }
             popupTimeoutId = setTimeout(() => {
                 agePopup.classList.remove('active');
@@ -331,7 +310,11 @@
             }
         }
         ageInputEdit.addEventListener('input', validateAgePopup);
-        editNameAgeBtn.addEventListener('click', function () {
+        editNameAgeBtn.addEventListener('click', function (e) {
+            if (!emailVerification(true)) {
+                e.preventDefault();
+                return
+            }
             closeAllEditModes();
             nameAgeDisplay.style.display = 'none';
             nameAgeEditForm.classList.remove('d-none');
@@ -400,46 +383,46 @@
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const verifyDiv = document.getElementById("verifyDiv");
     const verifyBtn = document.getElementById("verify-account-btn");
-      if (verifyBtn) {
+    if (verifyBtn) {
         verifyBtn.addEventListener("click", async () => {
-          if (!emailVerification()) {
-              return
-          }
-          verifyBtn.disabled = true;
-          verifyBtn.textContent = "Wait!";
-
-          try {
-            const response = await fetch('/request-verify-email', {
-              method: 'POST',
-              headers: { 'X-CSRFToken': csrfToken }
-            });
-
-            let data;
-            const contentType = response.headers.get("Content-Type") || "";
-            if (contentType.includes("application/json")) {
-              data = await response.json();
-            } else {
-              data = { error: await response.text() };
+            if (!emailVerification()) {
+                return
             }
+            verifyBtn.disabled = true;
+            verifyBtn.textContent = "Wait!";
 
-            if (response.ok) {
-              verifyBtn.classList.add("d-none");
-              verifyDiv.classList.add("justify-content-between");
-              document.getElementById("account-status").classList.add("d-none");
-              document.getElementById("otp-input-container").classList.remove("d-none");
-              document.getElementById("otp-input").focus();
-            } else {
-              console.error("Server error:", response.status, data.error);
-              alert(data.error || "Failed to send verification email. Try again later.");
-              verifyBtn.disabled = false;
-              verifyBtn.textContent = "Verify";
+            try {
+                const response = await fetch('/request-verify-email', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken }
+                });
+
+                let data;
+                const contentType = response.headers.get("Content-Type") || "";
+                if (contentType.includes("application/json")) {
+                    data = await response.json();
+                } else {
+                    data = { error: await response.text() };
+                }
+
+                if (response.ok) {
+                    verifyBtn.classList.add("d-none");
+                    verifyDiv.classList.add("justify-content-between");
+                    document.getElementById("account-status").classList.add("d-none");
+                    document.getElementById("otp-input-container").classList.remove("d-none");
+                    document.getElementById("otp-input").focus();
+                } else {
+                    console.error("Server error:", response.status, data.error);
+                    alert(data.error || "Failed to send verification email. Try again later.");
+                    verifyBtn.disabled = false;
+                    verifyBtn.textContent = "Verify";
+                }
+            } catch (err) {
+                console.error("Fetch error:", err);
+                alert("Error sending request.");
             }
-          } catch (err) {
-            console.error("Fetch error:", err);
-            alert("Error sending request.");
-          }
         });
-      }
+    }
 
     const cancelVerifyBtn = document.getElementById("cancel-otp-btn");
     if (cancelVerifyBtn) {
@@ -755,7 +738,7 @@ document.addEventListener('DOMContentLoaded', function () {
         leaveModal.style.display = 'none';
     }
     closeBtn?.addEventListener('click', hideLeaveModal);
-    cancelBtn?.addEventListener('click', function(e) { e.preventDefault(); hideLeaveModal(); });
+    cancelBtn?.addEventListener('click', function (e) { e.preventDefault(); hideLeaveModal(); });
 
     // --- Helper: Populate leave types ---
     function populateLeaveTypes() {
@@ -790,15 +773,20 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Open modal on date click ---
     document.getElementById('days').addEventListener('click', function (e) {
         let cell = e.target;
-        // Find the closest .calendar-day
         while (cell && !cell.classList.contains('calendar-day') && cell !== this) {
             cell = cell.parentElement;
         }
         if (!cell || !cell.classList.contains('calendar-day')) return;
-        if (cell.classList.contains('leave-day-disabled')) return; // Prevent modal for taken days
         const iso = cell.dataset.date;
         if (!iso) return;
-
+        const leaveMap = buildLeaveMap();
+        if (cell.classList.contains('leave-day')) {
+            const leaveType = leaveMap[iso] ? leaveMap[iso][0] : '';
+            showLeaveInfoModal(iso, leaveType);
+            return;
+        }
+        // Show add-leave modal
+        showAddLeaveModal();
         // Check user info
         const info = window.USER_INFO || {};
         let message = '';
@@ -811,9 +799,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (!info.leaves_type || Object.keys(info.leaves_type).length === 0) {
             message = 'You have not set up your leave structure, so there is not data. Visit accounts tab!';
         }
-
         if (message) {
-            // Show modal with message only
             document.querySelector('.custom-leave-modal-title').textContent = 'Cannot Add Leaves';
             document.getElementById('leaveForm').style.display = 'none';
             let msgDiv = document.getElementById('leaveModalMsg');
@@ -843,15 +829,11 @@ document.addEventListener('DOMContentLoaded', function () {
             showLeaveModal();
             return;
         } else {
-            // Show normal leave form
-            document.querySelector('.custom-leave-modal-title').textContent = 'Take Leave';
-            document.getElementById('leaveForm').style.display = '';
             let msgDiv = document.getElementById('leaveModalMsg');
             if (msgDiv) msgDiv.textContent = '';
             let okBtn = document.getElementById('leaveModalOkBtn');
             if (okBtn) okBtn.style.display = 'none';
         }
-
         leaveDateInput.value = iso;
         populateLeaveTypes();
         leaveCountInput.value = 1;
@@ -921,6 +903,74 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(() => alert('Failed to take leave'))
             .finally(() => { saveBtn.disabled = false; });
     });
+
+    // Add leave info modal logic
+    function showLeaveInfoModal(date, leaveType) {
+        const modal = document.getElementById('leaveModal');
+        document.querySelector('.custom-leave-modal-title').textContent = 'Leave Details';
+        document.getElementById('leaveForm').style.display = 'none';
+        let infoDiv = document.getElementById('leaveInfoDiv');
+        if (!infoDiv) {
+            infoDiv = document.createElement('div');
+            infoDiv.id = 'leaveInfoDiv';
+            infoDiv.style.margin = '2em 0';
+            infoDiv.style.fontSize = '1.1em';
+            document.querySelector('.custom-leave-modal-content').appendChild(infoDiv);
+        }
+        infoDiv.innerHTML = `<b>Date:</b> ${date}<br><b>Leave Type:</b> ${leaveType}`;
+        infoDiv.style.display = 'block';
+        let removeBtn = document.getElementById('removeLeaveBtn');
+        if (!removeBtn) {
+            removeBtn = document.createElement('button');
+            removeBtn.id = 'removeLeaveBtn';
+            removeBtn.type = 'button';
+            removeBtn.textContent = 'Remove Leave';
+            removeBtn.className = 'btn btn-danger w-50 d-block mx-auto';
+            removeBtn.style = 'margin-top: 7%;';
+            document.querySelector('.custom-leave-modal-content').appendChild(removeBtn);
+        }
+        removeBtn.style.display = 'inline-block';
+        removeBtn.onclick = function () {
+            removeBtn.disabled = true;
+            fetch('/remove_leave', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ date: date, type: leaveType })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        hideLeaveModal();
+                        window.location.reload();
+                    } else {
+                        alert(data.error || 'Failed to remove leave');
+                    }
+                })
+                .catch(() => alert('Failed to remove leave'))
+                .finally(() => { removeBtn.disabled = false; });
+        };
+        let cancelBtn = document.getElementById('cancelLeaveBtn');
+        if (cancelBtn) {
+            cancelBtn.style.display = 'inline-block';
+            cancelBtn.onclick = hideLeaveModal;
+        }
+        showLeaveModal();
+    }
+
+    // When showing the add-leave form, hide info div and Remove button
+    function showAddLeaveModal() {
+        document.querySelector('.custom-leave-modal-title').textContent = 'Take Leave';
+        document.getElementById('leaveForm').style.display = '';
+        let infoDiv = document.getElementById('leaveInfoDiv');
+        if (infoDiv) infoDiv.style.display = 'none';
+        let removeBtn = document.getElementById('removeLeaveBtn');
+        if (removeBtn) removeBtn.style.display = 'none';
+        let cancelBtn = document.getElementById('cancelLeaveBtn');
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    }
 })();
 
 
@@ -950,25 +1000,25 @@ Please ask me to share any leave data I may have saved to track my leaves in my 
 const copyElements = document.querySelectorAll(".ai-bot-copy");
 copyElements.forEach(el => {
     el.addEventListener("click", async function () {
-      try {
-        // Modern clipboard API with fallback
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(promptText);
-        } else {
-          const textArea = document.createElement("textarea");
-          textArea.value = promptText;
-          document.body.appendChild(textArea);
-          textArea.focus();
-          textArea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textArea);
-        }
+        try {
+            // Modern clipboard API with fallback
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(promptText);
+            } else {
+                const textArea = document.createElement("textarea");
+                textArea.value = promptText;
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            }
 
-        // Show confirmation message near the clicked element
-        showCopiedMessage(el.parentElement);
-      } catch (err) {
-        alert("Failed to copy prompt. Please copy manually:\n" + promptText);
-      }
+            // Show confirmation message near the clicked element
+            showCopiedMessage(el.parentElement);
+        } catch (err) {
+            alert("Failed to copy prompt. Please copy manually:\n" + promptText);
+        }
     });
 });
 
@@ -980,7 +1030,7 @@ function showCopiedMessage(container) {
     container.appendChild(msg);
 
     setTimeout(() => {
-      msg.remove();
+        msg.remove();
     }, 2500);
 }
 
@@ -988,17 +1038,17 @@ function showCopiedMessage(container) {
 // Admin-Login
 const loginForm = document.getElementById('loginForm');
 if (loginForm) {
-    loginForm.addEventListener('submit', function(e) {
+    loginForm.addEventListener('submit', function (e) {
         const user = document.getElementById('username').value.trim();
         const pass = document.getElementById('password').value.trim();
         const errorEl = document.getElementById('error');
         errorEl.style.display = 'none';
 
         if (!user || !pass) {
-          errorEl.textContent = 'Please enter both username and password.';
-          errorEl.style.display = 'block';
-          e.preventDefault();
-          return;
+            errorEl.textContent = 'Please enter both username and password.';
+            errorEl.style.display = 'block';
+            e.preventDefault();
+            return;
         }
     });
 }
@@ -1007,7 +1057,7 @@ if (loginForm) {
 // Admin-Register
 const registerForm = document.getElementById('registerForm');
 if (registerForm) {
-    registerForm.addEventListener('submit', function(e) {
+    registerForm.addEventListener('submit', function (e) {
         const user = document.getElementById('username').value.trim();
         const pass = document.getElementById('password').value.trim();
         const confirm = document.getElementById('confirmPassword').value.trim();
@@ -1018,16 +1068,16 @@ if (registerForm) {
 
         // Basic validation
         if (!user || !pass || !confirm) {
-          e.preventDefault();
-          errorEl.textContent = 'All fields are required.';
-          errorEl.style.display = 'block';
-          return;
+            e.preventDefault();
+            errorEl.textContent = 'All fields are required.';
+            errorEl.style.display = 'block';
+            return;
         }
         if (pass !== confirm) {
-          e.preventDefault();
-          errorEl.textContent = 'Passwords do not match.';
-          errorEl.style.display = 'block';
-          return;
+            e.preventDefault();
+            errorEl.textContent = 'Passwords do not match.';
+            errorEl.style.display = 'block';
+            return;
         }
     });
 }
@@ -1056,7 +1106,7 @@ function showResultDelete(success, message) {
 
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 if (deleteBtn) {
-    deleteBtn.addEventListener('click', function() {
+    deleteBtn.addEventListener('click', function () {
         if (confirm('Are you sure you want to delete ALL user data? This action cannot be undone!')) {
             const deleteRoute = document.getElementById('delete_route').href;
             fetch(deleteRoute, {
@@ -1066,13 +1116,13 @@ if (deleteBtn) {
                     'X-CSRFToken': csrf
                 }
             })
-            .then(response => response.json())
-            .then(data => {
-                showResultDelete(data.status === 'success', data.message);
-            })
-            .catch(error => {
-                showResultDelete(false, 'An error occurred while deleting data.', error.message);
-            });
+                .then(response => response.json())
+                .then(data => {
+                    showResultDelete(data.status === 'success', data.message);
+                })
+                .catch(error => {
+                    showResultDelete(false, 'An error occurred while deleting data.', error.message);
+                });
         }
     });
 }
@@ -1082,7 +1132,7 @@ if (deleteBtn) {
 const formUploadDB = document.getElementById('upload-form');
 const resultDivUpload = document.getElementById('result');
 
-function showResultUpload(success, message, extra='') {
+function showResultUpload(success, message, extra = '') {
     resultDivUpload.innerHTML = `
       <div class="alert alert-${success ? 'success' : 'danger'}">
         ${message}${extra ? ': ' + extra : ''}
@@ -1096,16 +1146,16 @@ if (formUploadDB) {
         const data = new FormData(formUploadDB);
         const uploadRoute = document.getElementById('upload_route').href;
         fetch(uploadRoute, {
-          method: 'POST',
-          headers: { 'X-CSRFToken': csrf },
-          body: data
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrf },
+            body: data
         })
-        .then(res => res.json())
-        .then(payload => {
-          showResultUpload(payload.status === 'success', payload.message);
-        })
-        .catch(err => {
-          showResultUpload(false, 'Upload failed', err.message);
-        });
+            .then(res => res.json())
+            .then(payload => {
+                showResultUpload(payload.status === 'success', payload.message);
+            })
+            .catch(err => {
+                showResultUpload(false, 'Upload failed', err.message);
+            });
     });
 }

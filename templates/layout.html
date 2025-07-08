@@ -25,7 +25,8 @@
   <link href="/static/favicon.ico" rel="icon">
 
   <link href="/static/styles.css" rel="stylesheet">
-  <link href='fullcalendar/main.min.css' rel='stylesheet' />
+
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet"/>
 
   <title>{% block title %}{% endblock %}Leaves Tracker</title>
 
@@ -41,7 +42,7 @@
 
       {% if session["user_id"] %}
       <div class="firm-chip app-firm-chip ">
-        <span>{{ firms or 'Add firm' }}</span>
+        <span>{{ session.get('firm_name') or 'Add firm in Account' }}</span>
         <i class="fa fa-chevron-down"></i>
       </div>
       {% endif %}
@@ -102,6 +103,7 @@
   {% endblock %}
 
   <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
 </body>
 </html>

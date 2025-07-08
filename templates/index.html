@@ -33,7 +33,7 @@
 </div>
 
 <div class="custom-leave-modal" id="leaveModal" style="display:none;">
-  <div class="custom-leave-modal-content">
+  <div class="custom-leave-modal-content" style="height: auto; position:relative">
     <button class="custom-leave-modal-close" id="closeLeaveModal" type="button">&times;</button>
     <h2 class="custom-leave-modal-title">Take Leave</h2>
     <form id="leaveForm">
@@ -51,6 +51,7 @@
         <button type="submit" id="saveLeaveBtn">Save</button>
       </div>
     </form>
+    <div id="leaveInfoDiv" style="display:none;"></div>
   </div>
 </div>
 
@@ -59,7 +60,6 @@
   window.USER_LEAVES = {{ user_leaves | tojson }};
   window.USER_INFO = {{ user_info | tojson }};
 </script>
-<script src='fullcalendar/main.min.js'></script>
 {% endblock %}
 
 {% endblock %}

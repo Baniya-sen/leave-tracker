@@ -5,16 +5,16 @@ import hashlib
 import base64
 from secrets import token_hex
 
-from os import getenv, path
+from os import getenv
 from datetime import datetime, date, timezone, timedelta
 from dotenv import load_dotenv
 from functools import wraps
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 from werkzeug.routing import BaseConverter
 
 from flask import (
     Flask, g, session, request, render_template,
-    redirect, url_for, jsonify
+    redirect, url_for, jsonify, abort
 )
 from flask_session import Session
 from flask_wtf import CSRFProtect
@@ -54,7 +54,7 @@ app.secret_key = getenv('APP_KEY')
 
 app.url_map.converters['hash'] = HashConverter
 app.config['ADMIN_DB'] = getenv('ADMIN_DB')
-app.config['AUTH_DB'] = getenv('USER_DB')
+app.config['AUTH_DB'] = getenv('AUTH_DB')
 app.config['BACKUP_DATABASE'] = getenv('BACKUP_DATABASE')
 app.config['RATELIMIT_STORAGE_URL'] = REDDIS_URI
 app.config['SESSION_PERMANENT'] = False
@@ -111,6 +111,19 @@ def make_daily_token(username: str) -> str:
     return base64.urlsafe_b64encode(digest).decode('utf8')[:8]
 
 
+def is_allowed_origin(origin):
+    if not origin:
+        return False
+    o = urlparse(origin.lower())
+    # In development
+    if o.scheme == 'http' and o.hostname in ('127.0.0.1', 'localhost') and o.port == 5000:
+        return True
+    # production would check against your real domain:
+    # if o.scheme == 'https' and o.hostname == 'yourdomain.com':
+    #     return True
+    return False
+
+
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -136,6 +149,16 @@ def verified_required(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
+
+def enforce_same_origin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        origin = request.headers.get('Origin') or request.headers.get('Referer')
+        if not origin or not is_allowed_origin(origin):
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated
 
 
 @app.errorhandler(500)
@@ -172,12 +195,13 @@ def register():
             user = auth.get_user_info_with_username(request.form.get("username"))
             if leaves.init_user_info(user['id'], user['username']):
                 print("User Registered! ", user['username'])
-                session['user_registered_hex'] = token_hex(8)
+                hexed = token_hex(16)
+                session['user_registered_hex'] = hexed
                 return redirect(
                     url_for(
                         'login',
                         registered='true',
-                        registered_hex=session['user_registered_hex'])
+                        registered_hex=hexed)
                 )
 
         return apology('Username taken!')
@@ -186,37 +210,41 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 @csrf.exempt
 def login():
-    user_registered_hex = session.get('user_registered_hex', None)
+    registered_hex = session.pop('user_registered_hex', None)
     session.clear()
 
-    if request.method == "GET":
-        regis = request.args.get('registered', '')
-        regis_hex = request.args.get('registered_hex', '')
-
-        if regis == 'true' and regis_hex == user_registered_hex:
-            log_display = "Registered successfully. Now Login!"
-        else:
+    regis = request.args.get('registered')
+    regis_hex = request.args.get('registered_hex')
+    if regis == 'true' and regis_hex == registered_hex:
+        log_display = "Registered successfully! Please log in."
+    else:
+        log_display = request.args.get('msg') or None
+        msg_state = request.args.get('state') or "0"
+        msg_state = int(msg_state)
+        if msg_state - 1 != 0:
             log_display = None
 
-        return render_template("login.html", log_display=log_display)
-
     if request.method == 'POST':
-        if not request.form.get("username") or not request.form.get("password"):
-            return apology("At-least provide a username/password!", 401)
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
 
-        user = auth.authenticate_user(
-            request.form['username'], request.form['password']
-        )
+        if not username or not password:
+            return redirect(url_for('login', msg="Please provide both username and password", state=1))
+
+        user = auth.authenticate_user(username, password)
         if user:
             token = token_hex(32)
             auth.update_user_info(user['id'], {'session_token': token})
-
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['session_token'] = token
-            return redirect('/')
+            return redirect(url_for('home'))
+        else:
+            return redirect(
+                url_for('login', msg=f"No account registered under '{username}'", state=1)
+            )
 
-        return apology('Invalid credentials', 401)
+    return render_template('login.html', log_display=log_display)
 
 
 @app.route('/logout')
@@ -225,10 +253,11 @@ def logout():
     return redirect(url_for('login'))
 
 
-@app.route('/user-info', methods=['GET', 'POST'])
+@app.route('/user-info', methods=['GET'])
+@limiter.limit("30 per minute")
 @login_required
+@enforce_same_origin
 def user_info_route():
-    # if request.method == 'GET':
     user = auth.get_user_info_with_id(session['user_id'])
     if not user:
         return jsonify(error="User not found"), 404
@@ -236,7 +265,7 @@ def user_info_route():
     firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
     leaves_type = leaves.get_user_key_data(
         session['user_id'],
-        'user_leaves.' + firm_name + '.leaves_given') \
+        'user_leaves.' + str(firm_name) + '.leaves_given') \
         if firm_name else None
 
     safe = {
@@ -281,7 +310,7 @@ def user_home(username: str, token: str):
     firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
     leaves_type = leaves.get_user_key_data(
         session['user_id'],
-        'user_leaves.' + firm_name + '.leaves_given')\
+        'user_leaves.' + str(firm_name) + '.leaves_given')\
         if firm_name else None
 
     user_info = {
@@ -294,18 +323,18 @@ def user_home(username: str, token: str):
 
     return render_template(
         'index.html',
-        firms="Bonanza Interactive",
+        firms=firm_name,
         user_leaves=firm_leaves,
         user_info=user_info
     )
 
 
-@app.route('/account', methods=['GET', 'POST'])
+@app.route('/account', methods=['GET'])
 @login_required
 def account_root():
     uname = session['username']
     token = make_daily_token(uname)
-    return redirect(url_for('account', username=uname, token=token), code=307)
+    return redirect(url_for('account', username=uname, token=token))
 
 
 @app.route('/<username>/account/<token>', methods=['GET'])
@@ -315,9 +344,22 @@ def account(username: str, token: str):
         return apology("Verification failed! Logout and Re-login!", 403)
 
     user = auth.get_user_info_with_id(session['user_id'])
+    if user:
+        session['firm_name'] = user['firm_name']
+        user_info = {
+            "email": user["email"],
+            "name": user["name"],
+            "age": user["age"],
+            "account_verified": user['account_verified'],
+            "firm_name": user['firm_name'],
+            "leaves_type": user['leaves_type']
+        }
+    else:
+        user_info = {}
+
     return render_template(
         'account.html',
-        user_info=dict(user) or {}
+        user_info=user_info
     )
 
 
@@ -362,9 +404,10 @@ def update_account_info(info_type):
 
 
 @app.route("/leaves/import", methods=["POST"], strict_slashes=False)
-@limiter.limit("4 per minute")
+@limiter.limit("10 per minute")
 @login_required
 @verified_required
+@enforce_same_origin
 def import_leaves():
     user_id = session["user_id"]
 
@@ -416,8 +459,10 @@ def import_leaves():
 
 
 @app.route('/take_leave', methods=['POST'])
+@limiter.limit("50 per minute")
 @login_required
 @verified_required
+@enforce_same_origin
 def take_leave():
     user_id = session['user_id']
     data = request.get_json(force=True)
@@ -485,9 +530,32 @@ def take_leave():
     return jsonify(status='ok')
 
 
-@app.route("/request-verify-email", methods=["POST"])
-@limiter.limit("4 per minute")
+@app.route('/remove_leave', methods=['POST'])
+@limiter.limit("25 per minute")
 @login_required
+@verified_required
+@enforce_same_origin
+def remove_leave():
+    data = request.get_json()
+    user_id = session['user_id']
+    firm = leaves.get_user_key_data(user_id, "user_info.firm_name")
+    if not firm:
+        return jsonify(error="Firm not set for user."), 400
+    date_str = data.get('date')
+    leave_type = data.get('type')
+    if not date_str or not leave_type:
+        return jsonify(error="Missing date or leave type."), 400
+    ok, msg = leaves.remove_user_leave(user_id, str(firm), leave_type, date_str)
+    if ok:
+        return jsonify(status="ok")
+    else:
+        return jsonify(error=msg or "Failed to remove leave"), 400
+
+
+@app.route("/request-verify-email", methods=["POST"])
+@limiter.limit("5 per minute")
+@login_required
+@enforce_same_origin
 def request_verify_email():
     try:
         user_email = auth.get_user_field(session['user_id'], "email")
@@ -505,8 +573,9 @@ def request_verify_email():
 
 
 @app.route("/confirm-otp", methods=["POST"])
-@limiter.limit("4 per minute")
+@limiter.limit("5 per minute")
 @login_required
+@enforce_same_origin
 def confirm_otp():
     data = request.get_json()
     if not data or 'otp' not in data:
@@ -557,7 +626,7 @@ def admin_register(token):
             #     print("User Registered! ", admin_added['username'])
             #     return redirect(url_for('login'))
             session.clear()
-            return redirect(url_for('admin_login'))
+            return redirect(url_for('admin_login', hashed=admin.hash_to_admin()))
 
         return apology('Admin Username taken!')
 
@@ -643,6 +712,7 @@ def admin_dashboard(admin_name, token):
 
 
 @app.route('/admin/admin-spacing/delete/<string:token>', methods=['POST'])
+@limiter.limit("2 per minute")
 @admin.admin_login_required
 def admin_delete_all_data(token):
     if token != session.get('ADMIN_DELETE_TOKEN'):
@@ -661,6 +731,7 @@ def admin_delete_all_data(token):
 
 
 @app.route('/admin/admin-spacing/download/<string:token>', methods=['GET'])
+@limiter.limit("4 per minute")
 @admin.admin_login_required
 def admin_download_database(token):
     if token != session.get('ADMIN_DOWNLOAD_TOKEN'):
@@ -679,6 +750,7 @@ def admin_download_database(token):
 
 
 @app.route('/admin/admin-spacing/upload/<string:token>', methods=['GET', 'POST'])
+@limiter.limit("6 per minute")
 @admin.admin_login_required
 def admin_upload_database(token):
     if token != session.get('ADMIN_UPLOAD_TOKEN'):
