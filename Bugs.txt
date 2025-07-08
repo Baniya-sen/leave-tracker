@@ -1,0 +1,11 @@
+Bugs QA:
+
+1. There should be an option on register to register via email not username.
+2. There should be an option to login via username OR email on login page.
+3. Info messages on screen/card should be more detailed, like where to add the data and all.
+4. Many account fields not working, like adding DOB, Firm joining date, Weekend days.[MAJOR]
+5. When user edit account settings, page should not reload, just update the element if possible.
+6. Firm settings refresh should land on the firm settings page.
+7. There should be a home button on Nav bar instead of Account in account page.
+8. Adding leaves refreshes the page that makes calendar refresh, not ideal.[MAJOR]
+9. There should be a message on register page that should show "We do not save your password".
