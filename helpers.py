@@ -18,7 +18,7 @@ def validate_name_age(data, user_id) -> any:
     return True, None, {'name': name, 'age': int(age)}
 
 
-def validate_email(data, user_id) -> any:
+def validate_email(data, user_id = None) -> any:
     email = data.get('email', '').strip()
     if not email or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
         return False, 'Invalid email', None

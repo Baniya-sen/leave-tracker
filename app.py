@@ -51,8 +51,8 @@ MONGO_URI = f"mongodb+srv://{MONGO_USER}:{MONGO_PASS}@{MONGO_CLUSTER}{MONGO_HOST
 
 app = Flask(__name__)
 app.secret_key = getenv('APP_KEY')
-
 app.url_map.converters['hash'] = HashConverter
+
 app.config['ADMIN_DB'] = getenv('ADMIN_DB')
 app.config['AUTH_DB'] = getenv('AUTH_DB')
 app.config['BACKUP_DATABASE'] = getenv('BACKUP_DATABASE')
@@ -104,11 +104,12 @@ def valid_date(s):
         return False
 
 
-def make_daily_token(username: str) -> str:
-    key = app.config['SECRET_KEY'].encode()
-    msg = f"{username}:{date.today().isoformat()}".encode()
+def make_daily_token(username_email: str) -> str:
+    key = app.config['SECRET_KEY'].encode('utf-8')
+    msg = f"{username_email}:{date.today().isoformat()}".encode('utf-8')
     digest = hmac.new(key, msg, hashlib.sha256).digest()
-    return base64.urlsafe_b64encode(digest).decode('utf8')[:8]
+    token = base64.urlsafe_b64encode(digest).decode('utf-8')[:8]
+    return token
 
 
 def is_allowed_origin(origin):
@@ -158,6 +159,7 @@ def enforce_same_origin(f):
         if not origin or not is_allowed_origin(origin):
             abort(403)
         return f(*args, **kwargs)
+
     return decorated
 
 
@@ -186,15 +188,19 @@ def register():
         return render_template("register.html")
 
     if request.method == 'POST':
-        if not request.form.get("username") or not request.form.get("password"):
-            return apology("At-least enter user/password", 401)
+        if not request.form.get("email") or not request.form.get("password"):
+            return apology("At-least enter email/password", 401)
         elif request.form.get("password") != request.form.get("confirmation"):
             return apology("Passwords mismatch!", 401)
 
-        if auth.register_user(request.form.get("username"), request.form.get("password")):
-            user = auth.get_user_info_with_username(request.form.get("username"))
-            if leaves.init_user_info(user['id'], user['username']):
-                print("User Registered! ", user['username'])
+        is_valid, error_msg, cleaned = helpers.validate_email({"email": request.form.get("email")})
+        if not is_valid:
+            return apology('Please provide a valid email!', 401)
+
+        if auth.register_user(cleaned['email'], request.form.get("password")):
+            user = auth.get_user_info_with_email(cleaned['email'])
+            if leaves.init_user_info(user['id'], user['email']):
+                print("User Registered! ", user['email'])
                 hexed = token_hex(16)
                 session['user_registered_hex'] = hexed
                 return redirect(
@@ -204,7 +210,7 @@ def register():
                         registered_hex=hexed)
                 )
 
-        return apology('Username taken!')
+        return apology('Account exists with this email', 401)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -225,23 +231,24 @@ def login():
             log_display = None
 
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
         password = request.form.get('password', '').strip()
 
-        if not username or not password:
-            return redirect(url_for('login', msg="Please provide both username and password", state=1))
+        if not email or not password:
+            return redirect(url_for('login', msg="Please provide both email/username and password", state=1))
 
-        user = auth.authenticate_user(username, password)
+        user = auth.authenticate_user(email, password)
         if user:
             token = token_hex(32)
             auth.update_user_info(user['id'], {'session_token': token})
             session['user_id'] = user['id']
-            session['username'] = user['username']
+            session['email'] = user['email']
+            session['username'] = dict(user).get('username') or None
             session['session_token'] = token
             return redirect(url_for('home'))
         else:
             return redirect(
-                url_for('login', msg=f"No account registered under '{username}'", state=1)
+                url_for('login', msg=f"No account registered under '{email}'", state=1)
             )
 
     return render_template('login.html', log_display=log_display)
@@ -282,11 +289,11 @@ def user_info_route():
 @app.route('/')
 @login_required
 def home():
-    username = session['username']
-    token = make_daily_token(username)
+    token_string = session.get('username') or session['email']
+    token = make_daily_token(token_string)
     return redirect(
         url_for('user_home',
-                username=username,
+                username=token_string,
                 token=token)
     )
 
@@ -294,8 +301,8 @@ def home():
 @app.route('/<username>/<token>')
 @login_required
 def user_home(username: str, token: str):
-    if username != session['username']:
-        apology("Username did not matched! Logout and Re-login!", 403)
+    if username != session.get('username') or session['email']:
+        apology("Username/Email did not matched! Logout and Re-login!", 403)
 
     if token != make_daily_token(username):
         apology("Token did not matched! Logout and Re-login.", 404)
@@ -310,7 +317,7 @@ def user_home(username: str, token: str):
     firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
     leaves_type = leaves.get_user_key_data(
         session['user_id'],
-        'user_leaves.' + str(firm_name) + '.leaves_given')\
+        'user_leaves.' + str(firm_name) + '.leaves_given') \
         if firm_name else None
 
     user_info = {
@@ -332,7 +339,7 @@ def user_home(username: str, token: str):
 @app.route('/account', methods=['GET'])
 @login_required
 def account_root():
-    uname = session['username']
+    uname = session.get('username') or session['email']
     token = make_daily_token(uname)
     return redirect(url_for('account', username=uname, token=token))
 
@@ -340,7 +347,7 @@ def account_root():
 @app.route('/<username>/account/<token>', methods=['GET'])
 @login_required
 def account(username: str, token: str):
-    if username != session['username'] or token != make_daily_token(username):
+    if username != (session.get('username') or session['email']) or token != make_daily_token(username):
         return apology("Verification failed! Logout and Re-login!", 403)
 
     user = auth.get_user_info_with_id(session['user_id'])
@@ -349,9 +356,12 @@ def account(username: str, token: str):
         user_info = {
             "email": user["email"],
             "name": user["name"],
+            "username": user["username"],
             "age": user["age"],
+            "date": user['date'],
             "account_verified": user['account_verified'],
             "firm_name": user['firm_name'],
+            "firm_weekend_days": user['firm_weekend_days'],
             "leaves_type": user['leaves_type']
         }
     else:
@@ -359,7 +369,8 @@ def account(username: str, token: str):
 
     return render_template(
         'account.html',
-        user_info=user_info
+        user_info=user_info,
+        user_leaves=None,
     )
 
 
@@ -380,11 +391,11 @@ def update_account_info(info_type):
     }
 
     if info_type not in validators:
-        return apology('Unknown info type', 400)
+        return jsonify(status='error', error="Change not suitable!"), 400
 
     valid, error, clean_data = validators[info_type](data, session['user_id'])
     if not valid:
-        return apology(error, 400)
+        return jsonify(status='error', error=error), 400
 
     update_data = clean_data
     if info_type == 'firm_leaves':
@@ -398,9 +409,9 @@ def update_account_info(info_type):
 
     if auth.update_user_info(user_id, update_data) and \
             leaves.update_user_profile(user_id, update_data):
-        return redirect(url_for('account_root'))
+        return jsonify(status='ok', data=update_data)
     else:
-        return apology('Update failed', 400)
+        return jsonify(status='error', error=error), 400
 
 
 @app.route("/leaves/import", methods=["POST"], strict_slashes=False)
@@ -475,10 +486,12 @@ def take_leave():
         days = int(data.get('days', 1))
         if not date_str or not leave_type or days < 1:
             return jsonify(error='Invalid input'), 400
+
         d = datetime.strptime(date_str, '%Y-%m-%d')
         dates = []
         for i in range(days):
             dates.append((d + timedelta(days=i)).strftime('%Y-%m-%d'))
+
     if not dates or not leave_type:
         return jsonify(error='Invalid input'), 400
 
@@ -562,7 +575,11 @@ def request_verify_email():
         if not user_email:
             return jsonify(error="Email is required! Register in accounts tab."), 400
 
-        otp = email_otp.send_otp(session['username'], user_email)
+        user_account_verified = str(auth.get_user_field(session['user_id'], "account_verified"))
+        if int(user_account_verified, 0) == 1:
+            return jsonify(error="Your Email is already verified."), 400
+
+        otp = email_otp.send_otp(session.get('username') or "User", user_email)
         session["email_otp"] = otp
         session["email_otp_sent_at"] = datetime.now(timezone.utc).isoformat()
         return jsonify(status="ok", message="OTP sent to your email. Please check you spam if not found.")
@@ -577,6 +594,10 @@ def request_verify_email():
 @login_required
 @enforce_same_origin
 def confirm_otp():
+    user_account_verified = str(auth.get_user_field(session['user_id'], "account_verified"))
+    if int(user_account_verified, 0) == 1:
+        return jsonify(error="Your Email is already verified."), 400
+
     data = request.get_json()
     if not data or 'otp' not in data:
         return jsonify(error="OTP missing"), 400
@@ -601,7 +622,6 @@ def confirm_otp():
 @app.route('/admin_register/<string:token>', methods=['GET', 'POST'])
 @csrf.exempt
 def admin_register(token):
-
     if request.method == "GET":
         if token != session.get('register_admin_token', 0):
             return render_template('magic.html')

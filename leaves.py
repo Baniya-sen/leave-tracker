@@ -22,7 +22,7 @@ def get_leaves_collection():
     return client[db_name][collection_name]
 
 
-def init_user_info(user_id: int, username: str) -> bool:
+def init_user_info(user_id: int, email: str) -> bool:
     try:
         collection = get_leaves_collection()
         now_iso = datetime.now(timezone.utc).isoformat()
@@ -30,7 +30,7 @@ def init_user_info(user_id: int, username: str) -> bool:
         stub = {
             "user_id": user_id,
             "user_info": {
-                "username": username,
+                "email": email,
                 "account_created": now_iso
             },
             "user_leaves": {}

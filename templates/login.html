@@ -28,10 +28,10 @@ Signin -
             <!--            </div>-->
             <form action="/login" method="post" class="app-login-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input autocomplete="off" autofocus class="app-login-input" name="username" placeholder="Email"
-                    type="text">
-                <input class="app-login-input" name="password" placeholder="Password" type="password">
-                <button class="app-login-btn" type="submit">Log In</button>
+                <input autocomplete="off" autofocus class="app-login-input" name="email" placeholder="Email/Username"
+                    type="text" id="regisEmail">
+                <input class="app-login-input" name="password" placeholder="Password" type="password" id="regisPass">
+                <button class="app-login-btn" type="submit" id="login-btn">Log In</button>
             </form>
             <div class="app-login-links">
                 <a href="#" class="app-login-link">Forgot your password?</a>

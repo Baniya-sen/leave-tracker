@@ -28,17 +28,17 @@ def init_auth_db():
         db.executescript(f.read().decode())
 
 
-def register_user(username: str, password: str) -> bool:
+def register_user(email: str, password: str) -> bool:
     pw_hash = generate_password_hash(password)
     signup_iso = datetime.now(timezone.utc).isoformat()
     db = get_auth_db()
     try:
         db.execute(
             '''
-            INSERT INTO users (username, passhash, account_created)
+            INSERT INTO users (email, passhash, account_created)
             VALUES (?, ?, ?)
             ''',
-            (username, pw_hash, signup_iso)
+            (email, pw_hash, signup_iso)
         )
         db.commit()
         return True
@@ -46,10 +46,16 @@ def register_user(username: str, password: str) -> bool:
         return False
 
 
-def authenticate_user(username: str, password: str):
+def authenticate_user(identifier: str, password: str):
     db = get_auth_db()
     user = db.execute(
-        'SELECT * FROM users WHERE username = ?', (username,)
+        '''
+        SELECT *
+          FROM users
+         WHERE email    = ?
+            OR username = ?
+        ''',
+        (identifier, identifier),
     ).fetchone()
     if user and check_password_hash(user['passhash'], password):
         return user
@@ -69,12 +75,12 @@ def get_user_info_with_id(user_id: int):
         return None
 
 
-def get_user_info_with_username(username: str):
+def get_user_info_with_email(email: str):
     db = get_auth_db()
     user = db.execute(
-        'SELECT * FROM users WHERE username = ?', (username,)
+        'SELECT * FROM users WHERE email = ?', (email,)
     ).fetchone()
-    if user and user['username'] == username:
+    if user and user['email'] == email:
         return user
     return None
 

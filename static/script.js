@@ -1,3 +1,47 @@
+// Register-app-page
+(function () {
+    const email = document.getElementById('regisEmail');
+    const pass = document.getElementById('regisPass');
+    const confirmPass = document.getElementById('confirmRegisPass');
+    const signupBtn = document.getElementById('passwordSubmit');
+
+    if (!email || !pass || !confirmPass || !signupBtn) {
+        return;
+    }
+
+    signupBtn.addEventListener('click', function () {
+        this.form.submit();
+        setTimeout(() => {
+          email.disabled = true;
+          pass.disabled = true;
+          confirmPass.disabled = true;
+          signupBtn.disabled = true;
+        }, 0);
+    })
+})();
+
+// Login-app-page
+(function () {
+    const email = document.getElementById('regisEmail');
+    const pass = document.getElementById('regisPass');
+    const loginBtn = document.getElementById('login-btn');
+
+    if (!email || !pass || !loginBtn) {
+        return;
+    }
+
+    loginBtn.addEventListener('click', function () {
+        this.form.submit();
+        setTimeout(() => {
+          email.disabled = true;
+          pass.disabled = true;
+          loginBtn.disabled = true;
+        }, 0);
+    })
+})();
+
+// Home-page
+let updateCalenderGlobal;
 (function () {
     const monthNames = [
         "January", "February", "March", "April", "May", "June",
@@ -159,6 +203,8 @@
             yearElements[currentYear].classList.add('active');
         }
     }
+
+    updateCalenderGlobal = updateCalendar;
 
     function scrollToYear(year) {
         const targetYearElement = yearElements[year];
@@ -459,6 +505,7 @@
                     document.getElementById("account-status").classList.remove("account-badge-unverified");
                     document.getElementById("account-status").classList.add("account-badge-verified");
                     document.getElementById("otp-input-container").classList.add("d-none");
+                    document.getElementById("account-status").classList.remove("d-none");
                 } else {
                     alert("Invalid OTP");
                 }
@@ -567,6 +614,245 @@
         });
     }
 })();
+
+function setFormDisabled(form, disabled) {
+  form.querySelectorAll('input, button, select, textarea')
+      .forEach(el => el.disabled = disabled);
+}
+
+const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+;(function() {
+  const form    = document.getElementById('name-age-edit-form');
+  const display = document.getElementById('name-age-display');
+  const btn     = document.getElementById('edit-name-age');
+
+  if (form) {
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+          const res = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body:    new FormData(form),
+            credentials: 'include'
+          });
+          setFormDisabled(form, true);
+          const payload = await res.json();
+          if (payload.status === 'ok') {
+            const [nameEl, ageEl] = display.querySelectorAll('b');
+            nameEl.textContent    = payload.data.name;
+            ageEl.textContent     = payload.data.age;
+            form.classList.add('d-none');
+            display.style.display = '';
+            btn.classList.remove('d-none');
+          } else {
+            alert(payload.error);
+          }
+        } catch (err) {
+          alert('Server error—please try again.');
+        } finally {
+          setFormDisabled(form, false);
+        }
+      });
+  }
+})();
+
+// ===== Email =====
+;(function() {
+  const form    = document.getElementById('email-edit-form');
+  const display = document.getElementById('email-display');
+  const btn     = document.getElementById('edit-email');
+
+  if (form) {
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+          const res     = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body:    new FormData(form),
+            credentials: 'include'
+          });
+          setFormDisabled(form, true);
+          const payload = await res.json();
+          if (payload.status === 'ok') {
+            display.querySelector('b').textContent = payload.data.email;
+            form.classList.add('d-none');
+            display.style.display = '';
+            btn.classList.remove('d-none');
+          } else {
+            alert(payload.error);
+          }
+        } catch {
+          alert('Server error—please try again.');
+        } finally {
+          setFormDisabled(form, false);
+        }
+      });
+  }
+})();
+
+// ===== Date of Birth =====
+;(function() {
+  const form = document.getElementById('dob-edit-form');
+  const display = document.getElementById('dob-display');
+  const btn = document.getElementById('edit-dob');
+
+  if (form) {
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+          const res = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body:    new FormData(form),
+            credentials: 'include'
+          });
+          setFormDisabled(form, true);
+          const payload = await res.json();
+          if (payload.status === 'ok') {
+            display.querySelector('b').textContent = payload.data.date;
+            form.classList.add('d-none');
+            display.style.display = '';
+            btn.classList.remove('d-none');
+          } else {
+            alert(payload.error);
+          }
+        } catch {
+          alert('Server error—please try again.');
+        } finally {
+          setFormDisabled(form, false);
+        }
+      });
+  }
+})();
+
+// ===== Firm Info =====
+;(function() {
+  const form    = document.getElementById('firm-info-edit-form');
+  const display = document.getElementById('firm-info-display');
+  const btn     = document.getElementById('edit-firm-info');
+
+  if (form) {
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+          const res     = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body:    new FormData(form),
+            credentials: 'include'
+          });
+          setFormDisabled(form, true);
+          const payload = await res.json();
+          if (payload.status === 'ok') {
+            const [nameEl, dateEl] = display.querySelectorAll('b');
+            nameEl.textContent     = payload.data.firm_name;
+            dateEl.textContent     = payload.data.firm_join_date;
+            form.classList.add('d-none');
+            display.style.display = '';
+            btn.classList.remove('d-none');
+          } else {
+            alert(payload.error);
+          }
+        } catch {
+          alert('Server error—please try again.');
+        } finally {
+          setFormDisabled(form, false);
+        }
+      });
+  }
+})();
+
+// ===== Firm Weekend Days =====
+;(function() {
+  const form    = document.getElementById('firm-weekend-edit-form');
+  const display = document.getElementById('firm-weekend-display');
+  const btn     = document.getElementById('edit-firm-weekend');
+  const weekdayMap = {
+    '1': 'Monday',
+    '2': 'Tuesday',
+    '3': 'Wednesday',
+    '4': 'Thursday',
+    '5': 'Friday',
+    '6': 'Saturday',
+    '7': 'Sunday',
+  };
+
+  if (form) {
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+          const res     = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body:    new FormData(form),
+            credentials: 'include'
+          });
+          setFormDisabled(form, true);
+          const payload = await res.json();
+          if (payload.status === 'ok') {
+            const weekend_days = display.querySelectorAll('span');
+
+            const raw = payload.data.firm_weekend_days || '';
+            const parts = raw
+              .split(',')
+              .map(s => s.trim())
+              .filter(s => s in weekdayMap)
+              .map(n => `${n}: ${weekdayMap[n]}`);
+            display.innerHTML = parts
+              .map(p => `<span>${p}</span>`)
+              .join('');
+
+            form.classList.add('d-none');
+            display.style.display = '';
+            btn.classList.remove('d-none');
+          } else {
+            alert(payload.error);
+          }
+        } catch (err) {
+          alert('Server error—please try again.');
+        } finally {
+          setFormDisabled(form, false);
+        }
+      });
+  }
+})();
+
+// User leaves structure
+;(function() {
+  const form    = document.getElementById('firm-leaves-edit-form');
+  const display = document.getElementById('leaves-items');
+  const btn     = document.getElementById('edit-firm-leaves');
+
+  if (form) {
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+          const res     = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body:    new FormData(form),
+            credentials: 'include'
+          });
+          setFormDisabled(form, true);
+          const payload = await res.json();
+          if (payload.status === 'ok') {
+            location.reload();
+            return;
+          } else {
+            alert(payload.error);
+          }
+        } catch (err) {
+          alert('Server error—please try again.');
+        } finally {
+          setFormDisabled(form, false);
+        }
+      });
+  }
+})();
+
 
 // Leaves types add rows
 const addRow = document.getElementById('add-row');
@@ -771,8 +1057,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- Open modal on date click ---
+    let cellClicked;
     document.getElementById('days').addEventListener('click', function (e) {
         let cell = e.target;
+        cellClicked = cell;
         while (cell && !cell.classList.contains('calendar-day') && cell !== this) {
             cell = cell.parentElement;
         }
@@ -790,15 +1078,15 @@ document.addEventListener('DOMContentLoaded', function () {
         // Check user info
         const info = window.USER_INFO || {};
         let message = '';
-        if (!info.email || info.email === 'None') {
-            message = 'You have not added an email. Please add and verify your email to start adding leaves.';
-        } else if (!info.account_verified || info.account_verified === 0 || info.account_verified === '0') {
-            message = 'Your email is not verified. Please verify your email to use this feature.';
-        } else if (!info.firm_name || info.firm_name === 'None') {
-            message = 'You have not added your firm info. Without it, whats the use? Add all in the Accounts tab.';
-        } else if (!info.leaves_type || Object.keys(info.leaves_type).length === 0) {
-            message = 'You have not set up your leave structure, so there is not data. Visit accounts tab!';
-        }
+//        if (!info.email || info.email === 'None') {
+//            message = 'Email not added and verified. Go to Account tab → User Settings to add and verify your email.';
+//        } else if (!info.account_verified || info.account_verified === 0 || info.account_verified === '0') {
+//            message = 'Email not verified. Go to Account tab → User Settings and verify your email to continue.';
+//        } else if (!info.firm_name || info.firm_name === 'None') {
+//            message = 'Firm details missing. Go to Account tab → Firm Settings and add your all firm related information.';
+//        } else if (!info.leaves_type || Object.keys(info.leaves_type).length === 0) {
+//            message = 'Leaves types not set. Go to Account tab → Firm Settings and set up your leaves structure.';
+//        }
         if (message) {
             document.querySelector('.custom-leave-modal-title').textContent = 'Cannot Add Leaves';
             document.getElementById('leaveForm').style.display = 'none';
@@ -891,17 +1179,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 type: selectedType
             })
         })
-            .then(r => r.json())
-            .then(data => {
-                if (data.status === 'ok') {
-                    hideLeaveModal();
-                    window.location.reload();
-                } else {
-                    alert(data.error || 'Failed to take leave');
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                const leaves = window.USER_LEAVES.leaves_taken;
+                if (!leaves[selectedType]) {
+                  leaves[selectedType] = [];
                 }
-            })
-            .catch(() => alert('Failed to take leave'))
-            .finally(() => { saveBtn.disabled = false; });
+                leaves[selectedType].push(dates[0]);
+                updateCalenderGlobal?.();
+                hideLeaveModal();
+            } else {
+                alert(data.error || 'Failed to take leave');
+            }
+        })
+        .catch(() => alert('Failed to take leave'))
+        .finally(() => { saveBtn.disabled = false; });
     });
 
     // Add leave info modal logic
@@ -940,18 +1233,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify({ date: date, type: leaveType })
             })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.status === 'ok') {
-                        hideLeaveModal();
-                        window.location.reload();
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    const leaves = window.USER_LEAVES.leaves_taken;
+                    const dateToRemove = dates[0];
+                    if (leaves[selectedType]) {
+                      const idx = leaves[selectedType].indexOf(dateToRemove);
+                      if (idx > -1) {
+                        leaves[selectedType].splice(idx, 1);
+                      } else {
+                        alert('Data shows no leaves type of this category exists!')
+                      }
                     } else {
-                        alert(data.error || 'Failed to remove leave');
+                      alert('Please try again after some time.');
                     }
-                })
-                .catch(() => alert('Failed to remove leave'))
-                .finally(() => { removeBtn.disabled = false; });
+                    updateCalenderGlobal?.();
+                    hideLeaveModal();
+                } else {
+                    alert(data.error || 'Failed to remove leave');
+                }
+            })
+            .catch(() => alert('Failed to remove leave'))
+            .finally(() => { removeBtn.disabled = false; });
         };
+
         let cancelBtn = document.getElementById('cancelLeaveBtn');
         if (cancelBtn) {
             cancelBtn.style.display = 'inline-block';

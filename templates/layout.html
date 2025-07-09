@@ -58,11 +58,23 @@
         {% if session["user_id"] %}
         <ul class="navbar-nav flex-row m-0 align-items-center inter">
           <li class="nav-item">
-            <a class="nav-link nav-chip d-flex align-items-center gap-2 app-account-link" href="/account">
+            <a class="nav-link nav-chip d-flex align-items-center gap-2 app-account-link" href="{{ '/account' if user_leaves is mapping else '/' }}">
               <div class="nav-icon-circle app-account-icon">
-                <img src="{{ url_for('static', filename='images/account.png') }}" alt="Account" />
+                {% if user_leaves is mapping %}
+                  <img src="{{ url_for('static', filename='images/account.png') }}" alt="Account" />
+                {% else %}
+                  <span class="name-initials-nav">
+                    {% if user_info and user_info['name'] %}
+                      {{ user_info['name'].split() | map(attribute=0) | join('') | upper }}
+                    {% endif %}
+                  </span>
+                {% endif %}
               </div>
-              Account
+              {% if user_leaves is mapping %}
+                Account
+              {% else %}
+                Home
+              {% endif %}
             </a>
           </li>
           <li class="nav-item"><a class="nav-link nav-chip app-logout-link" href="/logout">Logout</a></li>
