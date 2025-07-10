@@ -274,13 +274,23 @@ let updateCalenderGlobal;
     // Tab switching
     const tabs = document.querySelectorAll('.settings-tab');
     const panels = document.querySelectorAll('.settings-tab-panel');
+
+    function activateTab(tabName) {
+        tabs.forEach(t => t.classList.remove('active'));
+        panels.forEach(p => p.classList.add('d-none'));
+        tabName.classList.add('active');
+        document.getElementById('tab-' + tabName.dataset.tab).classList.remove('d-none');
+        if (tabName.dataset.tab == '#account') {
+            closeAllEditModes();
+        }
+        window.location.hash = tabName.dataset.tab;
+    }
+    const name = (window.location.hash || '#account').substring(1);
+    const targetTabName = document.querySelector(`.settings-tab[data-tab="${name}"]`);
+    activateTab(targetTabName);
     tabs.forEach(tab => {
         tab.addEventListener('click', function () {
-            tabs.forEach(t => t.classList.remove('active'));
-            panels.forEach(p => p.classList.add('d-none'));
-            this.classList.add('active');
-            document.getElementById('tab-' + this.dataset.tab).classList.remove('d-none');
-            closeAllEditModes(); // Also close all edit modes when switching tabs
+            activateTab(this);
         });
     });
 
@@ -1078,15 +1088,15 @@ document.addEventListener('DOMContentLoaded', function () {
         // Check user info
         const info = window.USER_INFO || {};
         let message = '';
-//        if (!info.email || info.email === 'None') {
-//            message = 'Email not added and verified. Go to Account tab → User Settings to add and verify your email.';
-//        } else if (!info.account_verified || info.account_verified === 0 || info.account_verified === '0') {
-//            message = 'Email not verified. Go to Account tab → User Settings and verify your email to continue.';
-//        } else if (!info.firm_name || info.firm_name === 'None') {
-//            message = 'Firm details missing. Go to Account tab → Firm Settings and add your all firm related information.';
-//        } else if (!info.leaves_type || Object.keys(info.leaves_type).length === 0) {
-//            message = 'Leaves types not set. Go to Account tab → Firm Settings and set up your leaves structure.';
-//        }
+        if (!info.email || info.email === 'None') {
+            message = 'Email not added and verified. Go to Account tab → User Settings to add and verify your email.';
+        } else if (!info.account_verified || info.account_verified === 0 || info.account_verified === '0') {
+            message = 'Email not verified. Go to Account tab → User Settings and verify your email to continue.';
+        } else if (!info.firm_name || info.firm_name === 'None') {
+            message = 'Firm details missing. Go to Account tab → Firm Settings and add your all firm related information.';
+        } else if (!info.leaves_type || Object.keys(info.leaves_type).length === 0) {
+            message = 'Leaves types not set. Go to Account tab → Firm Settings and set up your leaves structure.';
+        }
         if (message) {
             document.querySelector('.custom-leave-modal-title').textContent = 'Cannot Add Leaves';
             document.getElementById('leaveForm').style.display = 'none';
@@ -1237,11 +1247,11 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (data.status === 'ok') {
                     const leaves = window.USER_LEAVES.leaves_taken;
-                    const dateToRemove = dates[0];
-                    if (leaves[selectedType]) {
-                      const idx = leaves[selectedType].indexOf(dateToRemove);
+                    const dateToRemove = date;
+                    if (leaves[leaveType]) {
+                      const idx = leaves[leaveType].indexOf(dateToRemove);
                       if (idx > -1) {
-                        leaves[selectedType].splice(idx, 1);
+                        leaves[leaveType].splice(idx, 1);
                       } else {
                         alert('Data shows no leaves type of this category exists!')
                       }
@@ -1251,10 +1261,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     updateCalenderGlobal?.();
                     hideLeaveModal();
                 } else {
-                    alert(data.error || 'Failed to remove leave');
+                    alert(data.error || 'Server did not send a valid data for leave removable!');
                 }
             })
-            .catch(() => alert('Failed to remove leave'))
+            .catch(err => {
+              const message = err && err.message
+                ? err.message
+                : String(err);
+              alert(`❌ Failed to remove the leave!`);
+              console.error('Remove‑leave failed:', err);
+            })
             .finally(() => { removeBtn.disabled = false; });
         };
 

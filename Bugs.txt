@@ -5,7 +5,11 @@ Bugs QA:
 3. Info messages on screen/card should be more detailed, like where to add the data and all.✅
 4. Many account fields not working, like adding DOB, Firm joining date, Weekend days.[MAJOR]✅
 5. When user edit account settings, page should not reload, just update the element if possible.✅
-6. Firm settings refresh should land on the firm settings page.
+6. Firm settings refresh should land on the firm settings page.✅
 7. There should be a home button on Nav bar instead of Account in account page.✅
 8. Adding leaves refreshes the page that makes calendar refresh, not ideal.[MAJOR]✅
-9. There should be a message on register page that should show "We do not save your password".
+9. There should be a message on register page that should show "We do not save your password".✅
+10. Wrong password should log as wrong credentials.
+11. After verification refresh should not be needed to validate verification.
+12. Adding and removing leaves JS issue.
+13. Leave type label is not fit inside the date cell.

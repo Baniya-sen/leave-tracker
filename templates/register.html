@@ -17,8 +17,8 @@
                     height="60" width="60" />
             </div>
             <div class="app-login-title">Sign up to Leave Tracker</div>
-            <div id="log-display" class="text-danger small mt-1" style="display:none;">
-                {{ log_display if log_display else '' }}
+            <div id="log-display" class="{{ 'text-danger' if log_display else 'text-success' }} small mt-0 mb-4">
+                {{ log_display or 'Gentle reminder: We do not save your password.' }}
             </div>
             <!-- <div class="app-login-social-row">
                 <button type="button" class="app-login-social-btn"><i class="fab fa-google"></i></button>

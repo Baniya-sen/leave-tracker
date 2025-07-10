@@ -257,7 +257,7 @@ def login():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    return redirect(url_for('login', msg=f"✅ You have successfully logged out.", state=1))
 
 
 @app.route('/user-info', methods=['GET'])
@@ -307,8 +307,8 @@ def user_home(username: str, token: str):
     if token != make_daily_token(username):
         apology("Token did not matched! Logout and Re-login.", 404)
 
-    all_firm_leaves = leaves.get_user_key_data(session['user_id'], f"user_leaves")
     firm_leaves = {}
+    all_firm_leaves = leaves.get_user_key_data(session['user_id'], f"user_leaves")
     if all_firm_leaves:
         last_firm = list(all_firm_leaves.keys())[-1]
         firm_leaves = all_firm_leaves[last_firm]

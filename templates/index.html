@@ -10,25 +10,73 @@
   }
 </style>
 
-<div class="wrapper">
-  <div class="calendar">
-    <div class="header">
-      <button id="prev">&laquo;</button>
-      <select id="month"></select>
-      <button id="next">&raquo;</button>
+<div class="wrapper" style="color: white;">
+    <div class="side-panel">
+      <h2 class="panel-header">YOUR LEAVE DASHBOARD</h2>
+
+      <div class="card grant-overview">
+        <h3>Leaves Granted</h3>
+        <ul>
+          <li><span class="icon">🏖</span>Casual: <span class="value">12</span></li>
+          <li><span class="icon">🤒</span>Sick: <span class="value">8</span></li>
+          <li><span class="icon">💼</span>Earned: <span class="value">15</span></li>
+          <li><span class="icon">🎉</span>Festival: <span class="value">5</span></li>
+        </ul>
+      </div>
+
+      <div class="card balance-remaining">
+        <h3>Leaves Remaining</h3>
+        <ul>
+          <li><span class="icon">🏖</span>Casual: <span class="value">4</span></li>
+          <li><span class="icon">🤒</span>Sick: <span class="value">2</span></li>
+          <li><span class="icon">💼</span>Earned: <span class="value">10</span></li>
+          <li><span class="icon">🎉</span>Festival: <span class="value">5</span></li>
+        </ul>
+      </div>
+
+      <div class="card filter-month">
+        <h3>Filter by Month</h3>
+        <div class="month-control">
+          <button class="nav-btn prev">«</button>
+          <select class="month-select">
+            <option>July 2025</option>
+            <!-- ...other months... -->
+          </select>
+          <button class="nav-btn next">»</button>
+        </div>
+      </div>
+
+      <div class="card monthly-summary">
+        <h3>July 2025 Summary</h3>
+        <ul>
+          <li>Taken: 5 days (Casual 3, Sick 2)</li>
+          <li>Left: 17 days total</li>
+          <li>Upcoming: 2 days in August</li>
+        </ul>
+      </div>
     </div>
-    <div class="weekdays">
-      <div>Mon</div>
-      <div>Tue</div>
-      <div>Wed</div>
-      <div>Thu</div>
-      <div>Fri</div>
-      <div>Sat</div>
-      <div>Sun</div>
+
+    <div class="calender-header">
+      <h1 class="montserrat multi-gradient leaves-header">Add your leaves here.</h1>
+      <div class="calendar">
+        <div class="header">
+          <button id="prev">&laquo;</button>
+          <select id="month"></select>
+          <button id="next">&raquo;</button>
+        </div>
+        <div class="weekdays">
+          <div>Mon</div>
+          <div>Tue</div>
+          <div>Wed</div>
+          <div>Thu</div>
+          <div>Fri</div>
+          <div>Sat</div>
+          <div>Sun</div>
+        </div>
+        <div class="days" id="days"></div>
+      </div>
     </div>
-    <div class="days" id="days"></div>
-  </div>
-  <div class="year-slider-container" id="yearSlider">
+    <div class="year-slider-container" id="yearSlider">
   </div>
 </div>
 
