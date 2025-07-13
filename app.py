@@ -286,6 +286,62 @@ def user_info_route():
     return jsonify(safe), 200
 
 
+@app.route('/user-leaves-info', methods=['GET'])
+@limiter.limit("30 per minute")
+@login_required
+@enforce_same_origin
+def user_leaves_info_route():
+    user = auth.get_user_info_with_id(session['user_id'])
+    if not user:
+        return jsonify(error="User not found"), 404
+
+    firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
+    leaves_all = leaves.get_user_key_data(
+        session['user_id'],
+        'user_leaves.' + str(firm_name)) \
+        if firm_name else None
+
+    safe = {
+        "email": user["email"],
+        "name": user["name"],
+        "account_verified": user['account_verified'],
+        "firm_name": firm_name,
+        "leaves_taken": leaves_all.get('leaves_taken'),
+        "leaves_remaining": leaves_all.get('leaves_remaining')
+    }
+
+    return jsonify(safe), 200
+
+
+@app.route('/get-monthly-leaves-data/<int:month>', methods=['GET'])
+@limiter.limit("50 per minute")
+@login_required
+@enforce_same_origin
+def get_monthly_leaves_data(month: int):
+    if month < 1 or month > 12:
+        abort(404)
+
+    firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
+    leaves_taken = leaves.get_user_key_data(
+        session['user_id'],
+        'user_leaves.' + str(firm_name) + '.leaves_taken') \
+        if firm_name else None
+    if not leaves_taken:
+        return jsonify(status='error', error="No firm/leaves data found!"), 400
+
+    result = {}
+
+    for lt, dates in leaves_taken.items():
+        matching = [
+            d for d in dates
+            if int(d.split("-")[1]) == month
+        ]
+        if matching:
+            result[lt] = matching
+
+    return jsonify(status="ok", data=result), 200
+
+
 @app.route('/')
 @login_required
 def home():
@@ -315,6 +371,10 @@ def user_home(username: str, token: str):
 
     user = auth.get_user_info_with_id(session['user_id'])
     firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
+    firm_weekend = leaves.get_user_key_data(
+        session['user_id'],
+        'user_info.firm_weekend_days') \
+        if firm_name else None
     leaves_type = leaves.get_user_key_data(
         session['user_id'],
         'user_leaves.' + str(firm_name) + '.leaves_given') \
@@ -325,6 +385,7 @@ def user_home(username: str, token: str):
         "name": user["name"],
         "account_verified": user['account_verified'],
         "firm_name": firm_name,
+        "firm_weekend": firm_weekend,
         "leaves_type": leaves_type
     }
 

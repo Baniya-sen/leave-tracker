@@ -51,6 +51,10 @@ let updateCalenderGlobal;
     const yearSlider = document.getElementById('yearSlider');
     const daysContainer = document.getElementById('days');
 
+    const monthFilter = document.getElementById('filter-month');
+    const monthSummary = document.getElementById('monthly-summary');
+    const monthSummaryName = document.getElementById('summary-month-name');
+
     if (!monthSelect || !yearSlider || !daysContainer) {
         return;
     }
@@ -76,6 +80,39 @@ let updateCalenderGlobal;
             });
         }
         return leaveMap;
+    }
+
+    async function suppyFilterData(index) {
+        const res = await fetch(`/get-monthly-leaves-data/${index}`, {
+            method: 'GET',
+            credentials: 'include',
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            console.log(data.error)
+            return;
+        }
+
+        const monthName = `${monthNames[index]} ${currentYear}`;
+        const total = Object.values(data.data).reduce((sum, dates) => sum + dates.length, 0);
+        const breakdown = Object.entries(data.data)
+          .map(([type, dates]) => `${type}: ${dates.length}`)
+          .join(', ');
+
+        const tDays = total === 1 ? 'Day' : 'Days';
+
+        monthSummary.innerHTML = `
+        <h3 id="summary-month-name">${monthName} Summary</h3>
+          <ul>
+            <li>Taken: ${total} ${tDays} (${breakdown})</li>
+          </ul>
+        `;
+    }
+
+    function monthDataSummary(index) {
+        const daysInMonth = new Date(currentYear, index, 0).getDate();
+        const remaining = daysInMonth - today.getDate()
+        const rDays = remaining === 1 ? 'Day' : 'Days';
     }
 
     /**
@@ -107,7 +144,19 @@ let updateCalenderGlobal;
             yearElements[y] = yearDiv;
         }
 
+        monthSelect.addEventListener('change', (e) => {
+            const selectedIndex = e.target.selectedIndex;
+            currentMonth = selectedIndex;
+            updateCalendar();
+        });
         monthSelect.value = currentMonth;
+
+        monthFilter.addEventListener('change', (e) => {
+            const selectedIndex = e.target.selectedIndex + 1;
+            suppyFilterData(selectedIndex);
+        });
+        monthFilter.value = currentMonth;
+//        suppyFilterData(currentMonth);
 
         document.getElementById('prev').onclick = () => {
             currentMonth--;
@@ -137,6 +186,11 @@ let updateCalenderGlobal;
         const firstDayIndex = (rawFirst + 6) % 7;
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         const leaveMap = buildLeaveMap();
+        const weekend = window.USER_INFO.firm_weekend
+            .split(',')
+            .map(s => s.trim())
+            .filter(s => s !== '')
+            .map(s => Number(s) - 1);
 
         for (let i = 0; i < firstDayIndex; i++) {
             const blank = document.createElement('div');
@@ -150,6 +204,11 @@ let updateCalenderGlobal;
             num.classList.add('date-number');
             num.style.zIndex = '2';
             num.style.position = 'relative';
+
+            const weekday = (firstDayIndex + (d - 1)) % 7;
+            if (weekend.includes(weekday)) {
+              cell.classList.add('weekend');
+            }
             if (
                 d === today.getDate() &&
                 currentMonth === today.getMonth() &&
@@ -243,7 +302,7 @@ let updateCalenderGlobal;
 
         return res.json();
     }
-    const user_info = await fetchUserInfo();
+    let user_info = await fetchUserInfo();
 
     // Helper to close all edit modes
     function closeAllEditModes() {
@@ -511,11 +570,13 @@ let updateCalenderGlobal;
                     body: JSON.stringify({ otp })
                 });
                 if (response.ok) {
+                    user_info = await fetchUserInfo();
+                    verifyDiv.classList.remove("justify-content-between");
                     document.getElementById("account-status").textContent = "VERIFIED";
+                    document.getElementById("account-status").classList.remove("d-none");
                     document.getElementById("account-status").classList.remove("account-badge-unverified");
                     document.getElementById("account-status").classList.add("account-badge-verified");
                     document.getElementById("otp-input-container").classList.add("d-none");
-                    document.getElementById("account-status").classList.remove("d-none");
                 } else {
                     alert("Invalid OTP");
                 }
@@ -1033,7 +1094,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function hideLeaveModal() {
         leaveModal.style.display = 'none';
     }
-    closeBtn?.addEventListener('click', hideLeaveModal);
+    closeBtn?.addEventListener('click', () => {
+        hideLeaveModal();
+        let removeBtn = document.getElementById('removeLeaveBtn');
+        removeBtn?.classList.add('d-none');
+    });
     cancelBtn?.addEventListener('click', function (e) { e.preventDefault(); hideLeaveModal(); });
 
     // --- Helper: Populate leave types ---
@@ -1157,6 +1222,18 @@ document.addEventListener('DOMContentLoaded', function () {
         return leaveMap;
     }
 
+    async function updateLeaves(data) {
+        const res = await fetch('/user-leaves-info', {
+            method: 'GET',
+            credentials: 'include',
+        });
+        const updated = await res.json();
+        window.USER_LEAVES.leaves_taken = updated.leaves_taken
+        window.USER_LEAVES.leaves_remaining = updated.leaves_remaining
+        populateLeaveTypes();
+        updateCalenderGlobal?.();
+    }
+
     // --- Submit leave form via AJAX ---
     leaveForm?.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -1192,12 +1269,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(r => r.json())
         .then(data => {
             if (data.status === 'ok') {
-                const leaves = window.USER_LEAVES.leaves_taken;
-                if (!leaves[selectedType]) {
-                  leaves[selectedType] = [];
-                }
-                leaves[selectedType].push(dates[0]);
-                updateCalenderGlobal?.();
+                updateLeaves(data);
                 hideLeaveModal();
             } else {
                 alert(data.error || 'Failed to take leave');
@@ -1233,6 +1305,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelector('.custom-leave-modal-content').appendChild(removeBtn);
         }
         removeBtn.style.display = 'inline-block';
+        removeBtn.classList.remove("d-none");
         removeBtn.onclick = function () {
             removeBtn.disabled = true;
             fetch('/remove_leave', {
@@ -1246,19 +1319,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(r => r.json())
             .then(data => {
                 if (data.status === 'ok') {
-                    const leaves = window.USER_LEAVES.leaves_taken;
-                    const dateToRemove = date;
-                    if (leaves[leaveType]) {
-                      const idx = leaves[leaveType].indexOf(dateToRemove);
-                      if (idx > -1) {
-                        leaves[leaveType].splice(idx, 1);
-                      } else {
-                        alert('Data shows no leaves type of this category exists!')
-                      }
-                    } else {
-                      alert('Please try again after some time.');
-                    }
-                    updateCalenderGlobal?.();
+                    updateLeaves(data);
                     hideLeaveModal();
                 } else {
                     alert(data.error || 'Server did not send a valid data for leave removable!');
@@ -1271,7 +1332,10 @@ document.addEventListener('DOMContentLoaded', function () {
               alert(`❌ Failed to remove the leave!`);
               console.error('Remove‑leave failed:', err);
             })
-            .finally(() => { removeBtn.disabled = false; });
+            .finally(() => {
+                removeBtn.disabled = false;
+            });
+            removeBtn.classList.add('d-none');
         };
 
         let cancelBtn = document.getElementById('cancelLeaveBtn');

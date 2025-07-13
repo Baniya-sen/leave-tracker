@@ -121,7 +121,7 @@ textarea:disabled {
     padding: 20px 35px 10px 70px;
     display: flex;
     flex-direction: column;
-    gap: 25px;
+    gap: 3%;
     height: 83vh;
     box-shadow: 0 4px 24px 0 rgba(30, 194, 139, 0.50);
     border-radius: 10px;
@@ -141,7 +141,15 @@ textarea:disabled {
   background: rgba(255,255,255,0.07);
   border-radius: 8px;
   padding: 12px;
+  max-height: calc(24% + 8px);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
+
+.side-panel .card::-webkit-scrollbar {
+    display: none;
+}
+
 .panel-header {
   font-family: 'Montserrat', sans-serif;
   font-size: 1.1em;
@@ -208,9 +216,20 @@ textarea:disabled {
   background: rgba(255,255,255,0.1);
   border: none;
   color: #FFF;
+  font-weight: 400;
   padding: 4px 8px;
   border-radius: 4px;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.month-select option {
+  background: #fff;
+  color: #333;
+}
+
+.month-select option:checked {
+  background: rgba(0,0,0,0.4);
+  color: #FFF;
 }
 
 .leaves-header {
@@ -322,6 +341,12 @@ textarea:disabled {
 }
 
 .days .today {
+    background: #e6c34f;
+    color: #fff;
+    font-weight: 700;
+}
+
+.days .weekend {
     background: #1ec28b;
     color: #fff;
     font-weight: 700;
