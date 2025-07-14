@@ -83,7 +83,7 @@ let updateCalenderGlobal;
     }
 
     async function suppyFilterData(index) {
-        const res = await fetch(`/get-monthly-leaves-data/${index}`, {
+        const res = await fetch(`/get-monthly-leaves-data/${index + 1}`, {
             method: 'GET',
             credentials: 'include',
         });
@@ -99,12 +99,12 @@ let updateCalenderGlobal;
           .map(([type, dates]) => `${type}: ${dates.length}`)
           .join(', ');
 
-        const tDays = total === 1 ? 'Day' : 'Days';
+        const tDays = total === 1 ? 'leave' : 'leaves';
 
         monthSummary.innerHTML = `
         <h3 id="summary-month-name">${monthName} Summary</h3>
           <ul>
-            <li>Taken: ${total} ${tDays} (${breakdown})</li>
+            <li style="justify-content: space-around;">Taken: ${total} ${tDays}<br>(${breakdown})</li>
           </ul>
         `;
     }
@@ -148,15 +148,17 @@ let updateCalenderGlobal;
             const selectedIndex = e.target.selectedIndex;
             currentMonth = selectedIndex;
             updateCalendar();
+            monthFilter.value = currentMonth;
+            suppyFilterData(currentMonth);
         });
         monthSelect.value = currentMonth;
 
         monthFilter.addEventListener('change', (e) => {
-            const selectedIndex = e.target.selectedIndex + 1;
+            const selectedIndex = e.target.selectedIndex;
             suppyFilterData(selectedIndex);
         });
         monthFilter.value = currentMonth;
-//        suppyFilterData(currentMonth);
+        suppyFilterData(currentMonth);
 
         document.getElementById('prev').onclick = () => {
             currentMonth--;
@@ -167,6 +169,8 @@ let updateCalenderGlobal;
             monthSelect.value = currentMonth;
             updateCalendar();
             scrollToYear(currentYear);
+            monthFilter.value = currentMonth;
+            suppyFilterData(currentMonth);
         };
         document.getElementById('next').onclick = () => {
             currentMonth++;
@@ -177,6 +181,8 @@ let updateCalenderGlobal;
             monthSelect.value = currentMonth;
             updateCalendar();
             scrollToYear(currentYear);
+            monthFilter.value = currentMonth;
+            suppyFilterData(currentMonth);
         };
     }
 
@@ -190,7 +196,7 @@ let updateCalenderGlobal;
             .split(',')
             .map(s => s.trim())
             .filter(s => s !== '')
-            .map(s => Number(s) - 1);
+            .map(s => 0 < Number(s) < 8 ? Number(s) - 1 : 0);
 
         for (let i = 0; i < firstDayIndex; i++) {
             const blank = document.createElement('div');
@@ -247,6 +253,16 @@ let updateCalenderGlobal;
                     const span = document.createElement('span');
                     span.classList.add('leave-label');
                     span.textContent = type;
+                    Object.assign(span.style, {
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'center',
+                      fontSize: 'calc(6px + 1vh)',
+                      overflow: 'hidden',
+                      whiteSpace: 'nowrap',
+                      textOverflow: 'ellipsis',
+                      marginTop: '4%',
+                    });
                     labelsContainer.append(span);
                 });
                 cell.append(labelsContainer);
