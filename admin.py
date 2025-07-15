@@ -14,7 +14,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from leaves import get_mongo_client
 
 
-load_dotenv()
+if os.environ.get("FLASK_ENV") != "production":
+    load_dotenv()
 
 
 def hash_to_admin(period_seconds: int = 10*60, when: float = None) -> str:

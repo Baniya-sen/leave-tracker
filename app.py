@@ -5,7 +5,7 @@ import hashlib
 import base64
 from secrets import token_hex
 
-from os import getenv
+from os import environ, getenv
 from datetime import datetime, date, timezone, timedelta
 from dotenv import load_dotenv
 from functools import wraps
@@ -28,7 +28,8 @@ import helpers
 import email_otp
 import admin
 
-load_dotenv()
+if environ.get("FLASK_ENV") != "production":
+    load_dotenv()
 
 
 class HashConverter(BaseConverter):
@@ -79,6 +80,10 @@ limiter = Limiter(
 )
 Session(app)
 csrf = CSRFProtect(app)
+
+with app.app_context():
+    admin.init_admin_db()
+    auth.init_auth_db()
 
 DATE_FMT = "%Y-%m-%d"
 WEEKEND_RE = re.compile(r'^\d+(?:,\d+)*$')
@@ -929,10 +934,4 @@ def admin_upload_database(token):
 
 
 if __name__ == '__main__':
-    with app.app_context():
-        admin.init_admin_db()
-
-    with app.app_context():
-        auth.init_auth_db()
-
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=int(environ.get("PORT", 5000)))
