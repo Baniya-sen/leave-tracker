@@ -7,14 +7,15 @@ import zipfile
 from dotenv import load_dotenv
 from time import time
 from functools import wraps
-from datetime import datetime, timezone
-from flask import g, current_app, send_file, request, jsonify, session, redirect, url_for
+from datetime import datetime
+from flask import g, current_app, send_file, request, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from leaves import get_mongo_client
 
 
-load_dotenv()
+if os.environ.get("FLASK_ENV") != "production":
+    load_dotenv()
 
 
 def hash_to_admin(period_seconds: int = 10*60, when: float = None) -> str:
@@ -166,22 +167,36 @@ def delete_all_user_data():
     try:
         # --- SQL cleanup ---
         db_path = current_app.config['AUTH_DB']
-        if os.path.exists(db_path):
+        current_app.logger.debug(f"Clearing users table in: {db_path}")
+        if not os.path.exists(db_path):
+            current_app.logger.error(f"DB file not found: {db_path}")
+            return False
+
+        with sqlite3.connect(db_path) as conn:
             conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM users")
+            conn.execute("PRAGMA foreign_keys = ON;")
+            conn.execute("DELETE FROM users;")
             conn.commit()
             conn.close()
-            print(f"All users deleted from SQL database: {db_path}")
+
+            conn = sqlite3.connect(db_path)
+            conn.execute("VACUUM;")
+            conn.close()
+
+            print(f"All users deleted from {db_path}")
+            current_app.logger.info(f"All users deleted from {db_path}")
 
         # --- MongoDB cleanup ---
         client = get_mongo_client()
         db_name = current_app.config['MONGO_DB']
         coll_name = current_app.config['MONGO_Coll']
         collection = client[db_name][coll_name]
+        print(f"Clearing users info from MongoDb collection: {collection}")
+        current_app.logger.debug(f"Clearing users info from MongoDb collection: {collection}")
 
         result = collection.delete_many({})
         print(f"Deleted {result.deleted_count} documents from MongoDB collection: {coll_name}")
+        current_app.logger.info(f"Deleted {result.deleted_count} documents from MongoDB collection: {coll_name}")
 
         return True, f"Successfully deleted all user data. SQL: all users, MongoDB: {result.deleted_count} documents"
 
@@ -241,10 +256,16 @@ def upload_databases():
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         tables = [r[0] for r in cursor.fetchall()]
         conn.close()
+        print(f"Added all data from {tmp_sql}")
+        current_app.logger.info(f"Added all data from {tmp_sql}")
         if not tables:
+            print(f"no tables in SQL file")
+            current_app.logger.info("no tables in SQL file")
             raise sqlite3.Error("no tables in SQL file")
     except Exception as e:
         os.remove(tmp_sql)
+        print(f"Invalid SQLite DB: {e}")
+        current_app.logger.info(f"Invalid SQLite DB: {e}")
         return False, f"Invalid SQLite DB: {e}"
 
     mongo_count = None
@@ -278,5 +299,7 @@ def upload_databases():
     msg = f"Replaced SQL DB with tables: {tables}."
     if mongo_count is not None:
         msg += f" Imported {mongo_count} Mongo documents."
+        print(f" Imported {mongo_count} Mongo documents.")
+        current_app.logger.info(f" Imported {mongo_count} Mongo documents.")
 
     return True, msg

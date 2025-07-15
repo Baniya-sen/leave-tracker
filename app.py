@@ -5,17 +5,19 @@ import hashlib
 import base64
 from secrets import token_hex
 
-from os import getenv, path
+from os import environ, getenv
 from datetime import datetime, date, timezone, timedelta
 from dotenv import load_dotenv
 from functools import wraps
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 from werkzeug.routing import BaseConverter
 
 from flask import (
-    Flask, g, session, request, render_template,
-    redirect, url_for, jsonify
+    Flask, session, request, render_template,
+    redirect, url_for, jsonify, abort
 )
+from werkzeug.security import check_password_hash
+
 from flask_session import Session
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
@@ -26,7 +28,8 @@ import helpers
 import email_otp
 import admin
 
-load_dotenv()
+if environ.get("FLASK_ENV") != "production":
+    load_dotenv()
 
 
 class HashConverter(BaseConverter):
@@ -47,14 +50,15 @@ MONGO_CLUSTER = getenv('MONGO_CLUSTER')
 MONGO_COLLECTION = getenv('MONGO_COLLECTION')
 MONGO_HOST = getenv('MONGO_HOST')
 MONGO_OPTIONS = getenv('MONGO_OPTIONS')
-MONGO_URI = f"mongodb+srv://{MONGO_USER}:{MONGO_PASS}@{MONGO_CLUSTER}{MONGO_HOST}/?{MONGO_OPTIONS}{MONGO_CLUSTER}"
+MONGO_URI = f"mongodb+srv://{MONGO_USER}:{MONGO_PASS}@{MONGO_CLUSTER}.{MONGO_HOST}/?{MONGO_OPTIONS}{MONGO_CLUSTER}"
 
 app = Flask(__name__)
 app.secret_key = getenv('APP_KEY')
-
 app.url_map.converters['hash'] = HashConverter
+app.url_map.strict_slashes = True
+
 app.config['ADMIN_DB'] = getenv('ADMIN_DB')
-app.config['AUTH_DB'] = getenv('USER_DB')
+app.config['AUTH_DB'] = getenv('AUTH_DB')
 app.config['BACKUP_DATABASE'] = getenv('BACKUP_DATABASE')
 app.config['RATELIMIT_STORAGE_URL'] = REDDIS_URI
 app.config['SESSION_PERMANENT'] = False
@@ -76,6 +80,10 @@ limiter = Limiter(
 )
 Session(app)
 csrf = CSRFProtect(app)
+
+with app.app_context():
+    admin.init_admin_db()
+    auth.init_auth_db()
 
 DATE_FMT = "%Y-%m-%d"
 WEEKEND_RE = re.compile(r'^\d+(?:,\d+)*$')
@@ -104,16 +112,34 @@ def valid_date(s):
         return False
 
 
-def make_daily_token(username: str) -> str:
-    key = app.config['SECRET_KEY'].encode()
-    msg = f"{username}:{date.today().isoformat()}".encode()
+def make_daily_token(username_email: str) -> str:
+    key = app.config['SECRET_KEY'].encode('utf-8')
+    msg = f"{username_email}:{date.today().isoformat()}".encode('utf-8')
     digest = hmac.new(key, msg, hashlib.sha256).digest()
-    return base64.urlsafe_b64encode(digest).decode('utf8')[:8]
+    token = base64.urlsafe_b64encode(digest).decode('utf-8')[:8]
+    return token
+
+
+def is_allowed_origin(origin):
+    if not origin:
+        return False
+    o = urlparse(origin.lower())
+    # In development
+    if o.scheme == 'http' and o.hostname in ('127.0.0.1', 'localhost') and o.port == 5000:
+        return True
+    # production would check against your real domain:
+    # if o.scheme == 'https' and o.hostname == 'yourdomain.com':
+    #     return True
+    return False
 
 
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
+        token = kwargs.get('token')
+        if token and not re.match(r'^[A-Za-z0-9_-]{8}$', token):
+            abort(404)
+
         if 'user_id' not in session or 'session_token' not in session:
             return redirect(url_for('login'))
 
@@ -136,6 +162,23 @@ def verified_required(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
+
+def enforce_same_origin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        origin = request.headers.get('Origin') or request.headers.get('Referer')
+        if not origin or not is_allowed_origin(origin):
+            abort(403)
+        return f(*args, **kwargs)
+
+    return decorated
+
+
+@app.errorhandler(404)
+def page_not_found(exception):
+    app.logger.exception(exception)
+    return render_template('404.html'), 404
 
 
 @app.errorhandler(500)
@@ -163,72 +206,88 @@ def register():
         return render_template("register.html")
 
     if request.method == 'POST':
-        if not request.form.get("username") or not request.form.get("password"):
-            return apology("At-least enter user/password", 401)
+        if not request.form.get("email") or not request.form.get("password"):
+            return apology("At-least enter email/password", 401)
         elif request.form.get("password") != request.form.get("confirmation"):
             return apology("Passwords mismatch!", 401)
 
-        if auth.register_user(request.form.get("username"), request.form.get("password")):
-            user = auth.get_user_info_with_username(request.form.get("username"))
-            if leaves.init_user_info(user['id'], user['username']):
-                print("User Registered! ", user['username'])
-                session['user_registered_hex'] = token_hex(8)
+        is_valid, error_msg, cleaned = helpers.validate_email({"email": request.form.get("email")})
+        if not is_valid:
+            return apology('Please provide a valid email!', 401)
+
+        if auth.register_user(cleaned['email'], request.form.get("password")):
+            user = auth.get_user_info_with_email(cleaned['email'])
+            if leaves.init_user_info(user['id'], user['email']):
+                print("User Registered! ", user['email'])
+                hexed = token_hex(16)
+                session['user_registered_hex'] = hexed
                 return redirect(
                     url_for(
                         'login',
                         registered='true',
-                        registered_hex=session['user_registered_hex'])
+                        registered_hex=hexed)
                 )
 
-        return apology('Username taken!')
+        return apology('Account exists with this email', 401)
 
 
 @app.route('/login', methods=['GET', 'POST'])
 @csrf.exempt
 def login():
-    user_registered_hex = session.get('user_registered_hex', None)
+    registered_hex = session.pop('user_registered_hex', None)
     session.clear()
 
-    if request.method == "GET":
-        regis = request.args.get('registered', '')
-        regis_hex = request.args.get('registered_hex', '')
-
-        if regis == 'true' and regis_hex == user_registered_hex:
-            log_display = "Registered successfully. Now Login!"
-        else:
+    regis = request.args.get('registered')
+    regis_hex = request.args.get('registered_hex')
+    if regis == 'true' and regis_hex == registered_hex:
+        log_display = "Registered successfully! Please log in."
+    else:
+        log_display = request.args.get('msg') or None
+        msg_state = request.args.get('state') or "0"
+        msg_state = int(msg_state)
+        if msg_state - 1 != 0:
             log_display = None
 
-        return render_template("login.html", log_display=log_display)
-
     if request.method == 'POST':
-        if not request.form.get("username") or not request.form.get("password"):
-            return apology("At-least provide a username/password!", 401)
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
 
-        user = auth.authenticate_user(
-            request.form['username'], request.form['password']
-        )
+        if not email or not password:
+            return redirect(url_for('login', msg="Please provide both email/username and password", state=1))
+
+        user = auth.authenticate_user(email, password)
         if user:
+            if not check_password_hash(user['passhash'], password):
+                return redirect(
+                    url_for('login', msg=f"Password does not match!", state=1)
+                )
             token = token_hex(32)
             auth.update_user_info(user['id'], {'session_token': token})
-
             session['user_id'] = user['id']
-            session['username'] = user['username']
+            session['email'] = user['email']
+            session['name'] = dict(user).get('name') or None
+            session['username'] = dict(user).get('username') or None
             session['session_token'] = token
-            return redirect('/')
+            return redirect(url_for('home'))
+        else:
+            return redirect(
+                url_for('login', msg=f"No account registered under '{email}'", state=1)
+            )
 
-        return apology('Invalid credentials', 401)
+    return render_template('login.html', log_display=log_display)
 
 
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    return redirect(url_for('login', msg=f"✅ You have successfully logged out.", state=1))
 
 
-@app.route('/user-info', methods=['GET', 'POST'])
+@app.route('/user-info', methods=['GET'])
+@limiter.limit("30 per minute")
 @login_required
+@enforce_same_origin
 def user_info_route():
-    # if request.method == 'GET':
     user = auth.get_user_info_with_id(session['user_id'])
     if not user:
         return jsonify(error="User not found"), 404
@@ -236,7 +295,7 @@ def user_info_route():
     firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
     leaves_type = leaves.get_user_key_data(
         session['user_id'],
-        'user_leaves.' + firm_name + '.leaves_given') \
+        'user_leaves.' + str(firm_name) + '.leaves_given') \
         if firm_name else None
 
     safe = {
@@ -250,14 +309,99 @@ def user_info_route():
     return jsonify(safe), 200
 
 
+@app.route('/user-leaves', methods=['GET'])
+@limiter.limit("30 per minute")
+@login_required
+@verified_required
+@enforce_same_origin
+def user_leaves_route():
+    user = auth.get_user_info_with_id(session['user_id'])
+    if not user:
+        return jsonify(error="User not found"), 404
+
+    firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
+    leaves_taken = leaves.get_user_key_data(
+        session['user_id'],
+        'user_leaves.' + str(firm_name) + '.leaves_taken') \
+        if firm_name else None
+
+    safe = {
+        "email": user["email"],
+        "name": user["name"],
+        "account_verified": user['account_verified'],
+        "firm_name": firm_name,
+        "leaves_taken": leaves_taken
+    }
+
+    return jsonify(safe), 200
+
+
+@app.route('/user-leaves-info', methods=['GET'])
+@limiter.limit("30 per minute")
+@login_required
+@verified_required
+@enforce_same_origin
+def user_leaves_info_route():
+    user = auth.get_user_info_with_id(session['user_id'])
+    if not user:
+        return jsonify(error="User not found"), 404
+
+    firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
+    leaves_all = leaves.get_user_key_data(
+        session['user_id'],
+        'user_leaves.' + str(firm_name)) \
+        if firm_name else None
+
+    safe = {
+        "email": user["email"],
+        "name": user["name"],
+        "account_verified": user['account_verified'],
+        "firm_name": firm_name,
+        "leaves_taken": leaves_all.get('leaves_taken'),
+        "leaves_remaining": leaves_all.get('leaves_remaining')
+    }
+
+    return jsonify(safe), 200
+
+
+@app.route('/get-monthly-leaves-data/<int:month>', methods=['GET'])
+@limiter.limit("50 per minute")
+@login_required
+@verified_required
+@enforce_same_origin
+def get_monthly_leaves_data(month: int):
+    if month < 1 or month > 12:
+        abort(404)
+
+    firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
+    leaves_taken = leaves.get_user_key_data(
+        session['user_id'],
+        'user_leaves.' + str(firm_name) + '.leaves_taken') \
+        if firm_name else None
+    if not leaves_taken:
+        return jsonify(status='error', error="No firm/leaves data found!"), 400
+
+    result = {}
+
+    for lt, dates in leaves_taken.items():
+        matching = [
+            d for d in dates
+            if int(d.split("-")[1]) == month
+        ]
+        if matching:
+            result[lt] = matching
+
+    return jsonify(status="ok", data=result), 200
+
+
 @app.route('/')
 @login_required
 def home():
-    username = session['username']
-    token = make_daily_token(username)
+    token_string = ''.join((session.get('name') or session['email']).strip().split())
+    token = make_daily_token(token_string)
     return redirect(
         url_for('user_home',
-                username=username,
+                username=token_string,
                 token=token)
     )
 
@@ -265,23 +409,31 @@ def home():
 @app.route('/<username>/<token>')
 @login_required
 def user_home(username: str, token: str):
-    if username != session['username']:
-        apology("Username did not matched! Logout and Re-login!", 403)
+    if not re.match(r'^[A-Za-z0-9_-]{8}$', token):
+        abort(404)
 
-    if token != make_daily_token(username):
+    name_session = ''.join((session.get('name') or session['email']).strip().split())
+    if username != name_session:
+        apology("Username/Email did not matched! Logout and Re-login!", 404)
+
+    if token != make_daily_token(username.strip()):
         apology("Token did not matched! Logout and Re-login.", 404)
 
-    all_firm_leaves = leaves.get_user_key_data(session['user_id'], f"user_leaves")
     firm_leaves = {}
+    all_firm_leaves = leaves.get_user_key_data(session['user_id'], f"user_leaves")
     if all_firm_leaves:
         last_firm = list(all_firm_leaves.keys())[-1]
         firm_leaves = all_firm_leaves[last_firm]
 
     user = auth.get_user_info_with_id(session['user_id'])
     firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
+    firm_weekend = leaves.get_user_key_data(
+        session['user_id'],
+        'user_info.firm_weekend_days') \
+        if firm_name else None
     leaves_type = leaves.get_user_key_data(
         session['user_id'],
-        'user_leaves.' + firm_name + '.leaves_given')\
+        'user_leaves.' + str(firm_name) + '.leaves_given') \
         if firm_name else None
 
     user_info = {
@@ -289,40 +441,80 @@ def user_home(username: str, token: str):
         "name": user["name"],
         "account_verified": user['account_verified'],
         "firm_name": firm_name,
+        "firm_weekend": firm_weekend,
         "leaves_type": leaves_type
     }
 
+    print(firm_leaves)
+
     return render_template(
         'index.html',
-        firms="Bonanza Interactive",
+        firms=firm_name,
         user_leaves=firm_leaves,
         user_info=user_info
     )
 
 
-@app.route('/account', methods=['GET', 'POST'])
+@app.route('/account', methods=['GET'])
 @login_required
 def account_root():
-    uname = session['username']
+    uname = session.get('username') or session['email']
     token = make_daily_token(uname)
-    return redirect(url_for('account', username=uname, token=token), code=307)
+    return redirect(url_for('account', username=uname, token=token))
 
 
 @app.route('/<username>/account/<token>', methods=['GET'])
 @login_required
 def account(username: str, token: str):
-    if username != session['username'] or token != make_daily_token(username):
-        return apology("Verification failed! Logout and Re-login!", 403)
+    if username != (session.get('username') or session['email']) or token != make_daily_token(username):
+        return apology("Verification failed! Logout and Re-login!", 404)
 
     user = auth.get_user_info_with_id(session['user_id'])
+    if user:
+        session['firm_name'] = user['firm_name']
+        user_info = {
+            "email": user["email"],
+            "name": user["name"],
+            "username": user["username"],
+            "age": user["age"],
+            "date": user['date'],
+            "account_verified": user['account_verified'],
+            "firm_name": user['firm_name'],
+            "firm_weekend_days": user['firm_weekend_days'],
+            "leaves_type": user['leaves_type']
+        }
+    else:
+        user_info = {}
+
     return render_template(
         'account.html',
-        user_info=dict(user) or {}
+        user_info=user_info,
+        user_leaves=None,
     )
+
+
+@app.route('/account/update/email', methods=['POST'])
+@login_required
+@limiter.limit("15 per minute")
+def update_user_email():
+    data = request.form.to_dict()
+    valid, error, clean_data = helpers.validate_email(data, session['user_id'])
+    if not valid:
+        return jsonify(status='error', error=error), 400
+
+    if "email" in data:
+        clean_data['account_verified'] = 0
+
+    if auth.update_user_info(session['user_id'], clean_data) and \
+            leaves.update_user_profile(session['user_id'], clean_data):
+        return jsonify(status='ok', data=clean_data)
+    else:
+        return jsonify(status='error', error=error), 400
 
 
 @app.route('/account/update-info/<info_type>', methods=['POST'])
 @login_required
+@verified_required
 @limiter.limit("15 per minute")
 def update_account_info(info_type):
     user_id = session['user_id']
@@ -330,7 +522,6 @@ def update_account_info(info_type):
 
     validators = {
         'name_age': helpers.validate_name_age,
-        'email': helpers.validate_email,
         'dob': helpers.validate_dob,
         'firm_info': helpers.validate_firm_info,
         'firm_weekend': helpers.validate_firm_weekend,
@@ -338,11 +529,11 @@ def update_account_info(info_type):
     }
 
     if info_type not in validators:
-        return apology('Unknown info type', 400)
+        return jsonify(status='error', error="Change not suitable!"), 400
 
     valid, error, clean_data = validators[info_type](data, session['user_id'])
     if not valid:
-        return apology(error, 400)
+        return jsonify(status='error', error=error), 400
 
     update_data = clean_data
     if info_type == 'firm_leaves':
@@ -351,20 +542,18 @@ def update_account_info(info_type):
             map(int, request.form.getlist('leave_count[]'))
         ))
 
-    if info_type == "email":
-        update_data['account_verified'] = 0
-
     if auth.update_user_info(user_id, update_data) and \
             leaves.update_user_profile(user_id, update_data):
-        return redirect(url_for('account_root'))
+        return jsonify(status='ok', data=update_data)
     else:
-        return apology('Update failed', 400)
+        return jsonify(status='error', error=error), 400
 
 
 @app.route("/leaves/import", methods=["POST"], strict_slashes=False)
-@limiter.limit("4 per minute")
+@limiter.limit("10 per minute")
 @login_required
 @verified_required
+@enforce_same_origin
 def import_leaves():
     user_id = session["user_id"]
 
@@ -416,8 +605,10 @@ def import_leaves():
 
 
 @app.route('/take_leave', methods=['POST'])
+@limiter.limit("50 per minute")
 @login_required
 @verified_required
+@enforce_same_origin
 def take_leave():
     user_id = session['user_id']
     data = request.get_json(force=True)
@@ -430,10 +621,12 @@ def take_leave():
         days = int(data.get('days', 1))
         if not date_str or not leave_type or days < 1:
             return jsonify(error='Invalid input'), 400
+
         d = datetime.strptime(date_str, '%Y-%m-%d')
         dates = []
         for i in range(days):
             dates.append((d + timedelta(days=i)).strftime('%Y-%m-%d'))
+
     if not dates or not leave_type:
         return jsonify(error='Invalid input'), 400
 
@@ -485,16 +678,43 @@ def take_leave():
     return jsonify(status='ok')
 
 
-@app.route("/request-verify-email", methods=["POST"])
-@limiter.limit("4 per minute")
+@app.route('/remove_leave', methods=['POST'])
+@limiter.limit("25 per minute")
 @login_required
+@verified_required
+@enforce_same_origin
+def remove_leave():
+    data = request.get_json()
+    user_id = session['user_id']
+    firm = leaves.get_user_key_data(user_id, "user_info.firm_name")
+    if not firm:
+        return jsonify(error="Firm not set for user."), 400
+    date_str = data.get('date')
+    leave_type = data.get('type')
+    if not date_str or not leave_type:
+        return jsonify(error="Missing date or leave type."), 400
+    ok, msg = leaves.remove_user_leave(user_id, str(firm), leave_type, date_str)
+    if ok:
+        return jsonify(status="ok")
+    else:
+        return jsonify(error=msg or "Failed to remove leave"), 400
+
+
+@app.route("/request-verify-email", methods=["POST"])
+@limiter.limit("5 per minute")
+@login_required
+@enforce_same_origin
 def request_verify_email():
     try:
         user_email = auth.get_user_field(session['user_id'], "email")
         if not user_email:
             return jsonify(error="Email is required! Register in accounts tab."), 400
 
-        otp = email_otp.send_otp(session['username'], user_email)
+        user_account_verified = str(auth.get_user_field(session['user_id'], "account_verified"))
+        if int(user_account_verified, 0) == 1:
+            return jsonify(error="Your Email is already verified."), 400
+
+        otp = email_otp.send_otp(session.get('username') or "User", user_email)
         session["email_otp"] = otp
         session["email_otp_sent_at"] = datetime.now(timezone.utc).isoformat()
         return jsonify(status="ok", message="OTP sent to your email. Please check you spam if not found.")
@@ -505,9 +725,14 @@ def request_verify_email():
 
 
 @app.route("/confirm-otp", methods=["POST"])
-@limiter.limit("4 per minute")
+@limiter.limit("5 per minute")
 @login_required
+@enforce_same_origin
 def confirm_otp():
+    user_account_verified = str(auth.get_user_field(session['user_id'], "account_verified"))
+    if int(user_account_verified, 0) == 1:
+        return jsonify(error="Your Email is already verified."), 400
+
     data = request.get_json()
     if not data or 'otp' not in data:
         return jsonify(error="OTP missing"), 400
@@ -532,7 +757,6 @@ def confirm_otp():
 @app.route('/admin_register/<string:token>', methods=['GET', 'POST'])
 @csrf.exempt
 def admin_register(token):
-
     if request.method == "GET":
         if token != session.get('register_admin_token', 0):
             return render_template('magic.html')
@@ -557,7 +781,7 @@ def admin_register(token):
             #     print("User Registered! ", admin_added['username'])
             #     return redirect(url_for('login'))
             session.clear()
-            return redirect(url_for('admin_login'))
+            return redirect(url_for('admin_login', hashed=admin.hash_to_admin()))
 
         return apology('Admin Username taken!')
 
@@ -643,6 +867,7 @@ def admin_dashboard(admin_name, token):
 
 
 @app.route('/admin/admin-spacing/delete/<string:token>', methods=['POST'])
+@limiter.limit("2 per minute")
 @admin.admin_login_required
 def admin_delete_all_data(token):
     if token != session.get('ADMIN_DELETE_TOKEN'):
@@ -661,6 +886,7 @@ def admin_delete_all_data(token):
 
 
 @app.route('/admin/admin-spacing/download/<string:token>', methods=['GET'])
+@limiter.limit("4 per minute")
 @admin.admin_login_required
 def admin_download_database(token):
     if token != session.get('ADMIN_DOWNLOAD_TOKEN'):
@@ -679,6 +905,7 @@ def admin_download_database(token):
 
 
 @app.route('/admin/admin-spacing/upload/<string:token>', methods=['GET', 'POST'])
+@limiter.limit("6 per minute")
 @admin.admin_login_required
 def admin_upload_database(token):
     if token != session.get('ADMIN_UPLOAD_TOKEN'):
@@ -707,10 +934,4 @@ def admin_upload_database(token):
 
 
 if __name__ == '__main__':
-    with app.app_context():
-        admin.init_admin_db()
-
-    with app.app_context():
-        auth.init_auth_db()
-
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=int(environ.get("PORT", 5000)))

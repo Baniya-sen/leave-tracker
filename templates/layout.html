@@ -20,12 +20,14 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
 
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
   <!-- https://favicon.io/emoji-favicons/money-bag/ -->
   <link href="/static/favicon.ico" rel="icon">
 
   <link href="/static/styles.css" rel="stylesheet">
-  <link href='fullcalendar/main.min.css' rel='stylesheet' />
+
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet"/>
 
   <title>{% block title %}{% endblock %}Leaves Tracker</title>
 
@@ -40,8 +42,8 @@
     <div class="app-navbar-inner">
 
       {% if session["user_id"] %}
-      <div class="firm-chip app-firm-chip ">
-        <span>{{ firms or 'Add firm' }}</span>
+      <div class="firm-chip app-firm-chip">
+        <span>{{ session.get('firm_name') or 'Add firm in Account' }}</span>
         <i class="fa fa-chevron-down"></i>
       </div>
       {% endif %}
@@ -57,11 +59,23 @@
         {% if session["user_id"] %}
         <ul class="navbar-nav flex-row m-0 align-items-center inter">
           <li class="nav-item">
-            <a class="nav-link nav-chip d-flex align-items-center gap-2 app-account-link" href="/account">
+            <a class="nav-link nav-chip d-flex align-items-center gap-2 app-account-link" href="{{ '/account' if user_leaves is mapping else '/' }}">
               <div class="nav-icon-circle app-account-icon">
-                <img src="{{ url_for('static', filename='images/account.png') }}" alt="Account" />
+                {% if user_leaves is mapping %}
+                  <img src="{{ url_for('static', filename='images/account.png') }}" alt="Account" />
+                {% else %}
+                  <span class="name-initials-nav">
+                    {% if user_info and user_info['name'] %}
+                      {{ user_info['name'].split() | map(attribute=0) | join('') | upper }}
+                    {% endif %}
+                  </span>
+                {% endif %}
               </div>
-              Account
+              {% if user_leaves is mapping %}
+                Account
+              {% else %}
+                Home
+              {% endif %}
             </a>
           </li>
           <li class="nav-item"><a class="nav-link nav-chip app-logout-link" href="/logout">Logout</a></li>
@@ -101,7 +115,8 @@
   <script>window.USER_LEAVES = {};</script>
   {% endblock %}
 
-  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script src="{{ url_for('static', filename='script.min.js') }}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
 </body>
 </html>

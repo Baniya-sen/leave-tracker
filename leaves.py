@@ -22,7 +22,7 @@ def get_leaves_collection():
     return client[db_name][collection_name]
 
 
-def init_user_info(user_id: int, username: str) -> bool:
+def init_user_info(user_id: int, email: str) -> bool:
     try:
         collection = get_leaves_collection()
         now_iso = datetime.now(timezone.utc).isoformat()
@@ -30,7 +30,7 @@ def init_user_info(user_id: int, username: str) -> bool:
         stub = {
             "user_id": user_id,
             "user_info": {
-                "username": username,
+                "email": email,
                 "account_created": now_iso
             },
             "user_leaves": {}
@@ -53,6 +53,7 @@ def update_user_profile(user_id: int, data: dict) -> bool:
          f"user_leaves.{firm}.leaves_remaining": 1,
          "_id": 0}
     )
+
     existing_g = existing_doc.get("user_leaves", {}).get(firm, {}).get("leaves_given", {}) if existing_doc else {}
     existing_r = existing_doc.get("user_leaves", {}).get(firm, {}).get("leaves_remaining", {}) if existing_doc else {}
 
@@ -153,3 +154,18 @@ def get_users_leaves(user_id: int, username: str, firm: str) -> dict | None:
         }
     )
     return document.get("user_leaves") if document else None
+
+
+def remove_user_leave(user_id: int, firm: str, leave_type: str, date_str: str) -> tuple[bool, str|None]:
+    coll = get_leaves_collection()
+    # Pull the date from the leaves_taken array for the type
+    update = {
+        "$pull": {f"user_leaves.{firm}.leaves_taken.{leave_type}": date_str},
+        "$inc": {f"user_leaves.{firm}.leaves_remaining.{leave_type}": 1}
+    }
+    result = coll.update_one({"user_id": user_id}, update)
+    if result.modified_count > 0:
+        return True, None
+    else:
+        return False, "No leave found to remove or already removed."
+

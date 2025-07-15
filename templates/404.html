@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Leaves Lost in Transit</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for a subtle dark gradient background */
+        body {
+            background: linear-gradient(180deg, #1d1d1e 0%, #18191b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+
+        .montserrat {
+          font-family: "Montserrat", sans-serif;
+          font-size: 0.9rem;
+          font-optical-sizing: auto;
+          font-weight: 600;
+          font-style: normal;
+        }
+
+        /* Typing cursor animation */
+        .typing-text::after {
+            content: '|';
+            animation: blink-caret 0.75s step-end infinite;
+        }
+
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: #4CAF50; } /* Green cursor */
+        }
+
+        /* Small logo animation */
+        @keyframes bounce-in {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .logo-bounce {
+            animation: bounce-in 0.8s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="fixed flex flex-col items-center justify-center p-4 max-w-xl mx-auto" style="margin-left: -8% !important;">
+        <div class="mb-2">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="leave_tracker_logo" height="45" width="45"  style="margin-left: -10% !important;"/>
+         </div>
+        <h1 class="text-1xl md:text-2xl font-extrabold text-gray-600 mb-4 tracking-wider montserrat" style="margin-left: 30% !important;">404 Not Found</h1>
+        <p id="typed-message" class=" font-semibold text-gray-200 text-left typing-text montserrat w-[20.5rem] ml-[17.5rem] max-h-[1rem]"></p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mainMessageElement = document.getElementById('typed-message');
+            const subMessageElement = document.getElementById('typed-submessage');
+            const returnButton = document.querySelector('a');
+
+            const mainMessage = "Oops! This page has gone on an— unscheduled leave.";
+
+            let mainIndex = 0;
+            let subIndex = 0;
+
+            let waitingForBreak = false;
+
+            function typeMainMessage() {
+                if (waitingForBreak) {
+                    mainMessageElement.innerHTML += '<br>';
+                    waitingForBreak = false;
+                }
+                if (mainIndex < mainMessage.length) {
+                    const char = mainMessage.charAt(mainIndex);
+                    const safeChar = char === '<' ? '&lt;' : char === '>' ? '&gt;' : char;
+                    mainMessageElement.innerHTML += safeChar;
+                    mainIndex++;
+
+                    let duration = 50;
+                    if (char === "!") duration = 300;
+                    if (char === "—") {
+                        duration = 500;
+                        waitingForBreak = true;
+                    }
+                    setTimeout(typeMainMessage, duration);
+                } else {
+                    mainMessageElement.classList.remove('typing-text');
+                }
+            }
+            setTimeout(typeMainMessage, 400);
+        });
+    </script>
+</body>
+</html>

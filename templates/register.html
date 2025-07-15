@@ -17,8 +17,8 @@
                     height="60" width="60" />
             </div>
             <div class="app-login-title">Sign up to Leave Tracker</div>
-            <div id="log-display" class="text-danger small mt-1" style="display:none;">
-                {{ log_display if log_display else '' }}
+            <div id="log-display" class="{{ 'text-danger' if log_display else 'text-success' }} small mt-0 mb-4">
+                {{ log_display or 'Gentle reminder: We do not save your password.' }}
             </div>
             <!-- <div class="app-login-social-row">
                 <button type="button" class="app-login-social-btn"><i class="fab fa-google"></i></button>
@@ -26,12 +26,12 @@
             </div> -->
             <form id="registerForm" action="/register" method="post" class="app-login-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input name="username" type="text" autocomplete="off" autofocus class="app-login-input"
-                    placeholder="Email" required>
+                <input name="email" type="email" autocomplete="off" autofocus class="app-login-input"
+                    placeholder="Email" id="regisEmail" required>
                 <input name="password" type="password" autocomplete="off" class="app-login-input" placeholder="Password"
-                    required>
+                    id="regisPass" required>
                 <input name="confirmation" type="password" autocomplete="off" class="app-login-input"
-                    placeholder="Re-enter Password" required>
+                    placeholder="Re-enter Password" id="confirmRegisPass" required>
                 <button type="submit" class="app-login-btn" id="passwordSubmit">Sign Up</button>
             </form>
             <div class="app-login-links" style="justify-content: flex-start;">
