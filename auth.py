@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 import sqlite3
 from flask import g, current_app, session
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash
 
 
 def get_auth_db():
@@ -57,9 +57,7 @@ def authenticate_user(identifier: str, password: str):
         ''',
         (identifier, identifier),
     ).fetchone()
-    if user and check_password_hash(user['passhash'], password):
-        return user
-    return None
+    return user or None
 
 
 def get_user_info_with_id(user_id: int):

@@ -54,21 +54,25 @@
       <div class="card grant-overview">
         <h3>Leaves Granted</h3>
         <ul>
-          {% for lt, val in user_leaves.leaves_given.items() %}
-            <li>
-              <span class="icon">{{ get_icon(lt) }}</span>
-              {{ lt }}: <span class="value">{{ val }}</span>
-            </li>
-          {% endfor %}
+          {% if user_leaves.get('leaves_given', None) %}
+            {% for lt, val in user_leaves.leaves_given.items() %}
+              <li>
+                <span class="icon">{{ get_icon(lt) }}</span>
+                {{ lt }}: <span class="value">{{ val }}</span>
+              </li>
+            {% endfor %}
+          {% endif %}
         </ul>
       </div>
 
       <div class="card balance-remaining">
         <h3>Leaves Remaining</h3>
         <ul>
-          {% for lt, val in user_leaves.leaves_remaining.items() %}
-            <li><span class="icon">{{ get_icon(lt) }}</span>{{ lt }}: <span class="value">{{ val }}</span></li>
-          {% endfor %}
+          {% if user_leaves.get('leaves_remaining', None) %}
+            {% for lt, val in user_leaves.leaves_remaining.items() %}
+              <li><span class="icon">{{ get_icon(lt) }}</span>{{ lt }}: <span class="value">{{ val }}</span></li>
+            {% endfor %}
+          {% endif %}
         </ul>
       </div>
 
@@ -118,7 +122,21 @@
         <div class="days" id="days"></div>
       </div>
     </div>
-    <div class="year-slider-container" id="yearSlider">
+
+    <div class="year-slider-container" id="yearSlider"></div>
+
+</div>
+
+<div class="month-info-modern d-none" id="monthly-suggestions">
+  <div class="month-card">
+    <div class="month-row inter">
+      <span class="month-label" id="working-label">Working Days Left:</span>
+      <span class="month-value" id="working-left">0</span>
+    </div>
+    <div class="month-row inter">
+      <span class="month-label">Weekends This Month:</span>
+      <span class="month-value" id="total-weekends">0</span>
+    </div>
   </div>
 </div>
 

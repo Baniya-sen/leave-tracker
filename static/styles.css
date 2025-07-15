@@ -134,7 +134,7 @@ textarea:disabled {
       rgba(0,  95, 107, 0.7)   100%
     );
     margin-left: -2%;
-    margin-right: 8%;
+    margin-right: 7%;
 }
 
 .side-panel .card {
@@ -233,22 +233,22 @@ textarea:disabled {
 }
 
 .leaves-header {
-    margin-top: 2%;
-    margin-left: -2%;
-    margin-bottom: 7%;
+    margin-top: 1%;
+    margin-left: -5%;
+    margin-bottom: 6%;
 }
 
 .calendar {
     width: 750px;
     max-width: 99vw;
-    height: 55vh;
+    max-height: 61vh;
     box-shadow: 0 4px 24px 0 rgba(30, 194, 139, 0.10);
     border-radius: 16px;
     overflow: hidden;
     background: #fff;
     position: relative;
-    margin-right: 50px;
-    margin-top: 30px;
+    margin-right: 70px;
+    margin-top: 1px;
     font-family: 'Inter', sans-serif;
 }
 
@@ -319,7 +319,7 @@ textarea:disabled {
 .days {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    padding: 22px;
+    padding: 15px;
     gap: 12px;
 }
 
@@ -420,6 +420,49 @@ textarea:disabled {
 .year-slider-container::after {
     bottom: 0;
     background: linear-gradient(to top, #f0f2f5, rgba(240, 242, 245, 0));
+}
+
+.month-info-modern {
+  display: flex;
+  justify-content: center;
+  margin-top: -4%;
+  margin-bottom: 2%;
+}
+
+.month-card {
+  background: linear-gradient(135deg, #aabeb7, #bfced2);
+  color: white;
+  border-radius: 12px;
+  padding: 0.4rem 2rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  width: 320px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+}
+
+.month-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+.month-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1rem;
+}
+
+.month-label {
+  font-weight: 600;
+  opacity: 0.95;
+}
+
+.month-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  letter-spacing: 0.5px;
 }
 
 
@@ -1034,6 +1077,7 @@ nav .navbar-brand .logo_text::first-letter {
     cursor: pointer;
     transition: background 0.2s;
     border: none;
+    width: 180px;
     height: 40px;
     left: 0;
 }

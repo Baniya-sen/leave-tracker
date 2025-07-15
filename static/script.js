@@ -41,7 +41,12 @@
 })();
 
 // Home-page
+let currentMonthGlobal;
 let updateCalenderGlobal;
+let updateLeaveRemainGlobal;
+let updateFilterDataGlobal;
+let updateMonthlyInfoGlobal;
+
 (function () {
     const monthNames = [
         "January", "February", "March", "April", "May", "June",
@@ -54,6 +59,11 @@ let updateCalenderGlobal;
     const monthFilter = document.getElementById('filter-month');
     const monthSummary = document.getElementById('monthly-summary');
     const monthSummaryName = document.getElementById('summary-month-name');
+
+    const monthInfoPanel = document.getElementById('monthly-suggestions');
+    if (monthInfoPanel && window.USER_INFO?.account_verified === 1) {
+        monthInfoPanel.classList.remove('d-none');
+    }
 
     if (!monthSelect || !yearSlider || !daysContainer) {
         return;
@@ -82,37 +92,56 @@ let updateCalenderGlobal;
         return leaveMap;
     }
 
-    async function suppyFilterData(index) {
-        const res = await fetch(`/get-monthly-leaves-data/${index + 1}`, {
-            method: 'GET',
-            credentials: 'include',
+    function updateLeaveRemainingDash() {
+        const mainDiv = document.querySelector('.card.balance-remaining');
+        if (!mainDiv) return;
+
+        const remaining = window.USER_LEAVES?.leaves_remaining;
+        if (!remaining) return;
+
+        const listItems = mainDiv.querySelectorAll('li');
+        listItems.forEach(li => {
+            const labelNode = li.cloneNode(true);
+            labelNode.querySelector('.icon')?.remove();
+            const labelText = labelNode.textContent.trim().split(':')[0].trim();
+
+            if (remaining[labelText] !== undefined) {
+              const valueSpan = li.querySelector('span.value');
+              if (valueSpan) {
+                valueSpan.textContent = remaining[labelText];
+              }
+            }
         });
-        const data = await res.json();
-        if (!res.ok) {
-            console.log(data.error)
-            return;
-        }
-
-        const monthName = `${monthNames[index]} ${currentYear}`;
-        const total = Object.values(data.data).reduce((sum, dates) => sum + dates.length, 0);
-        const breakdown = Object.entries(data.data)
-          .map(([type, dates]) => `${type}: ${dates.length}`)
-          .join(', ');
-
-        const tDays = total === 1 ? 'leave' : 'leaves';
-
-        monthSummary.innerHTML = `
-        <h3 id="summary-month-name">${monthName} Summary</h3>
-          <ul>
-            <li style="justify-content: space-around;">Taken: ${total} ${tDays}<br>(${breakdown})</li>
-          </ul>
-        `;
     }
 
-    function monthDataSummary(index) {
-        const daysInMonth = new Date(currentYear, index, 0).getDate();
-        const remaining = daysInMonth - today.getDate()
-        const rDays = remaining === 1 ? 'Day' : 'Days';
+    async function suppyFilterData(index) {
+        try {
+            const res = await fetch(`/get-monthly-leaves-data/${index + 1}`, {
+                method: 'GET',
+                credentials: 'include',
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return;
+            }
+
+            const monthName = `${monthNames[index]} ${currentYear}`;
+            const total = Object.values(data.data).reduce((sum, dates) => sum + dates.length, 0);
+            const breakdown = Object.entries(data.data)
+              .map(([type, dates]) => `${type}: ${dates.length}`)
+              .join(', ');
+
+            const tDays = total === 1 ? 'leave' : 'leaves';
+
+            monthSummary.innerHTML = `
+            <h3 id="summary-month-name">${monthName} Summary</h3>
+              <ul>
+                <li style="justify-content: space-around;">Taken: ${total} ${tDays}<br>(${breakdown})</li>
+              </ul>
+            `;
+        } catch {
+            return null
+        }
     }
 
     /**
@@ -149,12 +178,15 @@ let updateCalenderGlobal;
             currentMonth = selectedIndex;
             updateCalendar();
             monthFilter.value = currentMonth;
+            currentMonthGlobal = currentMonth;
             suppyFilterData(currentMonth);
+            updateMonthlyInfo(currentMonth);
         });
         monthSelect.value = currentMonth;
 
         monthFilter.addEventListener('change', (e) => {
             const selectedIndex = e.target.selectedIndex;
+            currentMonthGlobal = currentMonth;
             suppyFilterData(selectedIndex);
         });
         monthFilter.value = currentMonth;
@@ -169,8 +201,10 @@ let updateCalenderGlobal;
             monthSelect.value = currentMonth;
             updateCalendar();
             scrollToYear(currentYear);
+            currentMonthGlobal = currentMonth;
             monthFilter.value = currentMonth;
             suppyFilterData(currentMonth);
+            updateMonthlyInfo(currentMonth);
         };
         document.getElementById('next').onclick = () => {
             currentMonth++;
@@ -181,8 +215,10 @@ let updateCalenderGlobal;
             monthSelect.value = currentMonth;
             updateCalendar();
             scrollToYear(currentYear);
+            currentMonthGlobal = currentMonth;
             monthFilter.value = currentMonth;
             suppyFilterData(currentMonth);
+            updateMonthlyInfo(currentMonth);
         };
     }
 
@@ -192,11 +228,16 @@ let updateCalenderGlobal;
         const firstDayIndex = (rawFirst + 6) % 7;
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         const leaveMap = buildLeaveMap();
-        const weekend = window.USER_INFO.firm_weekend
+        const weekend = window.USER_INFO?.firm_weekend
+        ? window.USER_INFO.firm_weekend
             .split(',')
             .map(s => s.trim())
             .filter(s => s !== '')
-            .map(s => 0 < Number(s) < 8 ? Number(s) - 1 : 0);
+            .map(s => {
+                const n = Number(s);
+                return (n >= 1 && n <= 7) ? n - 1 : 0;
+            })
+        : [];
 
         for (let i = 0; i < firstDayIndex; i++) {
             const blank = document.createElement('div');
@@ -279,8 +320,6 @@ let updateCalenderGlobal;
         }
     }
 
-    updateCalenderGlobal = updateCalendar;
-
     function scrollToYear(year) {
         const targetYearElement = yearElements[year];
         if (targetYearElement) {
@@ -295,9 +334,43 @@ let updateCalenderGlobal;
         }
     }
 
+    function updateMonthlyInfo(index) {
+        const workingLabelSpan = document.getElementById('working-label');
+        const workingLeftSpan = document.getElementById('working-left');
+        const totalWeekendsSpan = document.getElementById('total-weekends');
+
+        const allDays = Array.from(document.querySelectorAll('#days .calendar-day'));
+        const weekendDays = allDays.filter(day => day.classList.contains('weekend'));
+        const leaveDays = allDays.filter(day => day.classList.contains('leave-day'));
+
+        let totalDaysCount = allDays.length;
+        let weekendCount = weekendDays.length;
+        let leaveDayCount = leaveDays.length;
+        let workingDays = totalDaysCount - weekendCount - leaveDayCount;
+        let label = today.getMonth() > index ? 'Days you have worked for:' : 'Days you will work for:';
+
+        if (today.getMonth() === index) {
+            const tillNowWeekendDays = allDays.slice(today.getDate()).filter(day => day.classList.contains('weekend'));
+            const tillNowleaveDays = allDays.slice(today.getDate()).filter(day => day.classList.contains('leave-day'));
+            workingDays = totalDaysCount - tillNowWeekendDays.length - tillNowleaveDays.length - today.getDate();
+            label = 'Working Days Left:';
+        }
+
+        workingLabelSpan.textContent = label;
+        workingLeftSpan.textContent = workingDays;
+        totalWeekendsSpan.textContent = weekendCount;
+    }
+
     populateControls();
     updateCalendar();
     scrollToYear(currentYear);
+    updateMonthlyInfo(currentMonth);
+
+    currentMonthGlobal = currentMonth;
+    updateCalenderGlobal = updateCalendar;
+    updateLeaveRemainGlobal = updateLeaveRemainingDash;
+    updateFilterDataGlobal = suppyFilterData;
+    updateMonthlyInfoGlobal = updateMonthlyInfo;
 })();
 
 // Account page logic (only runs on account.html)
@@ -1148,10 +1221,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- Open modal on date click ---
-    let cellClicked;
     document.getElementById('days').addEventListener('click', function (e) {
         let cell = e.target;
-        cellClicked = cell;
         while (cell && !cell.classList.contains('calendar-day') && cell !== this) {
             cell = cell.parentElement;
         }
@@ -1248,6 +1319,9 @@ document.addEventListener('DOMContentLoaded', function () {
         window.USER_LEAVES.leaves_remaining = updated.leaves_remaining
         populateLeaveTypes();
         updateCalenderGlobal?.();
+        updateLeaveRemainGlobal?.();
+        updateFilterDataGlobal?.(currentMonthGlobal ?? 0);
+        updateMonthlyInfoGlobal?.(currentMonthGlobal ?? 0);
     }
 
     // --- Submit leave form via AJAX ---
