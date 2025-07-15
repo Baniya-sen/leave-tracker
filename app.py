@@ -124,12 +124,11 @@ def is_allowed_origin(origin):
     if not origin:
         return False
     o = urlparse(origin.lower())
-    # In development
     if o.scheme == 'http' and o.hostname in ('127.0.0.1', 'localhost') and o.port == 5000:
         return True
-    # production would check against your real domain:
-    # if o.scheme == 'https' and o.hostname == 'yourdomain.com':
-    #     return True
+    # Prod
+    if o.scheme == 'https' and o.hostname == 'leave-tracker-cmjo.onrender.com':
+        return True
     return False
 
 
