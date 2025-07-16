@@ -27,7 +27,7 @@
               class="profile-pic" style="width: 100px; height: 100px;">
             <div>
               <div class="fw-semibold settings-profile-name">{{ user_info['name'] or '—' }}</div>
-              <div class="text-muted settings-profile-username">@{{ user_info['username'] or '' }}</div>
+<!--              <div class="text-muted settings-profile-username">@{{ user_info['username'] or '' }}</div>-->
             </div>
           </div>
 
@@ -113,7 +113,7 @@
                   </span>
                   <div id="otp-input-container" class="d-flex d-none ms-3">
                     <div class="text-danger small" style="color: green !important;">Check your spam folder also</div>
-                    <input type="text" class="form-control form-control-sm" id="otp-input" placeholder="Enter OTP" maxlength="6" style="width:200px; margin-right: 2%">
+                    <input type="text" class="form-control form-control-sm" id="otp-input" placeholder="******" maxlength="6" style="width:200px; margin-right: 2%">
                     <button class="btn btn-success btn-sm ms-2" id="save-otp-btn">Save</button>
                     <button class="btn btn-secondary btn-sm ms-1" id="cancel-otp-btn">Cancel</button>
                   </div>

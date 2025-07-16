@@ -81,12 +81,17 @@ limiter = Limiter(
 Session(app)
 csrf = CSRFProtect(app)
 
+
+# Constants
+DATE_FMT = "%Y-%m-%d"
+WEEKEND_RE = re.compile(r'^\d+(?:,\d+)*$')
+VALID_DEV_IP = ('192.168.1.21', '127.0.0.1')
+
+
+# Verify DB exists
 with app.app_context():
     admin.init_admin_db()
     auth.init_auth_db()
-
-DATE_FMT = "%Y-%m-%d"
-WEEKEND_RE = re.compile(r'^\d+(?:,\d+)*$')
 
 
 # Initialize/teardown databases
@@ -124,7 +129,7 @@ def is_allowed_origin(origin):
     if not origin:
         return False
     o = urlparse(origin.lower())
-    if o.scheme == 'http' and o.hostname in ('127.0.0.1', 'localhost') and o.port == 5000:
+    if o.scheme == 'http' and o.hostname in VALID_DEV_IP and o.port == 5000:
         return True
     # Prod
     if o.scheme == 'https' and o.hostname == 'leave-tracker-cmjo.onrender.com':
@@ -168,6 +173,7 @@ def enforce_same_origin(f):
     def decorated(*args, **kwargs):
         origin = request.headers.get('Origin') or request.headers.get('Referer')
         if not origin or not is_allowed_origin(origin):
+            print("Your requested origin could not be identified!")
             abort(403)
         return f(*args, **kwargs)
 
@@ -198,9 +204,16 @@ def apology(message, code=400):
 
 
 # Routes
+@app.route('/wake-up')
+def wakeup():
+    return "", 200
+
+
 @app.route('/register', methods=['GET', 'POST'])
 @csrf.exempt
 def register():
+    session.clear()
+
     if request.method == "GET":
         return render_template("register.html")
 
@@ -280,6 +293,65 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for('login', msg=f"✅ You have successfully logged out.", state=1))
+
+
+@app.route('/')
+@login_required
+def home():
+    token_string = ''.join((session.get('name') or session['email']).strip().split())
+    token = make_daily_token(token_string)
+    return redirect(
+        url_for('user_home',
+                username=token_string,
+                token=token)
+    )
+
+
+@app.route('/<username>/<token>')
+@login_required
+def user_home(username: str, token: str):
+    if not re.match(r'^[A-Za-z0-9_-]{8}$', token):
+        abort(404)
+
+    name_session = ''.join((session.get('name') or session['email']).strip().split())
+    if username != name_session:
+        apology("Username/Email did not matched! Logout and Re-login!", 404)
+
+    if token != make_daily_token(username.strip()):
+        apology("Token did not matched! Logout and Re-login.", 404)
+
+    firm_leaves = {}
+    all_firm_leaves = leaves.get_user_key_data(session['user_id'], f"user_leaves")
+    if all_firm_leaves:
+        last_firm = list(all_firm_leaves.keys())[-1]
+        firm_leaves = all_firm_leaves[last_firm]
+
+    user = auth.get_user_info_with_id(session['user_id'])
+    firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
+    firm_weekend = leaves.get_user_key_data(
+        session['user_id'],
+        'user_info.firm_weekend_days') \
+        if firm_name else None
+    leaves_type = leaves.get_user_key_data(
+        session['user_id'],
+        'user_leaves.' + str(firm_name) + '.leaves_given') \
+        if firm_name else None
+
+    user_info = {
+        "email": user["email"],
+        "name": user["name"],
+        "account_verified": user['account_verified'],
+        "firm_name": firm_name,
+        "firm_weekend": firm_weekend,
+        "leaves_type": leaves_type
+    }
+
+    return render_template(
+        'index.html',
+        firms=firm_name,
+        user_leaves=firm_leaves,
+        user_info=user_info
+    )
 
 
 @app.route('/user-info', methods=['GET'])
@@ -378,7 +450,7 @@ def get_monthly_leaves_data(month: int):
         'user_leaves.' + str(firm_name) + '.leaves_taken') \
         if firm_name else None
     if not leaves_taken:
-        return jsonify(status='error', error="No firm/leaves data found!"), 400
+        return jsonify(status='error', error="No firm/leaves data found!"), 403
 
     result = {}
 
@@ -391,67 +463,6 @@ def get_monthly_leaves_data(month: int):
             result[lt] = matching
 
     return jsonify(status="ok", data=result), 200
-
-
-@app.route('/')
-@login_required
-def home():
-    token_string = ''.join((session.get('name') or session['email']).strip().split())
-    token = make_daily_token(token_string)
-    return redirect(
-        url_for('user_home',
-                username=token_string,
-                token=token)
-    )
-
-
-@app.route('/<username>/<token>')
-@login_required
-def user_home(username: str, token: str):
-    if not re.match(r'^[A-Za-z0-9_-]{8}$', token):
-        abort(404)
-
-    name_session = ''.join((session.get('name') or session['email']).strip().split())
-    if username != name_session:
-        apology("Username/Email did not matched! Logout and Re-login!", 404)
-
-    if token != make_daily_token(username.strip()):
-        apology("Token did not matched! Logout and Re-login.", 404)
-
-    firm_leaves = {}
-    all_firm_leaves = leaves.get_user_key_data(session['user_id'], f"user_leaves")
-    if all_firm_leaves:
-        last_firm = list(all_firm_leaves.keys())[-1]
-        firm_leaves = all_firm_leaves[last_firm]
-
-    user = auth.get_user_info_with_id(session['user_id'])
-    firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
-    firm_weekend = leaves.get_user_key_data(
-        session['user_id'],
-        'user_info.firm_weekend_days') \
-        if firm_name else None
-    leaves_type = leaves.get_user_key_data(
-        session['user_id'],
-        'user_leaves.' + str(firm_name) + '.leaves_given') \
-        if firm_name else None
-
-    user_info = {
-        "email": user["email"],
-        "name": user["name"],
-        "account_verified": user['account_verified'],
-        "firm_name": firm_name,
-        "firm_weekend": firm_weekend,
-        "leaves_type": leaves_type
-    }
-
-    print(firm_leaves)
-
-    return render_template(
-        'index.html',
-        firms=firm_name,
-        user_leaves=firm_leaves,
-        user_info=user_info
-    )
 
 
 @app.route('/account', methods=['GET'])
@@ -775,10 +786,6 @@ def admin_register(token):
             return apology("Passwords mismatch!", 401)
 
         if admin.register_admin(request.form.get("username"), request.form.get("password")):
-            # admin_added = admin.get_user_info_with_username(request.form.get("username"))
-            # if leaves.init_user_info(admin_added['id'], admin_added['username']):
-            #     print("User Registered! ", admin_added['username'])
-            #     return redirect(url_for('login'))
             session.clear()
             return redirect(url_for('admin_login', hashed=admin.hash_to_admin()))
 

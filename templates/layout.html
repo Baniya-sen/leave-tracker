@@ -23,11 +23,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
   <!-- https://favicon.io/emoji-favicons/money-bag/ -->
-  <link href="/static/favicon.ico" rel="icon">
+  <link href="{{ url_for('static', filename='images/favicon.ico') }}" rel="icon">
 
   <link href="/static/styles.css" rel="stylesheet">
-
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet"/>
 
   <title>{% block title %}{% endblock %}Leaves Tracker</title>
 
@@ -61,7 +59,7 @@
           <li class="nav-item">
             <a class="nav-link nav-chip d-flex align-items-center gap-2 app-account-link" href="{{ '/account' if user_leaves is mapping else '/' }}">
               <div class="nav-icon-circle app-account-icon">
-                {% if user_leaves is mapping %}
+                {% if user_leaves is mapping or (not user_info or not user_info.get('name')) %}
                   <img src="{{ url_for('static', filename='images/account.png') }}" alt="Account" />
                 {% else %}
                   <span class="name-initials-nav">
@@ -115,8 +113,7 @@
   <script>window.USER_LEAVES = {};</script>
   {% endblock %}
 
-  <script src="{{ url_for('static', filename='script.min.js') }}"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 
 </body>
 </html>
