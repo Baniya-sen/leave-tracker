@@ -11,4 +11,5 @@ flask_session
 
 hashed.py
 minifyjs.py
+minifyjs.py
 script.js

@@ -15,6 +15,11 @@ textarea:disabled {
   cursor: not-allowed;
 }
 
+.disabled {
+    pointer-events: none;
+    opacity: .5;
+}
+
 .inter {
     font-family: 'Inter';
 }
@@ -1077,9 +1082,17 @@ nav .navbar-brand .logo_text::first-letter {
     cursor: pointer;
     transition: background 0.2s;
     border: none;
-    width: 180px;
+    width: 190px;
     height: 40px;
     left: 0;
+}
+
+.app-firm-chip span {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-navbar-brand {

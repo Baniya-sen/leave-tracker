@@ -4,6 +4,7 @@
     const pass = document.getElementById('regisPass');
     const confirmPass = document.getElementById('confirmRegisPass');
     const signupBtn = document.getElementById('passwordSubmit');
+    const alreadyAcc = document.getElementById('already-acc');
 
     if (!email || !pass || !confirmPass || !signupBtn) {
         return;
@@ -16,6 +17,8 @@
           pass.disabled = true;
           confirmPass.disabled = true;
           signupBtn.disabled = true;
+          alreadyAcc.classList.add('disabled');
+          alreadyAcc.removeAttribute('href');
         }, 0);
     })
 })();
@@ -25,6 +28,8 @@
     const email = document.getElementById('regisEmail');
     const pass = document.getElementById('regisPass');
     const loginBtn = document.getElementById('login-btn');
+    const forgotPassLink = document.getElementById('forgot-pass');
+    const createAccLink = document.getElementById('create-acc');
 
     if (!email || !pass || !loginBtn) {
         return;
@@ -36,6 +41,10 @@
           email.disabled = true;
           pass.disabled = true;
           loginBtn.disabled = true;
+          forgotPassLink.classList.add('disabled');
+          forgotPassLink.removeAttribute('href');
+          createAccLink.classList.add('disabled');
+          createAccLink.removeAttribute('href');
         }, 0);
     })
 })();
@@ -139,7 +148,7 @@ let updateMonthlyInfoGlobal;
                 <li style="justify-content: space-around;">Taken: ${total} ${tDays}<br>(${breakdown})</li>
               </ul>
             `;
-        } catch {
+        } catch (error) {
             return null
         }
     }
@@ -186,7 +195,6 @@ let updateMonthlyInfoGlobal;
 
         monthFilter.addEventListener('change', (e) => {
             const selectedIndex = e.target.selectedIndex;
-            currentMonthGlobal = currentMonth;
             suppyFilterData(selectedIndex);
         });
         monthFilter.value = currentMonth;
