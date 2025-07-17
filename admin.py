@@ -164,6 +164,8 @@ def update_admin_info(user_id: int, data: dict) -> bool:
 
 
 def delete_all_user_data():
+    session.clear()
+
     try:
         # --- SQL cleanup ---
         db_path = current_app.config['AUTH_DB']
@@ -267,6 +269,8 @@ def upload_databases():
         print(f"Invalid SQLite DB: {e}")
         current_app.logger.info(f"Invalid SQLite DB: {e}")
         return False, f"Invalid SQLite DB: {e}"
+
+    session.clear()
 
     mongo_count = None
     if 'mongo_file' in request.files and request.files['mongo_file'].filename:
