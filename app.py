@@ -10,17 +10,18 @@ from datetime import datetime, date, timezone, timedelta
 from dotenv import load_dotenv
 from functools import wraps
 from urllib.parse import quote_plus, urlparse
-from werkzeug.routing import BaseConverter
 
 from flask import (
     Flask, session, request, render_template,
     redirect, url_for, jsonify, abort
 )
+from werkzeug.routing import BaseConverter
 from werkzeug.security import check_password_hash
 
 from flask_session import Session
 from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 import auth
 import leaves
@@ -92,6 +93,7 @@ VALID_DEV_IP = ('192.168.1.21', '127.0.0.1')
 with app.app_context():
     admin.init_admin_db()
     auth.init_auth_db()
+    helpers.schedule_next_run()
 
 
 # Initialize/teardown databases
@@ -210,6 +212,7 @@ def wakeup():
 
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("5 per hour", key_func=get_remote_address)
 @csrf.exempt
 def register():
     session.clear()
@@ -375,33 +378,6 @@ def user_info_route():
         "account_verified": user['account_verified'],
         "firm_name": firm_name,
         "leaves_type": leaves_type
-    }
-
-    return jsonify(safe), 200
-
-
-@app.route('/user-leaves', methods=['GET'])
-@limiter.limit("30 per minute")
-@login_required
-@verified_required
-@enforce_same_origin
-def user_leaves_route():
-    user = auth.get_user_info_with_id(session['user_id'])
-    if not user:
-        return jsonify(error="User not found"), 404
-
-    firm_name = leaves.get_user_key_data(session['user_id'], 'user_info.firm_name')
-    leaves_taken = leaves.get_user_key_data(
-        session['user_id'],
-        'user_leaves.' + str(firm_name) + '.leaves_taken') \
-        if firm_name else None
-
-    safe = {
-        "email": user["email"],
-        "name": user["name"],
-        "account_verified": user['account_verified'],
-        "firm_name": firm_name,
-        "leaves_taken": leaves_taken
     }
 
     return jsonify(safe), 200
@@ -587,7 +563,7 @@ def import_leaves():
         return jsonify(error="Add leave structure for your firm first in firm settings."), 400
 
     allowed_types = set(firm_data.get("leaves_given", {}).keys())
-    allowed_types = [item.title() for item in allowed_types]
+    allowed_types = [item.lower() for item in allowed_types]
     if not allowed_types:
         return jsonify(error="No leave structure types found."), 400
 
@@ -600,8 +576,8 @@ def import_leaves():
             return False
 
     for leave_type, dates in leaves_taken.items():
-        if leave_type.title() not in allowed_types:
-            return jsonify(error=f"Unknown leave type: '{leave_type}'."), 400
+        if leave_type.lower() not in allowed_types:
+            return jsonify(error=f"Unknown leave type: '{leave_type}', Add it in firm settings!"), 400
         if not isinstance(dates, list) or not all(
                 isinstance(d, str) and valid_iso(d) for d in dates
         ):

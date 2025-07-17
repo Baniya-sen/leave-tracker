@@ -56,6 +56,22 @@ let updateLeaveRemainGlobal;
 let updateFilterDataGlobal;
 let updateMonthlyInfoGlobal;
 
+async function fetchUserInfo() {
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    const res = await fetch('/user-info', {
+        method: 'GET',
+        credentials: 'include',
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+    }
+
+    return res.json();
+}
+
+
 (function () {
     const monthNames = [
         "January", "February", "March", "April", "May", "June",
@@ -385,20 +401,6 @@ let updateMonthlyInfoGlobal;
 (async function () {
     if (!document.querySelector('.settings-card') || !document.getElementById('tab-account')) return;
 
-    async function fetchUserInfo() {
-        const csrf = document.querySelector('meta[name="csrf-token"]').content;
-        const res = await fetch('/user-info', {
-            method: 'GET',
-            credentials: 'include',
-        });
-
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.error || `HTTP ${res.status}`);
-        }
-
-        return res.json();
-    }
     let user_info = await fetchUserInfo();
 
     // Helper to close all edit modes
@@ -1472,6 +1474,7 @@ Example output:
 
 Guidelines to follow:
 - JSON keys must be **clean leave type names**, like "Earned", "Sick", "Casual", "Restricted Holidays", or "Optional".
+- Some key/leaves can be both Full or Half day sub-type, If user data has, you can add half or full in keys like "Casual-Half", "Casual-Full".
 - **Remove extra words** such as "Leave", "(Festival)", or descriptions from the leave type name. Example: "Optional (Festival)" ➔ "Optional".
 - Easily identified same leaves type can be combined.
 - Dates must be in **YYYY-MM-DD** format.
@@ -1481,16 +1484,34 @@ Guidelines to follow:
 
 Please ask me to share any leave data I may have saved to track my leaves in my firm.`;
 
+const leavesTypeText = `
+
+Also this is my firms leaves structure, Adjust my leave data output keys to match with these exactly:
+`;
+
+let user_info;
 const copyElements = document.querySelectorAll(".ai-bot-copy");
 copyElements.forEach(el => {
     el.addEventListener("click", async function () {
+        let user_info = await fetchUserInfo();
+        if (
+          !user_info?.leaves_type ||
+          (typeof user_info.leaves_type === 'object' &&
+           Object.keys(user_info.leaves_type).length === 0)
+        ) {
+          showCopiedMessage(
+            el.parentElement,
+            "First add leaves structure in Firm Settings!"
+          );
+          return;
+        }
         try {
             // Modern clipboard API with fallback
             if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(promptText);
+                await navigator.clipboard.writeText(promptText + leavesTypeText + JSON.stringify(user_info.leaves_type));
             } else {
                 const textArea = document.createElement("textarea");
-                textArea.value = promptText;
+                textArea.value = (promptText + leavesTypeText + JSON.stringify(user_info.leaves_type));
                 document.body.appendChild(textArea);
                 textArea.focus();
                 textArea.select();
@@ -1499,18 +1520,18 @@ copyElements.forEach(el => {
             }
 
             // Show confirmation message near the clicked element
-            showCopiedMessage(el.parentElement);
+            showCopiedMessage(el.parentElement, "Prompt copied!");
         } catch (err) {
             alert("Failed to copy prompt. Please copy manually:\n" + promptText);
         }
     });
 });
 
-function showCopiedMessage(container) {
+function showCopiedMessage(container, msg_TEXT) {
     let msg = document.createElement("p");
     msg.className = "small mb-0 ms-2 pt-0 inter";
     msg.style.color = "#27d289";
-    msg.textContent = "Prompt copied!";
+    msg.textContent = msg_TEXT;
     container.appendChild(msg);
 
     setTimeout(() => {

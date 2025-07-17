@@ -1,7 +1,9 @@
 import re
-from datetime import datetime, timezone
+import threading
+from datetime import datetime, timedelta
 
 import auth
+from admin import delete_unverified_accounts
 
 
 def account_verified(user_id) -> bool:
@@ -94,3 +96,23 @@ def validate_firm_leaves(data, request=None, user_id=None) -> any:
         except Exception:
             return False, 'Leave count must be non-negative integer', None
     return True, None, {}
+
+
+def schedule_next_run():
+    # compute next 3 AM
+    now = datetime.now()
+    tomorrow = now.date() + timedelta(days=1)
+    run_dt = datetime.combine(tomorrow, datetime.min.time()).replace(hour=3)
+    delay = (run_dt - now).total_seconds()
+    if delay < 0:
+        delay += 24 * 3600
+
+    t = threading.Timer(delay, run_task_and_reschedule)
+    t.daemon = True
+    t.start()
+
+def run_task_and_reschedule():
+    try:
+        delete_unverified_accounts()
+    finally:
+        schedule_next_run()
