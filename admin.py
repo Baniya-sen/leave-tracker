@@ -164,6 +164,8 @@ def update_admin_info(user_id: int, data: dict) -> bool:
 
 
 def delete_all_user_data():
+    session.clear()
+
     try:
         # --- SQL cleanup ---
         db_path = current_app.config['AUTH_DB']
@@ -268,6 +270,8 @@ def upload_databases():
         current_app.logger.info(f"Invalid SQLite DB: {e}")
         return False, f"Invalid SQLite DB: {e}"
 
+    session.clear()
+
     mongo_count = None
     if 'mongo_file' in request.files and request.files['mongo_file'].filename:
         mongo_file = request.files['mongo_file']
@@ -294,7 +298,7 @@ def upload_databases():
         os.replace(tmp_sql, db_path)
     except OSError as e:
         os.remove(tmp_sql)
-        return False, f"Could’t replace SQL DB: {e}"
+        return False, f"Couldn’t replace SQL DB: {e}"
 
     msg = f"Replaced SQL DB with tables: {tables}."
     if mongo_count is not None:
@@ -303,3 +307,19 @@ def upload_databases():
         current_app.logger.info(f" Imported {mongo_count} Mongo documents.")
 
     return True, msg
+
+
+def delete_unverified_accounts():
+    db = get_admin_db()
+    cursor = db.cursor()
+    cursor.execute("""
+            DELETE FROM users
+             WHERE account_verified = 0
+               AND datetime(account_created) < datetime('now', '-7 days')
+        """)
+    db.commit()
+    deleted = cursor.rowcount
+    cursor.close()
+    print(f"Deleted {deleted} stale unverified users.")
+    current_app.logger.info(f"Deleted {deleted} stale unverified users.")
+    return deleted
