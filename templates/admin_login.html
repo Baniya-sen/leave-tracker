@@ -18,7 +18,7 @@ Admin Login -
       <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Leave Tracker" class="logo">
       <div class="app-login-title">Log in as Admin to Leave-Tracker</div>
       <div id="error" class="error-message">Invalid username or password.</div>
-      <form action="/admin" method="post" id="loginForm" >
+      <form action="/admin" method="post" id="loginFormAdmin" >
         <input type="hidden" name="hash" value="{{ hash }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">

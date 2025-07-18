@@ -23,6 +23,8 @@ from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+from authlib.integrations.flask_client import OAuth
+
 import auth
 import leaves
 import helpers
@@ -73,7 +75,10 @@ app.config.update(
     SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=True
 )
-
+app.config.update({
+    'GOOGLE_CLIENT_ID': getenv('GOOGLE_CLIENT_ID'),
+    'GOOGLE_CLIENT_SECRET': getenv('GOOGLE_CLIENT_SECRET'),
+})
 limiter = Limiter(
     app=app,
     key_func=lambda: session.get('user_id'),
@@ -81,13 +86,22 @@ limiter = Limiter(
 )
 Session(app)
 csrf = CSRFProtect(app)
-
+oauth = OAuth(app)
+oauth.register(
+    name='google',
+    client_id=app.config['GOOGLE_CLIENT_ID'],
+    client_secret=app.config['GOOGLE_CLIENT_SECRET'],
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={
+        'scope': 'openid email profile',
+        'code_challenge_method': 'S256',
+    },
+)
 
 # Constants
 DATE_FMT = "%Y-%m-%d"
 WEEKEND_RE = re.compile(r'^\d+(?:,\d+)*$')
 VALID_DEV_IP = ('192.168.1.21', '127.0.0.1')
-
 
 # Verify DB exists
 with app.app_context():
@@ -212,7 +226,7 @@ def wakeup():
 
 
 @app.route('/register', methods=['GET', 'POST'])
-@limiter.limit("5 per hour", key_func=get_remote_address)
+@limiter.limit("10 per hour", key_func=get_remote_address)
 @csrf.exempt
 def register():
     session.clear()
@@ -290,6 +304,31 @@ def login():
             )
 
     return render_template('login.html', log_display=log_display)
+
+
+@app.route('/login-google')
+@limiter.limit("10 per minute")
+@csrf.exempt
+def login_google():
+    redirect_uri = url_for('authorize', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+
+@app.route('/authorize')
+@limiter.limit("10 per minute")
+@csrf.exempt
+def authorize():
+    token = oauth.google.authorize_access_token()
+    user_info = oauth.google.parse_id_token(token)
+    assert user_info['aud'] == app.config['GOOGLE_CLIENT_ID']
+
+    session['google-user'] = {
+        'id': user_info['sub'],
+        'email': user_info['email'],
+        'name': user_info.get('name'),
+        'picture': user_info.get('picture')
+    }
+    return redirect(url_for('home'))
 
 
 @app.route('/logout')

@@ -13,3 +13,5 @@ hashed.py
 minifyjs.py
 minifyjs.py
 script.js
+
+*.json
