@@ -61,6 +61,8 @@
                 {{ lt }}: <span class="value">{{ val }}</span>
               </li>
             {% endfor %}
+          {% else %}
+            <span>Your leaves structure data will appear here.</span>
           {% endif %}
         </ul>
       </div>
@@ -72,6 +74,8 @@
             {% for lt, val in user_leaves.leaves_remaining.items() %}
               <li><span class="icon">{{ get_icon(lt) }}</span>{{ lt }}: <span class="value">{{ val }}</span></li>
             {% endfor %}
+          {% else %}
+            <span>Your remaining leaves data will appear here.</span>
           {% endif %}
         </ul>
       </div>
@@ -99,7 +103,7 @@
       </div>
 
       <div class="card monthly-summary" id="monthly-summary">
-        <p>Can't process data!</p>
+        <p>No data to process!</p>
       </div>
     </div>
 

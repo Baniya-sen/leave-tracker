@@ -97,7 +97,7 @@ def get_user_info_with_id(user_id: int):
         user = db.execute(
             'SELECT * FROM users WHERE id = ?', (user_id,)
         ).fetchone()
-        if user and user['id'] == session['user_id']:
+        if user and user['id'] == session.get('user_id', user_id):
             return user
         return None
     except sqlite3.IntegrityError:

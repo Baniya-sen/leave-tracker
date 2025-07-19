@@ -1710,10 +1710,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const navMenu = document.getElementById('mobile-nav-items'); // updated selector
     const blurBg = document.getElementById('blur-bg');
     const mainContent = document.getElementById('main-content');
+    const containerFluid = document.getElementById('container-fluid');
     function closeMobileNav() {
         document.body.classList.remove('mobile-nav-open');
         navToggle.setAttribute('aria-expanded', 'false');
         if (mainContent) mainContent.classList.remove('blur');
+        if (containerFluid) containerFluid.classList.remove('blur');
     }
     if (navToggle && navMenu && blurBg) {
         navToggle.addEventListener('click', function (e) {
@@ -1723,6 +1725,10 @@ document.addEventListener('DOMContentLoaded', function () {
             if (mainContent) {
                 if (isOpen) mainContent.classList.add('blur');
                 else mainContent.classList.remove('blur');
+            }
+            if (containerFluid) {
+                if (isOpen) containerFluid.classList.add('blur');
+                else containerFluid.classList.remove('blur');
             }
         });
         blurBg.addEventListener('click', closeMobileNav);

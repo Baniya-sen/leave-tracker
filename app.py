@@ -101,7 +101,7 @@ oauth.register(
 # Constants
 DATE_FMT = "%Y-%m-%d"
 WEEKEND_RE = re.compile(r'^\d+(?:,\d+)*$')
-VALID_DEV_IP = ('192.168.1.21', '127.0.0.1')
+VALID_DEV_IP = ('192.168.1.21', '127.0.0.1', 'localhost')
 
 # Verify DB exists
 with app.app_context():
@@ -226,7 +226,7 @@ def wakeup():
 
 
 @app.route('/register', methods=['GET', 'POST'])
-@limiter.limit("10 per hour", key_func=get_remote_address)
+@limiter.limit("20 per hour", key_func=get_remote_address)
 @csrf.exempt
 def register():
     session.clear()
@@ -355,9 +355,11 @@ def google_authorize():
             return redirect(url_for('login', msg=f"Google login error! Please try after sometime", state=1))
 
         g_log_token = token_hex(32)
+        email_verified = 1 if user_info.get('email_verified', False) else 0
         session['google-user'] = {
             'google_id': str(user_info['sub']),
             'email': user_info['email'],
+            'account_verified': email_verified,
             'name': user_info.get('name', None),
             'picture_url': user_info.get('picture', None),
             'session_token': g_log_token,
@@ -380,7 +382,7 @@ def google_authorize():
                 auth.register_user(user_info['email'])
                 auth.update_user_info(new_user_id, session.pop('google-user', {}))
                 new_user = auth.get_user_info_with_id(new_user_id)
-                login_authorized(new_user)
+                return login_authorized(new_user)
             else:
                 return apology("Something went wrong with Database server. Please try again later.", 501)
         else:
@@ -392,7 +394,7 @@ def google_authorize():
                 auth.update_user_info(user['id'], {"session_token": g_log_token})
                 return login_authorized(user)
             else:
-                session.pop('temp_google_user_data')
+                session.pop('google-user')
 
             return redirect(url_for('login',
                                     msg="Some went wrong! If issue persists, Try login with email.",
@@ -402,7 +404,7 @@ def google_authorize():
         session.pop('google-user', None)
         return redirect(
             url_for('login',
-                    msg="An unexpected error occurred during Google login. Please try again.",
+                    msg="An unexpected error occurred during Google login! Please try again.",
                     state=1))
 
 

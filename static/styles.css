@@ -271,7 +271,7 @@ textarea:disabled {
 
 .calendar {
     width: 750px;
-    max-width: 99vw;
+    max-width: 50vw;
     max-height: 61vh;
     box-shadow: 0 4px 24px 0 rgba(30, 194, 139, 0.10);
     border-radius: 16px;
@@ -998,70 +998,6 @@ nav .navbar-brand .logo_text::first-letter {
 }
 
 
-@media (max-width: 900px) {
-
-    html,
-    body,
-    .app-login-root,
-    .app-login-left,
-    .app-login-right {
-        height: auto !important;
-        min-height: 0 !important;
-        overflow: auto !important;
-    }
-
-    .app-login-root {
-        flex-direction: column;
-    }
-
-    .app-login-left,
-    .app-login-right {
-        width: 100%;
-        min-height: 180px;
-    }
-
-    .app-login-left-text {
-        font-size: 3rem;
-        text-align: center;
-    }
-
-    .app-login-content {
-        min-width: 0;
-        max-width: 98vw;
-    }
-
-    .app-login-right {
-        height: auto !important;
-        min-height: 0 !important;
-        padding: 0 0 16px 0;
-    }
-
-    .app-register-terms {
-        margin-bottom: 0;
-    }
-
-    .calendar {
-        width: 98vw;
-        min-width: 0;
-    }
-
-    .year-slider-container {
-        height: 160px;
-        width: 60px;
-    }
-
-    .days {
-        padding: 8px;
-        gap: 4px;
-    }
-
-    .days div {
-        height: 32px;
-        line-height: 32px;
-        font-size: 1em;
-    }
-}
-
 /* --- Modern App Navbar Styles --- */
 .app-navbar {
     font-family: 'Inter', sans-serif;
@@ -1220,76 +1156,6 @@ nav .navbar-brand .logo_text::first-letter {
     font-weight: 600;
 }
 
-@media (max-width: 900px) {
-    .app-navbar-inner {
-        flex-direction: column;
-        gap: 8px;
-        min-height: 56px;
-        height: auto;
-        justify-content: flex-start;
-        position: static;
-    }
-
-    .app-firm-chip {
-        position: static;
-        height: 36px;
-        font-size: 0.98rem;
-        padding: 5px 12px;
-    }
-
-    .app-navbar-brand {
-        font-size: 1.2rem;
-        padding: 0 8px;
-        height: 56px;
-        margin: 0;
-    }
-
-    .app-navbar-links {
-        position: static;
-        height: 36px;
-    }
-}
-
-@media (max-width: 600px) {
-    .calendar {
-        width: 98vw;
-        min-width: 0;
-    }
-
-    .year-slider-container {
-        height: 120px;
-        width: 50px;
-    }
-
-    .days div {
-        height: 28px;
-        line-height: 28px;
-        font-size: 0.95em;
-    }
-}
-
-@media (max-width: 1100px) {
-    .calendar {
-        width: 99vw;
-        min-width: 0;
-    }
-
-    .year-slider-container {
-        height: 200px;
-        width: 70px;
-    }
-
-    .days {
-        padding: 10px;
-        gap: 6px;
-    }
-
-    .days div {
-        height: 36px;
-        line-height: 36px;
-        font-size: 1em;
-    }
-}
 
 /* --- Modern Settings/Account Page Styles --- */
 .settings-card {
@@ -1421,27 +1287,6 @@ nav .navbar-brand .logo_text::first-letter {
     margin-left: 25px;
 }
 
-@media (max-width: 700px) {
-    .settings-card {
-        padding: 18px 6px;
-    }
-
-    .settings-tabs {
-        gap: 8px;
-    }
-
-    .settings-tab {
-        padding: 8px 10px;
-        font-size: 1em;
-    }
-
-    .settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-}
-
 /* --- Upstash-like Settings/Account Page Styles --- */
 .upstash-card {
     background: #fff;
@@ -1626,27 +1471,6 @@ nav .navbar-brand .logo_text::first-letter {
     object-fit: cover;
     border: 2px solid #1ec28b;
     background: #f6fcfa;
-}
-
-@media (max-width: 700px) {
-    .upstash-card {
-        padding: 12px 2px;
-    }
-
-    .upstash-tabs {
-        margin-bottom: 18px;
-    }
-
-    .upstash-settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-
-    .upstash-settings-label {
-        min-width: 0;
-        flex: none;
-    }
 }
 
 .settings-label-bg {
@@ -2111,27 +1935,6 @@ nav .navbar-brand .logo_text::first-letter {
     text-decoration: underline;
 }
 
-@media (max-width: 700px) {
-    .settings-card {
-        padding: 18px 6px;
-    }
-
-    .settings-tabs {
-        gap: 8px;
-    }
-
-    .settings-tab {
-        padding: 8px 10px;
-        font-size: 1em;
-    }
-
-    .settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-}
-
 /* --- Upstash-like Settings/Account Page Styles --- */
 .upstash-card {
     background: #fff;
@@ -2316,27 +2119,6 @@ nav .navbar-brand .logo_text::first-letter {
     object-fit: cover;
     border: 2px solid #1ec28b;
     background: #f6fcfa;
-}
-
-@media (max-width: 700px) {
-    .upstash-card {
-        padding: 12px 2px;
-    }
-
-    .upstash-tabs {
-        margin-bottom: 18px;
-    }
-
-    .upstash-settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-
-    .upstash-settings-label {
-        min-width: 0;
-        flex: none;
-    }
 }
 
 .settings-label-bg {
@@ -2801,27 +2583,6 @@ nav .navbar-brand .logo_text::first-letter {
     text-decoration: underline;
 }
 
-@media (max-width: 700px) {
-    .settings-card {
-        padding: 18px 6px;
-    }
-
-    .settings-tabs {
-        gap: 8px;
-    }
-
-    .settings-tab {
-        padding: 8px 10px;
-        font-size: 1em;
-    }
-
-    .settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-}
-
 /* --- Upstash-like Settings/Account Page Styles --- */
 .upstash-card {
     background: #fff;
@@ -3006,27 +2767,6 @@ nav .navbar-brand .logo_text::first-letter {
     object-fit: cover;
     border: 2px solid #1ec28b;
     background: #f6fcfa;
-}
-
-@media (max-width: 700px) {
-    .upstash-card {
-        padding: 12px 2px;
-    }
-
-    .upstash-tabs {
-        margin-bottom: 18px;
-    }
-
-    .upstash-settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-
-    .upstash-settings-label {
-        min-width: 0;
-        flex: none;
-    }
 }
 
 .settings-label-bg {
@@ -3491,27 +3231,6 @@ nav .navbar-brand .logo_text::first-letter {
     text-decoration: underline;
 }
 
-@media (max-width: 700px) {
-    .settings-card {
-        padding: 18px 6px;
-    }
-
-    .settings-tabs {
-        gap: 8px;
-    }
-
-    .settings-tab {
-        padding: 8px 10px;
-        font-size: 1em;
-    }
-
-    .settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-}
-
 /* --- Upstash-like Settings/Account Page Styles --- */
 .upstash-card {
     background: #fff;
@@ -3696,27 +3415,6 @@ nav .navbar-brand .logo_text::first-letter {
     object-fit: cover;
     border: 2px solid #1ec28b;
     background: #f6fcfa;
-}
-
-@media (max-width: 700px) {
-    .upstash-card {
-        padding: 12px 2px;
-    }
-
-    .upstash-tabs {
-        margin-bottom: 18px;
-    }
-
-    .upstash-settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-
-    .upstash-settings-label {
-        min-width: 0;
-        flex: none;
-    }
 }
 
 .settings-label-bg {
@@ -4181,26 +3879,6 @@ nav .navbar-brand .logo_text::first-letter {
     text-decoration: underline;
 }
 
-@media (max-width: 700px) {
-    .settings-card {
-        padding: 18px 6px;
-    }
-
-    .settings-tabs {
-        gap: 8px;
-    }
-
-    .settings-tab {
-        padding: 8px 10px;
-        font-size: 1em;
-    }
-
-    .settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-}
 
 /* --- Upstash-like Settings/Account Page Styles --- */
 .upstash-card {
@@ -4386,27 +4064,6 @@ nav .navbar-brand .logo_text::first-letter {
     object-fit: cover;
     border: 2px solid #1ec28b;
     background: #f6fcfa;
-}
-
-@media (max-width: 700px) {
-    .upstash-card {
-        padding: 12px 2px;
-    }
-
-    .upstash-tabs {
-        margin-bottom: 18px;
-    }
-
-    .upstash-settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-
-    .upstash-settings-label {
-        min-width: 0;
-        flex: none;
-    }
 }
 
 .settings-label-bg {
@@ -4871,27 +4528,6 @@ nav .navbar-brand .logo_text::first-letter {
     text-decoration: underline;
 }
 
-@media (max-width: 700px) {
-    .settings-card {
-        padding: 18px 6px;
-    }
-
-    .settings-tabs {
-        gap: 8px;
-    }
-
-    .settings-tab {
-        padding: 8px 10px;
-        font-size: 1em;
-    }
-
-    .settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-}
-
 /* --- Upstash-like Settings/Account Page Styles --- */
 .upstash-card {
     background: #fff;
@@ -5076,27 +4712,6 @@ nav .navbar-brand .logo_text::first-letter {
     object-fit: cover;
     border: 2px solid #1ec28b;
     background: #f6fcfa;
-}
-
-@media (max-width: 700px) {
-    .upstash-card {
-        padding: 12px 2px;
-    }
-
-    .upstash-tabs {
-        margin-bottom: 18px;
-    }
-
-    .upstash-settings-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-    }
-
-    .upstash-settings-label {
-        min-width: 0;
-        flex: none;
-    }
 }
 
 .settings-label-bg {
@@ -5907,12 +5522,103 @@ nav .navbar-brand .logo_text::first-letter {
 
 /* ===================== RESPONSIVE ENHANCEMENTS ===================== */
 
+/* Laptops */
+@media (max-width: 1290px) {
+    .calender-header {
+        margin-top: -1%;
+    }
+
+    .calendar {
+        max-width: 100vw;
+        max-height: 62vh !important;
+        margin-top: -5% !important;
+    }
+
+    .year-slider-container {
+        margin-top: 8%;
+    }
+
+    .month-info-modern {
+        margin-top: -6%;
+        margin-left: 14%;
+    }
+}
+
 /* Tablet: Stack sidebars, reduce paddings, adjust calendar */
 @media (max-width: 1200px) {
+    html,
+    body,
+    .app-login-root,
+    .app-login-left,
+    .app-login-right {
+        height: auto !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+
     .wrapper {
-        flex-direction: column;
-        align-items: stretch;
-        margin-top: 0;
+        overflow-y: auto;
+        gap: 2rem;
+    }
+
+    .wrapper {
+        flex-direction: column !important;
+    }
+
+    .calender-header {
+        order: 1 !important;
+        margin-top: -49%;
+        margin-bottom: 4%;
+        margin-left: 4%;
+    }
+
+    .month-info-modern {
+        order: 2 !important;
+        width: 60vw !important;
+        max-width: 60vw !important;
+        font-size: 0.6rem !important;
+        padding: 1rem !important;
+    }
+
+    .side-panel {
+        order: 3 !important;
+        width: 80vw !important;
+        max-width: 80vw !important;
+        max-height: 80vh !important;
+        margin: 0 auto 1rem auto !important;
+        padding: 1rem 1rem 1rem 1rem !important;
+        align-items: center !important;
+        text-align: center !important;
+        font-size: 0.8rem !important;
+    }
+    .side-panel .card {
+        width: 90%;
+        max-width: 90%;
+        max-height: calc(22% + 15px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        gap: 20%;
+    }
+
+    .calendar {
+        width: 70vw !important;
+        max-width: 90vw !important;
+        border-radius: 8px;
+        font-size: 1rem !important;
+    }
+
+    .leaves-header {
+        margin-top: 2.5rem !important;
+        margin-bottom: 1.6rem !important;
+    }
+
+    .month-card {
+        width: 100% !important;
+        max-width: 100%;
+        margin: 0 auto;
+        font-size: 0.6rem !important;
+        padding: 1rem !important;
     }
 
     .side-panel {
@@ -5933,20 +5639,27 @@ nav .navbar-brand .logo_text::first-letter {
     }
 
     .year-slider-container {
-        margin: 0 auto 2rem auto;
-        width: 100px;
-        height: 120px;
+        margin-left: 2%;
+        margin-top: 11%;
     }
 }
 
 /* Tablet/Phablet: Stack dashboard, shrink font, fix nav */
 @media (max-width: 900px) {
+    .app-firm-chip {
+        display: none;
+    }
+
+    .app-navbar-links {
+        display: none !important;
+    }
+
     .wrapper {
         flex-direction: column !important;
         align-items: center !important;
         justify-content: flex-start !important;
         width: 100vw !important;
-        min-height: 100vh;
+        max-height: 100vh;
         margin-top: 0 !important;
     }
 
@@ -5961,27 +5674,33 @@ nav .navbar-brand .logo_text::first-letter {
     }
 
     .calender-header {
-        width: 100vw !important;
-        max-width: 500px;
-        margin: 0 auto 2rem auto !important;
+        margin: 0 auto 0rem auto !important;
         display: flex;
         flex-direction: column;
         align-items: center !important;
         justify-content: center !important;
     }
 
+    .leaves-header {
+        margin-left: 2rem !important;
+    }
+
     .calendar {
         margin: 1rem auto 1.5rem auto !important;
-        width: 100vw !important;
-        max-width: 500px;
+        max-width: 80vw;
+        max-height: 60vh;
         border-radius: 8px;
+    }
+
+    .days div {
+        max-height: 50px;
     }
 
     .month-info-modern {
         display: flex !important;
         justify-content: center !important;
         align-items: center !important;
-        margin: 0 auto 0rem auto !important;
+        margin: 1.6rem auto 0rem auto !important;
         width: 100vw !important;
         max-width: 500px;
     }
@@ -5990,6 +5709,22 @@ nav .navbar-brand .logo_text::first-letter {
         width: 100% !important;
         max-width: 500px;
         margin: 0 auto;
+    }
+
+    .year-slider-container {
+        display: none;
+    }
+
+    .settings-form-group {
+        padding: 10px !important;
+    }
+
+    .settings-row-bg {
+        padding: 10px !important;
+    }
+
+    .settings-form-actions {
+        margin-left: 0 !important;
     }
 }
 
@@ -6039,6 +5774,7 @@ nav .navbar-brand .logo_text::first-letter {
         padding-left: 1vw;
         width: 100vw;
         max-width: 100vw;
+        height: 10vh !important;
         margin-left: 0;
     }
 
@@ -6203,6 +5939,54 @@ nav .navbar-brand .logo_text::first-letter {
     .form-group input {
         font-size: 0.95rem;
         padding: 0.5rem;
+    }
+}
+
+@media (max-width: 900px) {
+    .app-navbar-inner {
+        flex-direction: column;
+        gap: 8px;
+        min-height: 56px;
+        height: auto;
+        justify-content: flex-start;
+        position: static;
+    }
+
+    .app-firm-chip {
+        position: static;
+        height: 36px;
+        font-size: 0.98rem;
+        padding: 5px 12px;
+    }
+
+    .app-navbar-brand {
+        font-size: 1.2rem;
+        padding: 0 8px;
+        height: 56px;
+        margin: 0;
+    }
+
+    .app-navbar-links {
+        position: static;
+        height: 36px;
+    }
+}
+
+@media (max-width: 600px) {
+    .calendar {
+        width: 98vw;
+        min-width: 0;
+    }
+
+    .year-slider-container {
+        height: 120px;
+        width: 50px;
+    }
+
+    .days div {
+        height: 35px;
+        line-height: 30px;
+        font-size: 1em;
     }
 }
 
@@ -6394,7 +6178,6 @@ nav .navbar-brand .logo_text::first-letter {
     }
 
     body.mobile-nav-open .app-navbar-links {
-        display: flex !important;
         transform: translateX(0);
         opacity: 1;
         pointer-events: auto;
@@ -6686,6 +6469,7 @@ footer {
     #main-content.blur {
         filter: blur(6px);
         pointer-events: none;
+        margin-top: 27%;
         /* no z-index here */
     }
 }
@@ -6716,6 +6500,7 @@ footer {
         justify-content: flex-start;
         width: 100vw;
         background: linear-gradient(180deg, #18191b 0%, #0e0e0f 100%);
+        background: #0e0e0f;
         box-shadow: 0 2px 8px 0 rgba(16, 30, 54, 0.08);
         border-bottom: 1px solid #232427;
         transition: opacity 0.25s cubic-bezier(.4, 1.4, .6, 1), transform 0.25s cubic-bezier(.4, 1.4, .6, 1);
@@ -6724,7 +6509,7 @@ footer {
         pointer-events: none;
         position: fixed;
         left: 0;
-        top: 56px;
+        top: 71px;
         z-index: 201;
         height: auto;
         overflow: visible;
@@ -6805,7 +6590,6 @@ footer {
         order: 3 !important;
         width: 80vw !important;
         max-width: 80vw !important;
-        height: 68vh !important;
         max-height: 80vh !important;
         margin: 0 auto 1rem auto !important;
         padding: 1rem 1rem 1rem 1rem !important;
@@ -6860,7 +6644,7 @@ footer {
   }
   .settings-page-title {
     text-align: center !important;
-    margin: 2.2rem auto 1.2rem auto !important;
+    margin: 1.5rem auto 1.2rem auto !important;
     font-size: 1.7rem !important;
     font-weight: 800 !important;
     letter-spacing: -0.01em;
@@ -6870,7 +6654,7 @@ footer {
     max-width: 90vw !important;
     margin: 0 auto 1.2rem auto !important;
     justify-content: center !important;
-    font-size: 0.95em !important;
+    font-size: 0.75em !important;
     gap: 0.5rem !important;
   }
   .settings-tab {
