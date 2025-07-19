@@ -5585,6 +5585,7 @@ nav .navbar-brand .logo_text::first-letter {
         order: 3 !important;
         width: 80vw !important;
         max-width: 80vw !important;
+        height: 80vh !important;
         max-height: 80vh !important;
         margin: 0 auto 1rem auto !important;
         padding: 1rem 1rem 1rem 1rem !important;
@@ -5627,7 +5628,7 @@ nav .navbar-brand .logo_text::first-letter {
         padding: 18px 10px 10px 10px;
         min-width: 0;
         max-width: 100vw;
-        height: auto;
+        height: 80vh;
         box-shadow: none;
     }
 
@@ -5659,7 +5660,7 @@ nav .navbar-brand .logo_text::first-letter {
         align-items: center !important;
         justify-content: flex-start !important;
         width: 100vw !important;
-        max-height: 100vh;
+        max-height: 132vh;
         margin-top: 0 !important;
     }
 
@@ -5742,7 +5743,7 @@ nav .navbar-brand .logo_text::first-letter {
         padding: 8px 2vw 8px 2vw;
         min-width: 0;
         max-width: 100vw;
-        height: auto;
+        max-height: 100vh;
         box-shadow: none;
     }
 
@@ -6590,6 +6591,7 @@ footer {
         order: 3 !important;
         width: 80vw !important;
         max-width: 80vw !important;
+        height: 80vh !important;
         max-height: 80vh !important;
         margin: 0 auto 1rem auto !important;
         padding: 1rem 1rem 1rem 1rem !important;
