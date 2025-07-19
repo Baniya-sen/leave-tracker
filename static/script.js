@@ -46,7 +46,19 @@
             createAccLink.classList.add('disabled');
             createAccLink.removeAttribute('href');
         }, 0);
-    })
+    });
+})();
+
+// Google-OAuth
+(function () {
+    const googleAuthBtn = document.getElementById('oauth-google');
+    if (!googleAuthBtn) {
+        return;
+    }
+
+    googleAuthBtn.addEventListener('click', () => {
+        window.location.href = '/login/google';
+    });
 })();
 
 // Home-page

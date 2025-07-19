@@ -43,6 +43,36 @@ textarea:disabled {
     background-clip: text;
 }
 
+.fa-google {
+  background: conic-gradient(from -45deg, #ea4335 110deg, #4285f4 90deg 180deg, #34a853 180deg 270deg, #fbbc05 270deg) 73% 55%/150% 150% no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.fade-hr {
+  border: none;
+  height: 2px;
+  width: 80%;
+  margin: 2.2rem;
+  background: linear-gradient(
+    to right,
+    transparent,
+    #000 20%,
+    #000 80%,
+    transparent
+  );
+}
+
+.continue-google {
+    font-family: "Inter";
+    font-weight: 600;
+    margin-left: 1rem;
+    font-size: 1rem;
+    color: #505050;
+}
+
 .firm-chip {
     background-color: #2b2b2b;
     border-radius: 9px;

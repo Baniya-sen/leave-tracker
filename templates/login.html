@@ -6,7 +6,8 @@ Signin -
 {% endblock %}
 
 {% block main %}
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet"
+      xmlns="http://www.w3.org/1999/html">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 <div class="app-login-root">
     <div class="app-login-left">
@@ -22,10 +23,6 @@ Signin -
             <div id="log-display" class="text-danger small mt-0 mb-4" style="color: green !important;">
                 {{ log_display if log_display else '' }}
             </div>
-            <!--            <div class="app-login-social-row">-->
-            <!--                <button type="button" class="app-login-social-btn"><i class="fab fa-google"></i></button>-->
-            <!--                <button type="button" class="app-login-social-btn"><i class="fab fa-github"></i></button>-->
-            <!--            </div>-->
             <form action="/login" method="post" class="app-login-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input autocomplete="off" autofocus class="app-login-input" name="email" placeholder="Email/Username"
@@ -36,6 +33,10 @@ Signin -
             <div class="app-login-links">
                 <a href="#" class="app-login-link" id="forgot-pass">Forgot your password?</a>
                 <a href="/register" class="app-login-link" id="create-acc">Create an account</a>
+            </div>
+            <hr class="fade-hr">
+            <div class="app-login-social-row">
+                <button type="button" id="oauth-google" class="app-login-social-btn mt-1"><i class="fab fa-google"></i><span class="continue-google">Continue with Google</span></button>
             </div>
         </div>
     </div>
