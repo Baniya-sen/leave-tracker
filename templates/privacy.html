@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy – Leaves Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f9f9f9; margin: 0; padding: 0; }
+    .container { max-width: 800px; margin: 40px auto; background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h1 { color: #333333; }
+    h2 { color: #555555; margin-top: 1.5em; }
+    p, li { color: #444444; line-height: 1.6; }
+    a { color: #1a73e8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul { padding-left: 20px; }
+    footer { text-align: center; margin-top: 2em; font-size: 0.9em; color: #888888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Privacy Policy for Leaves Tracker</h1>
+    <p><strong>Effective date:</strong> July 19, 2025</p>
+
+    <h2>1. Introduction</h2>
+    <p>Welcome to <em>Leaves Tracker</em> ("we", "us", "our"). Leaves Tracker is an open-source leave-management application designed for learning and personal use. This Privacy Policy describes how we collect, use, and share information when you use our app.</p>
+
+    <h2>2. Information We Collect</h2>
+    <ul>
+      <li><strong>Authentication Data:</strong> We use Google OAuth for authentication. We receive your Google profile information (name, email address, profile picture) solely to identify you.</li>
+      <li><strong>Leave Records:</strong> Data you input about leave types, dates, and balances are stored in our databases (local SQLite for auth, MongoDB Atlas for leave data).</li>
+      <li><strong>OTP Codes:</strong> We generate one-time passcodes (OTPs) for email verification, stored temporarily in Upstash Redis and expire after 10 minutes.</li>
+      <li><strong>Technical Logs:</strong> We may collect usage logs and error information to improve the app’s reliability. Logs do not contain sensitive personal data.</li>
+    </ul>
+
+    <h2>3. How We Use Your Information</h2>
+    <ul>
+      <li>To authenticate and authorize your access via Google OAuth.</li>
+      <li>To manage your leave records and provide you with accurate balances.</li>
+      <li>To send verification emails (OTPs) and application notifications via email.</li>
+      <li>To troubleshoot and improve the app through error logging.</li>
+    </ul>
+
+    <h2>4. Data Storage & Security</h2>
+    <p>Your leave data is stored securely in MongoDB Atlas. Authentication data resides in a local SQLite database. OTP codes are stored in Upstash Redis with automatic expiration. We implement industry-standard security measures to protect your data, including encrypted connections (HTTPS/TLS) and secure SMTP for emails.</p>
+
+    <h2>5. Third-Party Services</h2>
+    <ul>
+      <li><a href="https://developers.google.com/terms">Google OAuth</a> for secure authentication.</li>
+      <li><a href="https://www.mongodb.com/legal/privacy-policy">MongoDB Atlas</a> for leave data storage.</li>
+      <li><a href="https://upstash.com/privacy">Upstash Redis</a> for OTP storage.</li>
+      <li><a href="https://www.zoho.com/privacy.html">Zoho Mail</a> for email delivery.</li>
+    </ul>
+
+    <h2>6. Open Source & GitHub</h2>
+    <p>Leaves Tracker is fully open source. You can view and contribute to the code on GitHub: <a href="https://github.com/Baniya-sen/leave-tracker" target="_blank">github.com/Baniya-sen/leave-tracker</a>.</p>
+
+    <h2>7. No Monetization</h2>
+    <p>This app is provided free of charge with no advertisements or paid features. Your use of Leaves Tracker is solely for learning and personal productivity.</p>
+
+    <h2>8. Your Choices</h2>
+    <ul>
+      <li>You can delete your account and all associated leave records at any time by contacting us.</li>
+      <li>You can disable email notifications by updating your preferences in the app.</li>
+    </ul>
+
+    <h2>9. Contact Us</h2>
+    <p>If you have questions about this Privacy Policy or your data, please contact us at <a href="mailto:support@leavestracker.one">support@leavestracker.one</a>.</p>
+
+    <footer>
+      &copy; 2025 Leaves Tracker. All rights reserved.
+    </footer>
+  </div>
+</body>
+</html>
