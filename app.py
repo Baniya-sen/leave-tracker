@@ -338,7 +338,7 @@ def login_google():
     return oauth.google.authorize_redirect(redirect_uri)
 
 
-@app.route('/authorize')
+@app.route('/continue/google/authorize')
 @limiter.limit("10 per minute")
 @csrf.exempt
 def google_authorize():
