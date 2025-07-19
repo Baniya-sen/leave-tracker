@@ -28,12 +28,15 @@ def init_auth_db():
         db.executescript(f.read().decode())
 
 
-def register_user(email: str, password: str) -> bool:
-    pw_hash = generate_password_hash(password)
+def register_user(email: str, password=None) -> int | None:
+    pw_hash = generate_password_hash(password) if password else None
     signup_iso = datetime.now(timezone.utc).isoformat()
-    db = get_auth_db()
+
+    db = None
     try:
-        db.execute(
+        db = get_auth_db()
+        cursor = db.cursor()
+        cursor.execute(
             '''
             INSERT INTO users (email, passhash, account_created)
             VALUES (?, ?, ?)
@@ -41,23 +44,51 @@ def register_user(email: str, password: str) -> bool:
             (email, pw_hash, signup_iso)
         )
         db.commit()
-        return True
+        return cursor.lastrowid
+
     except sqlite3.IntegrityError:
-        return False
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred during user registration: {e}")
+        return None
 
 
-def authenticate_user(identifier: str, password: str):
+def authenticate_user(identifier: str):
     db = get_auth_db()
     user = db.execute(
         '''
         SELECT *
           FROM users
-         WHERE email    = ?
+         WHERE email = ?
             OR username = ?
         ''',
         (identifier, identifier),
     ).fetchone()
     return user or None
+
+
+def get_last_user_id():
+    conn = None
+    try:
+        conn = get_auth_db()
+        cursor = conn.cursor()
+
+        # Construct the SQL query to get the maximum ID
+        sql_query = f"SELECT MAX(id) FROM users"
+
+        cursor.execute(sql_query)
+        result = cursor.fetchone()
+
+        if result and result[0] is not None:
+            return result[0]
+        else:
+            return None
+
+    except sqlite3.Error as e:
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return None
 
 
 def get_user_info_with_id(user_id: int):
@@ -66,7 +97,7 @@ def get_user_info_with_id(user_id: int):
         user = db.execute(
             'SELECT * FROM users WHERE id = ?', (user_id,)
         ).fetchone()
-        if user and user['id'] == session['user_id']:
+        if user and user['id'] == session.get('user_id', user_id):
             return user
         return None
     except sqlite3.IntegrityError:
@@ -92,9 +123,12 @@ def get_user_field(user_id: int, column_name: str):
         "age",
         "date",
         "email",
+        "picture_url",
+        "google_id",
         "firm_name",
         "firm_join_date",
         "account_created",
+        "account_updated",
         "account_verified",
         "firm_weekend_days",
         "leaves_type",
@@ -115,8 +149,8 @@ def get_user_field(user_id: int, column_name: str):
 def update_user_info(user_id: int, data: dict) -> bool:
     db = get_auth_db()
     allowed_fields = [
-        'name', 'age', 'session_token', 'email', 'date',
-        'firm_name', 'firm_join_date', 'firm_weekend_days',
+        'name', 'age', 'session_token', 'email', 'date', "picture_url", "account_updated",
+        'google_id', 'firm_name', 'firm_join_date', 'firm_weekend_days',
         'leaves_type', 'account_verified'
     ]
 

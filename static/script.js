@@ -13,12 +13,12 @@
     signupBtn.addEventListener('click', function () {
         this.form.submit();
         setTimeout(() => {
-          email.disabled = true;
-          pass.disabled = true;
-          confirmPass.disabled = true;
-          signupBtn.disabled = true;
-          alreadyAcc.classList.add('disabled');
-          alreadyAcc.removeAttribute('href');
+            email.disabled = true;
+            pass.disabled = true;
+            confirmPass.disabled = true;
+            signupBtn.disabled = true;
+            alreadyAcc.classList.add('disabled');
+            alreadyAcc.removeAttribute('href');
         }, 0);
     })
 })();
@@ -38,15 +38,27 @@
     loginBtn.addEventListener('click', function () {
         this.form.submit();
         setTimeout(() => {
-          email.disabled = true;
-          pass.disabled = true;
-          loginBtn.disabled = true;
-          forgotPassLink.classList.add('disabled');
-          forgotPassLink.removeAttribute('href');
-          createAccLink.classList.add('disabled');
-          createAccLink.removeAttribute('href');
+            email.disabled = true;
+            pass.disabled = true;
+            loginBtn.disabled = true;
+            forgotPassLink.classList.add('disabled');
+            forgotPassLink.removeAttribute('href');
+            createAccLink.classList.add('disabled');
+            createAccLink.removeAttribute('href');
         }, 0);
-    })
+    });
+})();
+
+// Google-OAuth
+(function () {
+    const googleAuthBtn = document.getElementById('oauth-google');
+    if (!googleAuthBtn) {
+        return;
+    }
+
+    googleAuthBtn.addEventListener('click', () => {
+        window.location.href = '/login/google';
+    });
 })();
 
 // Home-page
@@ -131,10 +143,10 @@ async function fetchUserInfo() {
             const labelText = labelNode.textContent.trim().split(':')[0].trim();
 
             if (remaining[labelText] !== undefined) {
-              const valueSpan = li.querySelector('span.value');
-              if (valueSpan) {
-                valueSpan.textContent = remaining[labelText];
-              }
+                const valueSpan = li.querySelector('span.value');
+                if (valueSpan) {
+                    valueSpan.textContent = remaining[labelText];
+                }
             }
         });
     }
@@ -153,8 +165,8 @@ async function fetchUserInfo() {
             const monthName = `${monthNames[index]} ${currentYear}`;
             const total = Object.values(data.data).reduce((sum, dates) => sum + dates.length, 0);
             const breakdown = Object.entries(data.data)
-              .map(([type, dates]) => `${type}: ${dates.length}`)
-              .join(', ');
+                .map(([type, dates]) => `${type}: ${dates.length}`)
+                .join(', ');
 
             const tDays = total === 1 ? 'leave' : 'leaves';
 
@@ -253,15 +265,15 @@ async function fetchUserInfo() {
         const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
         const leaveMap = buildLeaveMap();
         const weekend = window.USER_INFO?.firm_weekend
-        ? window.USER_INFO.firm_weekend
-            .split(',')
-            .map(s => s.trim())
-            .filter(s => s !== '')
-            .map(s => {
-                const n = Number(s);
-                return (n >= 1 && n <= 7) ? n - 1 : 0;
-            })
-        : [];
+            ? window.USER_INFO.firm_weekend
+                .split(',')
+                .map(s => s.trim())
+                .filter(s => s !== '')
+                .map(s => {
+                    const n = Number(s);
+                    return (n >= 1 && n <= 7) ? n - 1 : 0;
+                })
+            : [];
 
         for (let i = 0; i < firstDayIndex; i++) {
             const blank = document.createElement('div');
@@ -278,7 +290,7 @@ async function fetchUserInfo() {
 
             const weekday = (firstDayIndex + (d - 1)) % 7;
             if (weekend.includes(weekday)) {
-              cell.classList.add('weekend');
+                cell.classList.add('weekend');
             }
             if (
                 d === today.getDate() &&
@@ -319,14 +331,14 @@ async function fetchUserInfo() {
                     span.classList.add('leave-label');
                     span.textContent = type;
                     Object.assign(span.style, {
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'center',
-                      fontSize: 'calc(6px + 1vh)',
-                      overflow: 'hidden',
-                      whiteSpace: 'nowrap',
-                      textOverflow: 'ellipsis',
-                      marginTop: '4%',
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'center',
+                        fontSize: 'calc(6px + 1vh)',
+                        overflow: 'hidden',
+                        whiteSpace: 'nowrap',
+                        textOverflow: 'ellipsis',
+                        marginTop: '4%',
                     });
                     labelsContainer.append(span);
                 });
@@ -786,241 +798,241 @@ async function fetchUserInfo() {
 })();
 
 function setFormDisabled(form, disabled) {
-  form.querySelectorAll('input, button, select, textarea')
-      .forEach(el => el.disabled = disabled);
+    form.querySelectorAll('input, button, select, textarea')
+        .forEach(el => el.disabled = disabled);
 }
 
 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-;(function() {
-  const form    = document.getElementById('name-age-edit-form');
-  const display = document.getElementById('name-age-display');
-  const btn     = document.getElementById('edit-name-age');
+; (function () {
+    const form = document.getElementById('name-age-edit-form');
+    const display = document.getElementById('name-age-display');
+    const btn = document.getElementById('edit-name-age');
 
-  if (form) {
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
-        try {
-          const res = await fetch(form.action, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken },
-            body:    new FormData(form),
-            credentials: 'include'
-          });
-          setFormDisabled(form, true);
-          const payload = await res.json();
-          if (payload.status === 'ok') {
-            const [nameEl, ageEl] = display.querySelectorAll('b');
-            nameEl.textContent    = payload.data.name;
-            ageEl.textContent     = payload.data.age;
-            form.classList.add('d-none');
-            display.style.display = '';
-            btn.classList.remove('d-none');
-          } else {
-            alert(payload.error);
-          }
-        } catch (err) {
-          alert('Server error—please try again.');
-        } finally {
-          setFormDisabled(form, false);
-        }
-      });
-  }
+    if (form) {
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            try {
+                const res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: new FormData(form),
+                    credentials: 'include'
+                });
+                setFormDisabled(form, true);
+                const payload = await res.json();
+                if (payload.status === 'ok') {
+                    const [nameEl, ageEl] = display.querySelectorAll('b');
+                    nameEl.textContent = payload.data.name;
+                    ageEl.textContent = payload.data.age;
+                    form.classList.add('d-none');
+                    display.style.display = '';
+                    btn.classList.remove('d-none');
+                } else {
+                    alert(payload.error);
+                }
+            } catch (err) {
+                alert('Server error—please try again.');
+            } finally {
+                setFormDisabled(form, false);
+            }
+        });
+    }
 })();
 
 // ===== Email =====
-;(function() {
-  const form    = document.getElementById('email-edit-form');
-  const display = document.getElementById('email-display');
-  const btn     = document.getElementById('edit-email');
+; (function () {
+    const form = document.getElementById('email-edit-form');
+    const display = document.getElementById('email-display');
+    const btn = document.getElementById('edit-email');
 
-  if (form) {
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
-        try {
-          const res     = await fetch(form.action, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken },
-            body:    new FormData(form),
-            credentials: 'include'
-          });
-          setFormDisabled(form, true);
-          const payload = await res.json();
-          if (payload.status === 'ok') {
-            display.querySelector('b').textContent = payload.data.email;
-            form.classList.add('d-none');
-            display.style.display = '';
-            btn.classList.remove('d-none');
-          } else {
-            alert(payload.error);
-          }
-        } catch {
-          alert('Server error—please try again.');
-        } finally {
-          setFormDisabled(form, false);
-        }
-      });
-  }
+    if (form) {
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            try {
+                const res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: new FormData(form),
+                    credentials: 'include'
+                });
+                setFormDisabled(form, true);
+                const payload = await res.json();
+                if (payload.status === 'ok') {
+                    display.querySelector('b').textContent = payload.data.email;
+                    form.classList.add('d-none');
+                    display.style.display = '';
+                    btn.classList.remove('d-none');
+                } else {
+                    alert(payload.error);
+                }
+            } catch {
+                alert('Server error—please try again.');
+            } finally {
+                setFormDisabled(form, false);
+            }
+        });
+    }
 })();
 
 // ===== Date of Birth =====
-;(function() {
-  const form = document.getElementById('dob-edit-form');
-  const display = document.getElementById('dob-display');
-  const btn = document.getElementById('edit-dob');
+; (function () {
+    const form = document.getElementById('dob-edit-form');
+    const display = document.getElementById('dob-display');
+    const btn = document.getElementById('edit-dob');
 
-  if (form) {
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
-        try {
-          const res = await fetch(form.action, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken },
-            body:    new FormData(form),
-            credentials: 'include'
-          });
-          setFormDisabled(form, true);
-          const payload = await res.json();
-          if (payload.status === 'ok') {
-            display.querySelector('b').textContent = payload.data.date;
-            form.classList.add('d-none');
-            display.style.display = '';
-            btn.classList.remove('d-none');
-          } else {
-            alert(payload.error);
-          }
-        } catch {
-          alert('Server error—please try again.');
-        } finally {
-          setFormDisabled(form, false);
-        }
-      });
-  }
+    if (form) {
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            try {
+                const res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: new FormData(form),
+                    credentials: 'include'
+                });
+                setFormDisabled(form, true);
+                const payload = await res.json();
+                if (payload.status === 'ok') {
+                    display.querySelector('b').textContent = payload.data.date;
+                    form.classList.add('d-none');
+                    display.style.display = '';
+                    btn.classList.remove('d-none');
+                } else {
+                    alert(payload.error);
+                }
+            } catch {
+                alert('Server error—please try again.');
+            } finally {
+                setFormDisabled(form, false);
+            }
+        });
+    }
 })();
 
 // ===== Firm Info =====
-;(function() {
-  const form    = document.getElementById('firm-info-edit-form');
-  const display = document.getElementById('firm-info-display');
-  const btn     = document.getElementById('edit-firm-info');
+; (function () {
+    const form = document.getElementById('firm-info-edit-form');
+    const display = document.getElementById('firm-info-display');
+    const btn = document.getElementById('edit-firm-info');
 
-  if (form) {
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
-        try {
-          const res     = await fetch(form.action, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken },
-            body:    new FormData(form),
-            credentials: 'include'
-          });
-          setFormDisabled(form, true);
-          const payload = await res.json();
-          if (payload.status === 'ok') {
-            const [nameEl, dateEl] = display.querySelectorAll('b');
-            nameEl.textContent     = payload.data.firm_name;
-            dateEl.textContent     = payload.data.firm_join_date;
-            form.classList.add('d-none');
-            display.style.display = '';
-            btn.classList.remove('d-none');
-          } else {
-            alert(payload.error);
-          }
-        } catch {
-          alert('Server error—please try again.');
-        } finally {
-          setFormDisabled(form, false);
-        }
-      });
-  }
+    if (form) {
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            try {
+                const res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: new FormData(form),
+                    credentials: 'include'
+                });
+                setFormDisabled(form, true);
+                const payload = await res.json();
+                if (payload.status === 'ok') {
+                    const [nameEl, dateEl] = display.querySelectorAll('b');
+                    nameEl.textContent = payload.data.firm_name;
+                    dateEl.textContent = payload.data.firm_join_date;
+                    form.classList.add('d-none');
+                    display.style.display = '';
+                    btn.classList.remove('d-none');
+                } else {
+                    alert(payload.error);
+                }
+            } catch {
+                alert('Server error—please try again.');
+            } finally {
+                setFormDisabled(form, false);
+            }
+        });
+    }
 })();
 
 // ===== Firm Weekend Days =====
-;(function() {
-  const form    = document.getElementById('firm-weekend-edit-form');
-  const display = document.getElementById('firm-weekend-display');
-  const btn     = document.getElementById('edit-firm-weekend');
-  const weekdayMap = {
-    '1': 'Monday',
-    '2': 'Tuesday',
-    '3': 'Wednesday',
-    '4': 'Thursday',
-    '5': 'Friday',
-    '6': 'Saturday',
-    '7': 'Sunday',
-  };
+; (function () {
+    const form = document.getElementById('firm-weekend-edit-form');
+    const display = document.getElementById('firm-weekend-display');
+    const btn = document.getElementById('edit-firm-weekend');
+    const weekdayMap = {
+        '1': 'Monday',
+        '2': 'Tuesday',
+        '3': 'Wednesday',
+        '4': 'Thursday',
+        '5': 'Friday',
+        '6': 'Saturday',
+        '7': 'Sunday',
+    };
 
-  if (form) {
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
-        try {
-          const res     = await fetch(form.action, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken },
-            body:    new FormData(form),
-            credentials: 'include'
-          });
-          setFormDisabled(form, true);
-          const payload = await res.json();
-          if (payload.status === 'ok') {
-            const weekend_days = display.querySelectorAll('span');
+    if (form) {
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            try {
+                const res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: new FormData(form),
+                    credentials: 'include'
+                });
+                setFormDisabled(form, true);
+                const payload = await res.json();
+                if (payload.status === 'ok') {
+                    const weekend_days = display.querySelectorAll('span');
 
-            const raw = payload.data.firm_weekend_days || '';
-            const parts = raw
-              .split(',')
-              .map(s => s.trim())
-              .filter(s => s in weekdayMap)
-              .map(n => `${n}: ${weekdayMap[n]}`);
-            display.innerHTML = parts
-              .map(p => `<span>${p}</span>`)
-              .join('');
+                    const raw = payload.data.firm_weekend_days || '';
+                    const parts = raw
+                        .split(',')
+                        .map(s => s.trim())
+                        .filter(s => s in weekdayMap)
+                        .map(n => `${n}: ${weekdayMap[n]}`);
+                    display.innerHTML = parts
+                        .map(p => `<span>${p}</span>`)
+                        .join('');
 
-            form.classList.add('d-none');
-            display.style.display = '';
-            btn.classList.remove('d-none');
-          } else {
-            alert(payload.error);
-          }
-        } catch (err) {
-          alert('Server error—please try again.');
-        } finally {
-          setFormDisabled(form, false);
-        }
-      });
-  }
+                    form.classList.add('d-none');
+                    display.style.display = '';
+                    btn.classList.remove('d-none');
+                } else {
+                    alert(payload.error);
+                }
+            } catch (err) {
+                alert('Server error—please try again.');
+            } finally {
+                setFormDisabled(form, false);
+            }
+        });
+    }
 })();
 
 // User leaves structure
-;(function() {
-  const form    = document.getElementById('firm-leaves-edit-form');
-  const display = document.getElementById('leaves-items');
-  const btn     = document.getElementById('edit-firm-leaves');
+; (function () {
+    const form = document.getElementById('firm-leaves-edit-form');
+    const display = document.getElementById('leaves-items');
+    const btn = document.getElementById('edit-firm-leaves');
 
-  if (form) {
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
-        try {
-          const res     = await fetch(form.action, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken },
-            body:    new FormData(form),
-            credentials: 'include'
-          });
-          setFormDisabled(form, true);
-          const payload = await res.json();
-          if (payload.status === 'ok') {
-            location.reload();
-            return;
-          } else {
-            alert(payload.error);
-          }
-        } catch (err) {
-          alert('Server error—please try again.');
-        } finally {
-          setFormDisabled(form, false);
-        }
-      });
-  }
+    if (form) {
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            try {
+                const res = await fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: new FormData(form),
+                    credentials: 'include'
+                });
+                setFormDisabled(form, true);
+                const payload = await res.json();
+                if (payload.status === 'ok') {
+                    location.reload();
+                    return;
+                } else {
+                    alert(payload.error);
+                }
+            } catch (err) {
+                alert('Server error—please try again.');
+            } finally {
+                setFormDisabled(form, false);
+            }
+        });
+    }
 })();
 
 
@@ -1366,17 +1378,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 type: selectedType
             })
         })
-        .then(r => r.json())
-        .then(data => {
-            if (data.status === 'ok') {
-                updateLeaves(data);
-                hideLeaveModal();
-            } else {
-                alert(data.error || 'Failed to take leave');
-            }
-        })
-        .catch(() => alert('Failed to take leave'))
-        .finally(() => { saveBtn.disabled = false; });
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    updateLeaves(data);
+                    hideLeaveModal();
+                } else {
+                    alert(data.error || 'Failed to take leave');
+                }
+            })
+            .catch(() => alert('Failed to take leave'))
+            .finally(() => { saveBtn.disabled = false; });
     });
 
     // Add leave info modal logic
@@ -1416,25 +1428,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify({ date: date, type: leaveType })
             })
-            .then(r => r.json())
-            .then(data => {
-                if (data.status === 'ok') {
-                    updateLeaves(data);
-                    hideLeaveModal();
-                } else {
-                    alert(data.error || 'Server did not send a valid data for leave removable!');
-                }
-            })
-            .catch(err => {
-              const message = err && err.message
-                ? err.message
-                : String(err);
-              alert(`❌ Failed to remove the leave!`);
-              console.error('Remove‑leave failed:', err);
-            })
-            .finally(() => {
-                removeBtn.disabled = false;
-            });
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        updateLeaves(data);
+                        hideLeaveModal();
+                    } else {
+                        alert(data.error || 'Server did not send a valid data for leave removable!');
+                    }
+                })
+                .catch(err => {
+                    const message = err && err.message
+                        ? err.message
+                        : String(err);
+                    alert(`❌ Failed to remove the leave!`);
+                    console.error('Remove‑leave failed:', err);
+                })
+                .finally(() => {
+                    removeBtn.disabled = false;
+                });
             removeBtn.classList.add('d-none');
         };
 
@@ -1495,15 +1507,15 @@ copyElements.forEach(el => {
     el.addEventListener("click", async function () {
         let user_info = await fetchUserInfo();
         if (
-          !user_info?.leaves_type ||
-          (typeof user_info.leaves_type === 'object' &&
-           Object.keys(user_info.leaves_type).length === 0)
+            !user_info?.leaves_type ||
+            (typeof user_info.leaves_type === 'object' &&
+                Object.keys(user_info.leaves_type).length === 0)
         ) {
-          showCopiedMessage(
-            el.parentElement,
-            "First add leaves structure in Firm Settings!"
-          );
-          return;
+            showCopiedMessage(
+                el.parentElement,
+                "First add leaves structure in Firm Settings!"
+            );
+            return;
         }
         try {
             // Modern clipboard API with fallback
@@ -1541,7 +1553,7 @@ function showCopiedMessage(container, msg_TEXT) {
 
 
 // Admin-Login
-const loginForm = document.getElementById('loginForm');
+const loginForm = document.getElementById('loginFormAdmin');
 if (loginForm) {
     loginForm.addEventListener('submit', function (e) {
         const user = document.getElementById('username').value.trim();
@@ -1560,7 +1572,7 @@ if (loginForm) {
 
 
 // Admin-Register
-const registerForm = document.getElementById('registerForm');
+const registerForm = document.getElementById('registerFormAdmin');
 if (registerForm) {
     registerForm.addEventListener('submit', function (e) {
         const user = document.getElementById('username').value.trim();
@@ -1664,3 +1676,67 @@ if (formUploadDB) {
             });
     });
 }
+
+// ===================== HAMBURGER MENU (Mobile Nav) =====================
+document.addEventListener('DOMContentLoaded', function () {
+    const navToggle = document.getElementById('mobile-nav-toggle');
+    const navLinks = document.getElementById('mobile-nav');
+    const overlay = document.getElementById('mobile-nav-overlay');
+    if (navToggle && navLinks && overlay) {
+        function closeNav() {
+            document.body.classList.remove('mobile-nav-open');
+            navToggle.setAttribute('aria-expanded', 'false');
+        }
+        navToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const isOpen = document.body.classList.toggle('mobile-nav-open');
+            navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+        overlay.addEventListener('click', closeNav);
+        // Close nav when a nav link is clicked (for SPA-like feel)
+        navLinks.addEventListener('click', function (e) {
+            if (e.target.closest('a')) closeNav();
+        });
+        // Optional: close on ESC
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeNav();
+        });
+    }
+});
+
+// ===================== MOBILE NAVBAR EXPAND (pushdown, blur, fade hamburger) =====================
+document.addEventListener('DOMContentLoaded', function () {
+    const navToggle = document.getElementById('mobile-nav-toggle');
+    const navMenu = document.getElementById('mobile-nav-items'); // updated selector
+    const blurBg = document.getElementById('blur-bg');
+    const mainContent = document.getElementById('main-content');
+    const containerFluid = document.getElementById('container-fluid');
+    function closeMobileNav() {
+        document.body.classList.remove('mobile-nav-open');
+        navToggle.setAttribute('aria-expanded', 'false');
+        if (mainContent) mainContent.classList.remove('blur');
+        if (containerFluid) containerFluid.classList.remove('blur');
+    }
+    if (navToggle && navMenu && blurBg) {
+        navToggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const isOpen = document.body.classList.toggle('mobile-nav-open');
+            navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            if (mainContent) {
+                if (isOpen) mainContent.classList.add('blur');
+                else mainContent.classList.remove('blur');
+            }
+            if (containerFluid) {
+                if (isOpen) containerFluid.classList.add('blur');
+                else containerFluid.classList.remove('blur');
+            }
+        });
+        blurBg.addEventListener('click', closeMobileNav);
+        navMenu.addEventListener('click', function (e) {
+            if (e.target.classList.contains('mobile-nav-item')) closeMobileNav();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeMobileNav();
+        });
+    }
+});
