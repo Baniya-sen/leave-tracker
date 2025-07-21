@@ -48,7 +48,7 @@ def send_otp(username: str, recipient: str, otp: str = None) -> str:
     now = datetime.now(timezone.utc)
     expires = (now + timedelta(minutes=OTP_EXPIRY_MINUTES)).strftime("%H:%M UTC")
 
-    subject = f"Leaves‑Tracker verification code: {otp}"
+    subject = f"Your verification code for Leaves Tracker: {otp}"
     text_body = (
         f"Hello {username},\n\n"
         f"Your verification code is: {otp}\n"

@@ -1,16 +1,20 @@
 import os
 import hashlib
 import json
-import sqlite3
 import tempfile
 import zipfile
 from dotenv import load_dotenv
 from time import time
 from functools import wraps
 from datetime import datetime
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
 from flask import g, current_app, send_file, request, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from auth import get_auth_db
 from leaves import get_mongo_client
 
 
@@ -45,11 +49,10 @@ def admin_login_required(f):
 
 def get_admin_db():
     if 'admin_db' not in g:
-        g.admin_db = sqlite3.connect(
-            current_app.config['ADMIN_DB'],
-            detect_types=sqlite3.PARSE_DECLTYPES
+        g.admin_db = psycopg2.connect(
+            current_app.config['DATABASE_URL'],
+            cursor_factory=RealDictCursor
         )
-        g.admin_db.row_factory = sqlite3.Row
     return g.admin_db
 
 
@@ -62,52 +65,60 @@ def close_admin_db(e=None):
 def init_admin_db():
     db = get_admin_db()
     with current_app.open_resource('schema_admin.sql') as f:
-        db.executescript(f.read().decode())
+        with db.cursor() as cur:
+            cur.execute(f.read().decode())
+        db.commit()
 
 
 def register_admin(username: str, password: str) -> bool:
     pw_hash = generate_password_hash(password)
     db = get_admin_db()
     try:
-        db.execute(
-            '''
-            INSERT INTO admin_users (username, passhash)
-            VALUES (?, ?)
-            ''',
-            (username, pw_hash)
-        )
-        db.commit()
-        return True
-    except sqlite3.IntegrityError:
+        with db.cursor() as cursor:
+            cursor.execute(
+                '''
+                INSERT INTO admin_users (username, passhash)
+                VALUES (?, ?)
+                ''',
+                (username, pw_hash)
+            )
+            db.commit()
+            return True
+    except psycopg2.IntegrityError:
         return False
 
 
 def authenticate_admin(username: str, password: str):
     db = get_admin_db()
-    admin_added = db.execute(
-        'SELECT * FROM admin_users WHERE username = ?', (username,)
-    ).fetchone()
-    if admin_added and check_password_hash(admin_added['passhash'], password):
-        return admin_added
+    with db.cursor() as cursor:
+        cursor.execute(
+            'SELECT * FROM admin_users WHERE username = ?', (username,)
+        )
+        admin_added = dict(row) if (row := cursor.fetchone()) else None
+        if admin_added and check_password_hash(admin_added['passhash'], password):
+            return admin_added
     return None
 
 
 def get_admin_info_with_id(admin_id):
     db = get_admin_db()
-    cur = db.execute(
-        "SELECT * FROM admin_users WHERE id = ?",
-        (admin_id,)
-    )
-    return cur.fetchone()
+    with db.cursor() as cursor:
+        cursor.execute(
+            "SELECT * FROM admin_users WHERE id = ?",
+            (admin_id,)
+        )
+        return cursor.fetchone() or None
 
 
 def get_user_info_with_username(username: str):
     db = get_admin_db()
-    admin_added = db.execute(
-        'SELECT * FROM admin_users WHERE username = ?', (username,)
-    ).fetchone()
-    if admin_added and admin_added['username'] == username:
-        return admin_added
+    with db.cursor() as cursor:
+        cursor.execute(
+            'SELECT * FROM admin_users WHERE username = ?', (username,)
+        )
+        admin_added = dict(row) if (row := cursor.fetchone()) else None
+        if admin_added and admin_added['username'] == username:
+            return admin_added
     return None
 
 
@@ -119,26 +130,24 @@ def get_admin_field(admin_id: int, column_name: str):
         "name",
         "email",
         "last_login",
-        "is_superadmin"
+        "is_superAdmin"
     }
     if column_name not in allowed:
         raise ValueError(f"Invalid column name: {column_name!r}")
 
     db = get_admin_db()
     sql = f"SELECT {column_name} FROM admin_users WHERE id = ?"
-    row = db.execute(sql, (admin_id,)).fetchone()
-
-    if row is None:
-        return None
-
-    return row[column_name]
+    with db.cursor() as cursor:
+        cursor.execute(sql, (admin_id,))
+        row = dict(row) if (row := cursor.fetchone()) else None
+        return row[column_name] if row else None
 
 
 def update_admin_info(user_id: int, data: dict) -> bool:
     db = get_admin_db()
     allowed_fields = [
         'name', 'admin_session_token', 'email',
-        'last_login', 'is_superadmin'
+        'last_login', 'is_superAdmin'
     ]
 
     fields = []
@@ -155,10 +164,11 @@ def update_admin_info(user_id: int, data: dict) -> bool:
     query = f"UPDATE admin_users SET {', '.join(fields)} WHERE id = ?"
 
     try:
-        cur = db.execute(query, values)
-        db.commit()
-        return cur.rowcount > 0
-    except sqlite3.Error:
+        with db.cursor() as cursor:
+            cursor.execute(query, values)
+            db.commit()
+            return cursor.rowcount > 0
+    except psycopg2.Error:
         print("User not updated to sql!", user_id)
         return False
 
@@ -168,25 +178,21 @@ def delete_all_user_data():
 
     try:
         # --- SQL cleanup ---
-        db_path = current_app.config['AUTH_DB']
-        current_app.logger.debug(f"Clearing users table in: {db_path}")
-        if not os.path.exists(db_path):
-            current_app.logger.error(f"DB file not found: {db_path}")
-            return False
+        conn = get_auth_db()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM users;")
+                cur.execute("VACUUM FULL users;")
+                cur.execute("ALTER SEQUENCE users_id_seq RESTART WITH 1;")
 
-        with sqlite3.connect(db_path) as conn:
-            conn = sqlite3.connect(db_path)
-            conn.execute("PRAGMA foreign_keys = ON;")
-            conn.execute("DELETE FROM users;")
             conn.commit()
-            conn.close()
+            print("All users deleted and table vacuumed.")
+            current_app.logger.info("All users deleted and table vacuumed.")
 
-            conn = sqlite3.connect(db_path)
-            conn.execute("VACUUM;")
-            conn.close()
-
-            print(f"All users deleted from {db_path}")
-            current_app.logger.info(f"All users deleted from {db_path}")
+        except Exception as e:
+            print(f"Error clearing users table: {e}")
+            current_app.logger.error(f"Error clearing users table: {e}")
+            conn.rollback()
 
         # --- MongoDB cleanup ---
         client = get_mongo_client()
@@ -216,17 +222,22 @@ def download_all_data_as_zip():
         mongo_docs = list(collection.find({}, {'_id': False}))
         mongo_json = json.dumps(mongo_docs, indent=2)
 
-        db_path = current_app.config['AUTH_DB']
-        if not os.path.exists(db_path):
-            return False, "SQL user database file not found!"
-        admin_db_path = current_app.config['ADMIN_DB']
-        if not os.path.exists(admin_db_path):
-            return False, "SQL admin database file not found!"
+        conn = get_auth_db()
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM users;")
+            users_data = [dict(row) for row in cur.fetchall() if row]
+        admin_conn = get_admin_db()
+        with admin_conn.cursor() as cur:
+            cur.execute("SELECT * FROM admin;")
+            admin_data = [dict(row) for row in cur.fetchall() if row]
+
+        users_json = json.dumps(users_data, indent=2)
+        admin_json = json.dumps(admin_data, indent=2)
 
         with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as tmp_zip:
             with zipfile.ZipFile(tmp_zip, 'w') as zipf:
-                zipf.write(db_path, arcname=current_app.config['AUTH_DB'])
-                zipf.write(admin_db_path, arcname=current_app.config['ADMIN_DB'])
+                zipf.writestr('users.json', users_json)
+                zipf.writestr('admin.json', admin_json)
                 zipf.writestr(current_app.config['MONGO_FILE'], mongo_json)
             zip_path = tmp_zip.name
 
@@ -241,49 +252,55 @@ def download_all_data_as_zip():
 
 def upload_databases():
     if 'file' not in request.files:
-        return False, "No SQL file uploaded"
-    sql_file = request.files['file']
-    if sql_file.filename == '':
-        return False, "No SQL file selected"
-    if not sql_file.filename.lower().endswith('.db'):
-        return False, "Please upload a .db file"
+        return False, "No file uploaded"
 
-    db_path = current_app.config['AUTH_DB']
-    tmp_sql = db_path + f".uploading_{datetime.now():%Y%m%d_%H%M%S}"
-    sql_file.save(tmp_sql)
+    uploaded_file = request.files['file']
+    if uploaded_file.filename == '':
+        return False, "No file selected"
+    if not uploaded_file.filename.lower().endswith('.json'):
+        return False, "Please upload a .json file"
+
+    # Save uploaded JSON file temporarily
+    with tempfile.NamedTemporaryFile(suffix='.json', delete=False) as tmp_json:
+        uploaded_file.save(tmp_json.name)
+        tmp_path = tmp_json.name
 
     try:
-        conn = sqlite3.connect(tmp_sql)
-        cursor = conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = [r[0] for r in cursor.fetchall()]
-        conn.close()
-        print(f"Added all data from {tmp_sql}")
-        current_app.logger.info(f"Added all data from {tmp_sql}")
-        if not tables:
-            print(f"no tables in SQL file")
-            current_app.logger.info("no tables in SQL file")
-            raise sqlite3.Error("no tables in SQL file")
-    except Exception as e:
-        os.remove(tmp_sql)
-        print(f"Invalid SQLite DB: {e}")
-        current_app.logger.info(f"Invalid SQLite DB: {e}")
-        return False, f"Invalid SQLite DB: {e}"
+        with open(tmp_path, 'r', encoding='utf-8') as f:
+            users_data = json.load(f)
+        if not isinstance(users_data, list):
+            return False, "Invalid JSON format: expected a list of users"
 
-    session.clear()
+        conn = get_auth_db()
+        with conn.cursor() as cur:
+            cur.execute("TRUNCATE users RESTART IDENTITY CASCADE;")
+            for user in users_data:
+                columns = ', '.join(user.keys())
+                placeholders = ', '.join(['%s'] * len(user))
+                values = tuple(user.values())
+                cur.execute(f"INSERT INTO users ({columns}) VALUES ({placeholders})", values)
+
+        conn.commit()
+        session.clear()
+        msg = f"Pushed all users data to Postgres users table."
+        print(f"Pushed all users data to Postgres users table.")
+        current_app.logger.error(f"Pushed all users data to Postgres users table.")
+
+    except Exception as e:
+        print(f"Restore failed: {e}")
+        current_app.logger.error(f"Restore failed: {e}")
+        return False, f"Restore failed: {e}"
 
     mongo_count = None
     if 'mongo_file' in request.files and request.files['mongo_file'].filename:
         mongo_file = request.files['mongo_file']
         if not mongo_file.filename.lower().endswith(('.json', '.txt')):
-            os.remove(tmp_sql)
             return False, "Please upload a JSON file for Mongo data"
         try:
             data = json.load(mongo_file)
             if not isinstance(data, list):
                 raise ValueError("Root JSON must be an array of documents")
         except Exception as e:
-            os.remove(tmp_sql)
             return False, f"Invalid Mongo JSON file: {e}"
 
         client = get_mongo_client()
@@ -294,13 +311,6 @@ def upload_databases():
         res = collection.insert_many(data)
         mongo_count = len(res.inserted_ids)
 
-    try:
-        os.replace(tmp_sql, db_path)
-    except OSError as e:
-        os.remove(tmp_sql)
-        return False, f"Couldn’t replace SQL DB: {e}"
-
-    msg = f"Replaced SQL DB with tables: {tables}."
     if mongo_count is not None:
         msg += f" Imported {mongo_count} Mongo documents."
         print(f" Imported {mongo_count} Mongo documents.")
@@ -314,8 +324,9 @@ def delete_unverified_accounts():
     cursor = db.cursor()
     cursor.execute("""
             DELETE FROM users
-             WHERE account_verified = 0
-               AND datetime(account_created) < datetime('now', '-7 days')
+                WHERE account_verified = 0
+                    AND strftime('%s', account_created) 
+                       < strftime('%s', 'now', '-7 days');
         """)
     db.commit()
     deleted = cursor.rowcount
