@@ -39,6 +39,18 @@ class HashConverter(BaseConverter):
     regex = r"[a-fA-F0-9]{64}"
 
 
+# SupaBase
+SUPABASE_HOST = getenv("SUPABASE_HOST")
+SUPABASE_DB_PASS = quote_plus(getenv("SUPABASE_DB_PASS"))
+SUPABASE_REST = getenv("SUPABASE_REST")
+SUPABASE__URL = f"postgres://postgres.{SUPABASE_HOST}:{SUPABASE_DB_PASS}@{SUPABASE_REST}:5432/postgres"
+
+# Neon
+NEON_DATABASE_URL = getenv("NEON_DATABASE_URL")
+
+# Backup_DB_filename
+BACKUP_DB_FILE = getenv('BACKUP_DATABASE')
+
 # Reddis
 REDDIS_PASS = quote_plus(getenv('REDDIS_PASS'))
 REDDIS_DB = quote_plus(getenv('REDDIS_DB'))
@@ -60,9 +72,8 @@ app.secret_key = getenv('APP_KEY')
 app.url_map.converters['hash'] = HashConverter
 app.url_map.strict_slashes = True
 
-app.config['ADMIN_DB'] = getenv('ADMIN_DB')
-app.config['AUTH_DB'] = getenv('AUTH_DB')
-app.config['BACKUP_DATABASE'] = getenv('BACKUP_DATABASE')
+app.config['DATABASE_URL'] = NEON_DATABASE_URL
+app.config['BACKUP_DATABASE'] = BACKUP_DB_FILE
 app.config['RATELIMIT_STORAGE_URL'] = REDDIS_URI
 app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -98,16 +109,20 @@ oauth.register(
     },
 )
 
-# Constants
-DATE_FMT = "%Y-%m-%d"
-WEEKEND_RE = re.compile(r'^\d+(?:,\d+)*$')
-VALID_DEV_IP = ('192.168.1.21', '127.0.0.1', 'localhost')
-
 # Verify DB exists
 with app.app_context():
     admin.init_admin_db()
     auth.init_auth_db()
+
+if environ.get('FLASK_ENV') != 'production' or environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    # delete all account not verified for past 7 days
     helpers.schedule_next_run()
+
+
+# Constants
+DATE_FMT = "%Y-%m-%d"
+WEEKEND_RE = re.compile(r'^\d+(?:,\d+)*$')
+VALID_DEV_IP = ('192.168.1.21', '127.0.0.1', 'localhost')
 
 
 # Initialize/teardown databases

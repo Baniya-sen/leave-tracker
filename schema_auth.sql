@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS users (
-  id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+  id                       SERIAL PRIMARY KEY,
   username                 TEXT    UNIQUE,
   passhash                 TEXT,
   session_token            TEXT,
@@ -11,9 +11,9 @@ CREATE TABLE IF NOT EXISTS users (
   picture_url              TEXT,
   firm_name                TEXT,
   firm_join_date           DATE,
-  account_created          DATETIME,
-  account_updated          DATETIME,
+  account_created          TIMESTAMP WITH TIME ZONE,
+  account_updated          TIMESTAMP WITH TIME ZONE,
   account_verified         INTEGER DEFAULT 0,
   firm_weekend_days        TEXT,
-  leaves_type              TEXT    DEFAULT '{}'
+  leaves_type              JSONB    DEFAULT '{}'::jsonb
 );
