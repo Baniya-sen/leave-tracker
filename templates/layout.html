@@ -28,6 +28,8 @@
 
   <link href="/static/styles.css" rel="stylesheet">
 
+  <link rel="manifest" href="/static/manifest.json">
+
   <title>{% block title %}{% endblock %}Leaves Tracker</title>
 
   <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -129,8 +131,8 @@
       {% block main %}{% endblock %}
     </main>
 
-    <footer class="mb-5 small text-center text-muted">
-      This is a project in development! <a href="https://github.com/Baniya-sen">Baniya</a>
+    <footer class="mb-5 small text-center text-muted inter {{ 'mt-2 mb-2' if session.get('user_id') else '' }}" id="my-brand">
+      <span>This is a project in development!</span> <a href="https://github.com/Baniya-sen"><i>Visit Github</i></a>
     </footer>
   </div> <!-- end main-content -->
 

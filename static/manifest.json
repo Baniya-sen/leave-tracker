@@ -1,0 +1,12 @@
+{
+  "name": "Leaves Tracker",
+  "short_name": "leaves-tracker",
+  "description": "An app for all your leaves storing and management.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1fc28b",
+  "icons": [
+    { "src": "/static/images/logo.png", "sizes": "300x300", "type": "image/png" }
+  ]
+}

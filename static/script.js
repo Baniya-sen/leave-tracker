@@ -611,9 +611,6 @@ async function fetchUserInfo() {
     const verifyBtn = document.getElementById("verify-account-btn");
     if (verifyBtn) {
         verifyBtn.addEventListener("click", async () => {
-            if (!emailVerification()) {
-                return
-            }
             verifyBtn.disabled = true;
             verifyBtn.textContent = "Wait!";
 
@@ -633,6 +630,7 @@ async function fetchUserInfo() {
 
                 if (response.ok) {
                     verifyBtn.classList.add("d-none");
+                    verifyDiv.classList.add("inCenterVerify");
                     verifyDiv.classList.add("justify-content-between");
                     document.getElementById("account-status").classList.add("d-none");
                     document.getElementById("otp-input-container").classList.remove("d-none");

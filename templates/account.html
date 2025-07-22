@@ -112,7 +112,7 @@
                     {{ 'VERIFIED' if user_info.get('account_verified', 0)|int != 0 else 'UNVERIFIED' }}
                   </span>
                   <div id="otp-input-container" class="d-flex d-none ms-3">
-                    <div class="text-danger small" style="color: green !important;">Check your spam folder also</div>
+                    <div class="text-danger small spam-info" style="color: green !important;">Check your spam folder also</div>
                     <input type="text" class="form-control form-control-sm" id="otp-input" placeholder="******" maxlength="6" style="width:200px; margin-right: 2%">
                     <button class="btn btn-success btn-sm ms-2" id="save-otp-btn">Save</button>
                     <button class="btn btn-secondary btn-sm ms-1" id="cancel-otp-btn">Cancel</button>
@@ -272,6 +272,8 @@
             <div class="settings-row-bg settings-form-group d-flex">
               <div class="d-flex flex-column w-100 inter">
                 <h5 class="settings-label w-100 mb-0 inter pb-2">Paste Your Leave Data JSON</h5>
+                <span class="text-muted small mb-2">Already tracking leaves in Excel, Notepad, email threads or some HR tool? You can easily migrate all of it!<br>
+                  Convert your data into JSON format given below and paste it into the text-box!</span>
                 <p class="text-muted small mb-2">
                   Leave types <strong>must match exactly</strong> what you’ve configured in firm settings.
                   Otherwise, they'll be <strong>Replaced</strong>.<br>
@@ -285,7 +287,7 @@
                 <p>
                   <img src="{{ url_for('static', filename='images/copy.png') }}" class="ms-2 bot-copy-img" style="width: 30px;">
                 </p>
-                <p class="text-muted small mb-0 ms-2 pt-1"><strong>Or better, Copy this prompt in any AI bot to generate your leave data easily.</strong></p>
+                <p class="text-muted small mb-0 ms-2 pt-1"><strong>Or better, Copy and paste this prompt in any AI bot to generate your JSON leave data easily.</strong></p>
               </div>
             </div>
 
