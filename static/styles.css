@@ -833,7 +833,7 @@ nav .navbar-brand .logo_text::first-letter {
     width: 30%;
     height: 100vh;
     min-height: 100vh;
-    background: linear-gradient(180deg, #18191b 0%, #232427 100%);
+    background: linear-gradient(180deg, #131e14 0%, #1a1d28 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -5552,9 +5552,28 @@ nav .navbar-brand .logo_text::first-letter {
     .app-login-left,
     .app-login-right {
         height: auto !important;
-        min-height: 0 !important;
+        min-height: 100vh !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
+    }
+
+    .app-login-left {
+        width: 40%;
+    }
+
+    .app-login-left-text {
+        font-size: 7rem;
+    }
+
+    #my-brand {
+        position: relative;
+        width: 45vw;
+        margin-top: -4%;
+        margin-left: 47%;
+        margin-bottom: 0% !important;
+        color: #8a8a8a !important;
+        font-size: 0.95rem;
+        text-align: center;
     }
 
     .wrapper {
@@ -5647,6 +5666,21 @@ nav .navbar-brand .logo_text::first-letter {
 
 /* Tablet/Phablet: Stack dashboard, shrink font, fix nav */
 @media (max-width: 900px) {
+    .app-register-terms {
+        font-size: 0.6rem !important;
+    }
+
+    #my-brand {
+        position: relative;
+        width: 100vw;
+        margin-top: -11%;
+        margin-left: 0%;
+        margin-bottom: 0% !important;
+        color: #8a8a8a !important;
+        font-size: 0.65rem;
+        text-align: center;
+    }
+
     .app-firm-chip {
         display: none;
     }
@@ -5726,6 +5760,24 @@ nav .navbar-brand .logo_text::first-letter {
 
     .settings-form-actions {
         margin-left: 0 !important;
+    }
+
+    .inCenterVerify {
+        flex-direction: column;
+    }
+
+    #otp-input-container {
+        flex-direction: column;
+        max-width: 100%;
+        gap: 15px;
+    }
+
+    .spam-info {
+        text-align: center;
+    }
+
+    #otp-input {
+        text-align: center;
     }
 }
 

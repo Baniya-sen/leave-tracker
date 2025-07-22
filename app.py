@@ -13,7 +13,7 @@ from urllib.parse import quote_plus, urlparse
 
 from flask import (
     Flask, session, request, render_template,
-    redirect, url_for, jsonify, abort
+    redirect, url_for, jsonify, abort, send_from_directory
 )
 from werkzeug.routing import BaseConverter
 from werkzeug.security import check_password_hash
@@ -134,7 +134,9 @@ def teardown(exc):
 @app.template_filter("from_json")
 def from_json_filter(s):
     try:
-        return json.loads(s)
+        if isinstance(s, str):
+            return json.loads(s)
+        return s
     except Exception as e:
         print(e)
         return {}
@@ -242,11 +244,16 @@ def wakeup():
 
 @app.route('/privacy')
 def privacy_policy():
-    return render_template("privacy.html"), 200
+    return render_template("privacy.html")
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    return send_from_directory('static', 'robots.txt', mimetype='text/plain')
 
 
 @app.route('/register', methods=['GET', 'POST'])
-@limiter.limit("20 per hour", key_func=get_remote_address)
+@limiter.limit("50 per hour", key_func=get_remote_address)
 @csrf.exempt
 def register():
     session.clear()
@@ -435,6 +442,11 @@ def logout():
 
 
 @app.route('/')
+def dashboard():
+    return render_template('dashboard.html')
+
+
+@app.route('/home')
 @login_required
 def home():
     token_string = ''.join((session.get('name') or session['email']).strip().split())
@@ -446,7 +458,7 @@ def home():
     )
 
 
-@app.route('/<username>/<token>')
+@app.route('/home/<username>/<token>')
 @login_required
 def user_home(username: str, token: str):
     if not re.match(r'^[A-Za-z0-9_-]{8}$', token):
@@ -585,7 +597,7 @@ def account_root():
     return redirect(url_for('account', username=uname, token=token))
 
 
-@app.route('/<username>/account/<token>', methods=['GET'])
+@app.route('/account/<username>/<token>', methods=['GET'])
 @login_required
 def account(username: str, token: str):
     if username != (session.get('username') or session['email']) or token != make_daily_token(username):
