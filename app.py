@@ -3,10 +3,12 @@ import re
 import hmac
 import hashlib
 import base64
+from uuid import uuid4
 from secrets import token_hex
 
 from os import environ, getenv
 from datetime import datetime, date, timezone, timedelta
+
 from dotenv import load_dotenv
 from functools import wraps
 from urllib.parse import quote_plus, urlparse
@@ -93,7 +95,7 @@ app.config.update({
 limiter = Limiter(
     app=app,
     key_func=lambda: session.get('user_id'),
-    storage_uri=REDDIS_URI
+    storage_uri=app.config['RATELIMIT_STORAGE_URL']
 )
 Session(app)
 csrf = CSRFProtect(app)
@@ -150,12 +152,28 @@ def valid_date(s):
         return False
 
 
-def make_daily_token(username_email: str) -> str:
+def make_login_token() -> dict:
     key = app.config['SECRET_KEY'].encode('utf-8')
-    msg = f"{username_email}:{date.today().isoformat()}".encode('utf-8')
+    msg = f"{session.get('user_id')}:{uuid4()}".encode('utf-8')
     digest = hmac.new(key, msg, hashlib.sha256).digest()
-    token = base64.urlsafe_b64encode(digest).decode('utf-8')[:8]
-    return token
+    token = base64.urlsafe_b64encode(digest).decode('utf-8')[:16]
+    return {
+        "login_token": token,
+        "login_token_exp": datetime.now(timezone.utc) + timedelta(days=20)
+    }
+
+
+def verify_login_token(user_token: str) -> bool:
+    token_hub = session.get('login_hex', {})
+    token = token_hub.get('login_token', token_hex(8))
+    login_token_expt = token_hub.get('login_token_exp')
+
+    if not user_token or not token or not login_token_expt:
+        return False
+    if token != user_token or datetime.now(timezone.utc) > login_token_expt:
+        return False
+
+    return True
 
 
 def is_allowed_origin(origin):
@@ -174,11 +192,11 @@ def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         token = kwargs.get('token')
-        if token and not re.match(r'^[A-Za-z0-9_-]{8}$', token):
+        if token and not re.match(r'^[A-Za-z0-9_-]{16}$', token):
             abort(404)
 
         if 'user_id' not in session or 'session_token' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('login', temp=f"no-serve", state=1))
 
         user = auth.get_user_info_with_id(session['user_id'])
         if user is None or dict(user).get('session_token') != session.get('session_token'):
@@ -254,6 +272,7 @@ def robots_txt():
 
 @app.route('/register', methods=['GET', 'POST'])
 @limiter.limit("50 per hour", key_func=get_remote_address)
+@admin.log_analytics
 @csrf.exempt
 def register():
     session.clear()
@@ -304,6 +323,7 @@ def register():
 
 
 @app.route('/login', methods=['GET', 'POST'])
+@admin.log_analytics
 @csrf.exempt
 def login():
     registered_hex = session.pop('user_registered_hex', None)
@@ -342,13 +362,18 @@ def login():
                     url_for('login', msg=f"Password does not match the records!", state=1)
                 )
             token = token_hex(32)
-            auth.update_user_info(user['id'], {'session_token': token})
-            session['user_id'] = user['id']
-            session['email'] = user['email']
-            session['name'] = dict(user).get('name') or None
-            session['username'] = dict(user).get('username') or None
-            session['session_token'] = token
-            return redirect(url_for('home'))
+            if auth.update_user_info(user['id'], {'session_token': token}):
+                session['user_id'] = user['id']
+                session['email'] = user['email']
+                session['name'] = dict(user).get('name') or None
+                session['username'] = dict(user).get('username') or None
+                session['session_token'] = token
+                session['login_hex'] = make_login_token()
+                return redirect(url_for('home'))
+            else:
+                return redirect(
+                    url_for('login', msg=f"Something went wrong! Try again later.", state=1)
+                )
         else:
             return redirect(
                 url_for('login', msg=f"No account registered under '{email}'", state=1)
@@ -398,6 +423,7 @@ def google_authorize():
             session['name'] = dict(user_db).get('name') or None
             session['username'] = dict(user_db).get('username') or None
             session['session_token'] = g_log_token
+            session['login_hex'] = make_login_token()
             return redirect(url_for('home'))
 
         user = auth.authenticate_user(user_info['email'])
@@ -444,34 +470,27 @@ def logout():
 @app.route('/')
 @admin.log_analytics
 def dashboard():
-    print()
     return render_template('dashboard.html')
 
 
 @app.route('/home')
 @login_required
 def home():
-    token_string = ''.join((session.get('name') or session['email']).strip().split())
-    token = make_daily_token(token_string)
-    return redirect(
-        url_for('user_home',
-                username=token_string,
-                token=token)
-    )
+    uname = ''.join((session.get('name') or session['email']).strip().split())
+    token = session.get('login_hex', {}).get('login_token', None)
+    return redirect(url_for('user_home', username=uname, token=token))
 
 
 @app.route('/home/<username>/<token>')
 @login_required
 def user_home(username: str, token: str):
-    if not re.match(r'^[A-Za-z0-9_-]{8}$', token):
-        abort(404)
-
     name_session = ''.join((session.get('name') or session['email']).strip().split())
     if username != name_session:
         apology("Username/Email did not matched! Logout and Re-login!", 404)
 
-    if token != make_daily_token(username.strip()):
-        apology("Token did not matched! Logout and Re-login.", 404)
+    if not verify_login_token(token):
+        session.clear()
+        abort(404)
 
     firm_leaves = {}
     all_firm_leaves = leaves.get_user_key_data(session['user_id'], f"user_leaves")
@@ -594,15 +613,15 @@ def get_monthly_leaves_data(month: int):
 @app.route('/account', methods=['GET'])
 @login_required
 def account_root():
-    uname = session.get('username') or session['email']
-    token = make_daily_token(uname)
+    uname = session.get('username') or session.get('email', None)
+    token = session.get('login_hex', {}).get('login_token', None)
     return redirect(url_for('account', username=uname, token=token))
 
 
 @app.route('/account/<username>/<token>', methods=['GET'])
 @login_required
 def account(username: str, token: str):
-    if username != (session.get('username') or session['email']) or token != make_daily_token(username):
+    if username != (session.get('username') or session['email']) or token != verify_login_token(token):
         return apology("Verification failed! Logout and Re-login!", 404)
 
     user = auth.get_user_info_with_id(session['user_id'])
@@ -852,8 +871,34 @@ def request_verify_email():
             return jsonify(error="Your Email is already verified."), 400
 
         otp = email_otp.send_otp(session.get('username') or "User", user_email)
-        session["email_otp"] = otp
-        session["email_otp_sent_at"] = datetime.now(timezone.utc).isoformat()
+        session["email_otp"]: list = []
+        session["email_otp_sent_at"]: list = []
+        session["email_otp"].append(otp)
+        session["email_otp_sent_at"].append(datetime.now(timezone.utc).isoformat())
+        session['resend_otp_limit'] = 1
+        return jsonify(status="ok", message="OTP sent to your email. Please check you spam if not found.")
+
+    except Exception as e:
+        app.logger.exception(e)
+        return jsonify(error="Something went wrong, please try again."), 500
+
+
+@app.route("/resend-verify-email", methods=["POST"])
+@limiter.limit("2 per minute")
+@login_required
+@enforce_same_origin
+def resend_verify_email():
+    try:
+        if session.pop('resend_otp_limit', 0) - 1 != 0:
+            return jsonify(error="Resend OTP limits reached!."), 403
+
+        email = session.get('email', None)
+        if not email:
+            return jsonify(error="No email found! Are you a robot?."), 403
+
+        otp = email_otp.send_otp(session.get('username') or "User", email)
+        session["email_otp"].append(otp)
+        session["email_otp_sent_at"].append(datetime.now(timezone.utc).isoformat())
         return jsonify(status="ok", message="OTP sent to your email. Please check you spam if not found.")
 
     except Exception as e:
@@ -875,20 +920,26 @@ def confirm_otp():
         return jsonify(error="OTP missing"), 400
 
     user_otp = data['otp']
-    real_otp = session.get("email_otp")
-    sent_at = session.get("email_otp_sent_at")
+    real_otp: list = session.get("email_otp")
+    sent_at: list = session.get("email_otp_sent_at")
 
-    if (not sent_at or datetime.fromisoformat(sent_at) +
+    if user_otp not in real_otp:
+        return jsonify(error="Invalid OTP!"), 403
+
+    sent_index = real_otp.index(user_otp)
+    if (not sent_at or datetime.fromisoformat(sent_at[sent_index]) +
             timedelta(minutes=email_otp.OTP_EXPIRY_MINUTES) < datetime.now(
                 timezone.utc)):
         return jsonify(error="OTP expired"), 400
 
-    if user_otp == real_otp:
+    if user_otp in real_otp:
         if auth.update_user_info(session['user_id'], {'account_verified': 1}) and \
                 leaves.update_user_profile(session['user_id'], {'account_verified': 1}):
+            session.pop("email_otp", None)
+            session.pop("email_otp_sent_at", None)
             return redirect(url_for('account_root'))
 
-    return jsonify(error="Invalid code/ Some error occurred!"), 400
+    return jsonify(error="Some error occurred!"), 400
 
 
 @app.route('/admin_register/<string:token>', methods=['GET', 'POST'])

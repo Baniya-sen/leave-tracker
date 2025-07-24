@@ -1,30 +1,32 @@
 import base64
-import os
 import hashlib
 import json
+import os
 import tempfile
 import zipfile
-from dotenv import load_dotenv
-from time import time
-from functools import wraps
+from collections.abc import MutableMapping
 from datetime import datetime, timezone
-import requests
+from functools import wraps
+from time import time
+from redis import Redis
+from rq import Queue
 
 import psycopg2
-from psycopg2.extras import RealDictCursor
-
-from flask import g, current_app, send_file, request, session, redirect, url_for
-from werkzeug.security import generate_password_hash, check_password_hash
-
+import requests
+from dotenv import load_dotenv
 from firebase_admin import credentials, initialize_app, firestore, _apps
+from flask import g, current_app, send_file, request, session, redirect, url_for
+from psycopg2.extras import RealDictCursor
+from werkzeug.security import generate_password_hash, check_password_hash
 
 from auth import get_auth_db
 from leaves import get_mongo_client
 
-
 if os.environ.get("FLASK_ENV") != "production":
     load_dotenv()
 
+REDIS_CONN = None
+Q = None
 
 # FireBase Auth
 if not _apps:
@@ -43,55 +45,38 @@ def lookup_geo(ip: str) -> dict:
         data = r.json()
         if not data.get("success"):
             return {"ip": ip, "error": data.get("message", "Geo lookup failed")}
-
         for key in ["success", "flag", "About Us"]:
             data.pop(key, None)
-
         return data
 
     except Exception as e:
         return {"ip": ip, "error": str(e)}
 
 
-def log_analytics(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        if os.environ.get("FLASK_ENV") == "production":
-            payload = {
-                "timestamp": datetime.now(timezone.utc),
-                "server_time": datetime.now().isoformat(),
-                "flask_env": current_app,
-                "debug": current_app.debug,
-                "remote_ip": request.remote_addr,
-                "geo": lookup_geo(request.remote_addr or "0.0.0.0"),
-                "method": request.method,
-                "path": request.path,
-                "url": request.url,
-                "base_url": request.base_url,
-                "endpoint": request.endpoint,
-                "blueprint": request.blueprint,
-                "user_agent": request.headers.get("User-Agent"),
-                "referrer": request.referrer,
-                "headers": dict(request.headers),
-                "cookies": dict(request.cookies),
-                "query_params": dict(request.args),
-                "form_data": request.form.to_dict(),
-                "json_body": request.get_json(silent=True),
-                "user_id": getattr(g, "user_id", None),
-                "session_id": request.cookies.get(current_app.config.get("SESSION_COOKIE_NAME", "session")),
-            }
-
-            try:
-                doc_id = f"LeavesTracker-{datetime.now(timezone.utc).isoformat()}"
-                fb_db.collection("leave_tracker_analytics_events").document(doc_id).set(payload)
-            except Exception as e:
-                current_app.logger.error("Analytics logging failed: %s", e)
-
-        return fn(*args, **kwargs)
-    return wrapper
+def make_fingerprint(req_payload: dict) -> str:
+    keys = ["path", "method", "query_params", "user_id"]
+    imp_params = {k: req_payload[k] for k in keys}
+    s = json.dumps(imp_params, sort_keys=True)
+    return hashlib.sha256(s.encode()).hexdigest()
 
 
-def hash_to_admin(period_seconds: int = 10*60, when: float = None) -> str:
+def flatten(d: MutableMapping, parent_key='', sep=" "):
+    items = []
+    for k, v in d.items():
+        new_key = f'{parent_key}{sep}{k}' if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten(d=v, parent_key=new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+
+    try:
+        return json.loads(json.dumps(dict(items)))
+    except Exception as e:
+        print(e)
+        return str(dict(items))
+
+
+def hash_to_admin(period_seconds: int = 10 * 60, when: float = None) -> str:
     h1 = os.getenv('H1')
     h2 = os.getenv('H2')
     h3 = os.getenv('H3')
@@ -99,6 +84,64 @@ def hash_to_admin(period_seconds: int = 10*60, when: float = None) -> str:
     bucket = int(ts // period_seconds)
     data = h1 + h2 + h3 + str(bucket)
     return hashlib.sha256(data.encode('utf-8')).hexdigest()
+
+
+def get_queue():
+    global REDIS_CONN, Q
+    if REDIS_CONN is None or Q is None:
+        REDIS_CONN = Redis.from_url(current_app.config['RATELIMIT_STORAGE_URL'])
+        Q = Queue('default', connection=REDIS_CONN)
+    return Q
+
+
+def get_req_payload() -> dict:
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "server_time": datetime.now().isoformat(),
+        "flask_env": current_app,
+        "debug": current_app.debug,
+        "remote_ip": request.remote_addr,
+        "geo": lookup_geo(request.remote_addr or "0.0.0.0"),
+        "method": request.method,
+        "path": request.path,
+        "url": request.url,
+        "base_url": request.base_url,
+        "endpoint": request.endpoint,
+        "blueprint": request.blueprint,
+        "user_agent": request.headers.get("User-Agent"),
+        "referrer": request.referrer,
+        "headers": dict(request.headers),
+        "cookies": dict(request.cookies),
+        "query_params": dict(request.args),
+        "form_data": request.form.to_dict(),
+        "json_body": request.get_json(silent=True),
+        "user_id": getattr(g, "user_id", None),
+        "session_id": request.cookies.get(current_app.config.get("SESSION_COOKIE_NAME", "session")),
+    }
+
+
+def store_event_firebase(doc: dict) -> None:
+    try:
+        doc_id = f"LeavesTracker-{datetime.now(timezone.utc).isoformat()}"
+        fb_db.collection("leave_tracker_analytics_events").document(doc_id).set(doc)
+    except Exception as e:
+        current_app.logger.error("Analytics logging failed: %s", e)
+
+
+def log_analytics(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        # if os.environ.get("FLASK_ENV") != "production":
+        payload = get_req_payload()
+        fingerprint = make_fingerprint(payload)
+        last_fingerprint = session.get('event_fingerprint')
+
+        if fingerprint != last_fingerprint:
+            session['event_fingerprint'] = fingerprint
+            get_queue().enqueue(store_event_firebase, flatten(payload))
+
+        return fn(*args, **kwargs)
+    return wrapper
 
 
 def admin_login_required(f):
@@ -113,6 +156,7 @@ def admin_login_required(f):
             return redirect(url_for('login'))
 
         return f(*args, **kwargs)
+
     return wrapper
 
 
@@ -147,7 +191,7 @@ def register_admin(username: str, password: str) -> bool:
             cursor.execute(
                 '''
                 INSERT INTO admin_users (username, passhash)
-                VALUES (?, ?)
+                VALUES (%s, %s)
                 ''',
                 (username, pw_hash)
             )
@@ -161,7 +205,7 @@ def authenticate_admin(username: str, password: str):
     db = get_admin_db()
     with db.cursor() as cursor:
         cursor.execute(
-            'SELECT * FROM admin_users WHERE username = ?', (username,)
+            'SELECT * FROM admin_users WHERE username = %s', (username,)
         )
         admin_added = dict(row) if (row := cursor.fetchone()) else None
         if admin_added and check_password_hash(admin_added['passhash'], password):
@@ -173,7 +217,7 @@ def get_admin_info_with_id(admin_id):
     db = get_admin_db()
     with db.cursor() as cursor:
         cursor.execute(
-            "SELECT * FROM admin_users WHERE id = ?",
+            "SELECT * FROM admin_users WHERE id = %s",
             (admin_id,)
         )
         return cursor.fetchone() or None
@@ -183,7 +227,7 @@ def get_user_info_with_username(username: str):
     db = get_admin_db()
     with db.cursor() as cursor:
         cursor.execute(
-            'SELECT * FROM admin_users WHERE username = ?', (username,)
+            'SELECT * FROM admin_users WHERE username = %s', (username,)
         )
         admin_added = dict(row) if (row := cursor.fetchone()) else None
         if admin_added and admin_added['username'] == username:
@@ -205,7 +249,7 @@ def get_admin_field(admin_id: int, column_name: str):
         raise ValueError(f"Invalid column name: {column_name!r}")
 
     db = get_admin_db()
-    sql = f"SELECT {column_name} FROM admin_users WHERE id = ?"
+    sql = f"SELECT {column_name} FROM admin_users WHERE id = %s"
     with db.cursor() as cursor:
         cursor.execute(sql, (admin_id,))
         row = dict(row) if (row := cursor.fetchone()) else None
@@ -223,14 +267,14 @@ def update_admin_info(user_id: int, data: dict) -> bool:
     values = []
     for field in allowed_fields:
         if field in data:
-            fields.append(f"{field} = ?")
+            fields.append(f"{field} = %s")
             values.append(data[field])
 
     if not fields:
         return False
 
     values.append(user_id)
-    query = f"UPDATE admin_users SET {', '.join(fields)} WHERE id = ?"
+    query = f"UPDATE admin_users SET {', '.join(fields)} WHERE id = %s"
 
     try:
         with db.cursor() as cursor:
