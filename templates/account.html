@@ -112,8 +112,9 @@
                     {{ 'VERIFIED' if user_info.get('account_verified', 0)|int != 0 else 'UNVERIFIED' }}
                   </span>
                   <div id="otp-input-container" class="d-flex d-none ms-3">
-                    <div class="text-danger small spam-info" style="color: green !important;">Check your spam folder also</div>
+                    <div class="text-danger small spam-info" style="color: green !important;">Also check spam folder</div>
                     <input type="text" class="form-control form-control-sm" id="otp-input" placeholder="******" maxlength="6" style="width:200px; margin-right: 2%">
+                    <button class="btn btn-danger btn-sm ms-2" id="resend-otp-btn">Resend</button>
                     <button class="btn btn-success btn-sm ms-2" id="save-otp-btn">Save</button>
                     <button class="btn btn-secondary btn-sm ms-1" id="cancel-otp-btn">Cancel</button>
                   </div>

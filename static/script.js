@@ -661,12 +661,61 @@ async function fetchUserInfo() {
         });
     }
 
+    const resendOTPBtn = document.getElementById("resend-otp-btn");
+    if (resendOTPBtn) {
+        resendOTPBtn.addEventListener("click", async () => {
+            resendOTPBtn.disabled = true;
+
+            function formatTime(totalSeconds) {
+              const m = Math.floor(totalSeconds / 60);
+              const s = totalSeconds % 60;
+              return `${m}:${s.toString().padStart(2, '0')}`;
+            }
+
+            let timeLeft = 60;
+            resendOTPBtn.textContent = formatTime(timeLeft);
+
+            const timerId = setInterval(() => {
+              timeLeft--;
+              if (timeLeft <= 0) {
+                clearInterval(timerId);
+                resendOTPBtn.disabled = false;
+                resendOTPBtn.textContent = ORIGINAL_TEXT;
+              } else {
+                resendOTPBtn.textContent = formatTime(timeLeft);
+              }
+            }, 1000);
+
+            try {
+                const response = await fetch('/resend-verify-email', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken }
+                });
+
+                if (!response.ok) {
+                    data = await response.json();
+                    alert(data.error || "Resend OTP limits reached!.");
+                }
+
+            } catch (err) {
+                console.error("Fetch error:", err);
+                alert("Error sending request.");
+            }
+        });
+    }
+
     const saveOTPBtn = document.getElementById("save-otp-btn");
     if (saveOTPBtn) {
         saveOTPBtn.addEventListener("click", async () => {
+            resendOTPBtn.disabled = true;
+            saveOTPBtn.disabled = true;
+            cancelVerifyBtn.disabled = true;
             const otp = document.getElementById("otp-input").value.trim();
             if (!/^\d{6}$/.test(otp)) {
                 alert("OTP must be 6 digits");
+                resendOTPBtn.disabled = false;
+                saveOTPBtn.disabled = false;
+                cancelVerifyBtn.disabled = false;
                 return;
             }
             try {
