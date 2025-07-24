@@ -357,82 +357,82 @@ def login():
     return render_template('login.html', log_display=log_display)
 
 
-# @app.route('/login/google')
-# @limiter.limit("10 per minute")
-# @csrf.exempt
-# def login_google():
-#     redirect_uri = url_for('google_authorize', _external=True)
-#     return oauth.google.authorize_redirect(redirect_uri)
-#
-#
-# @app.route('/continue/google/authorize')
-# @limiter.limit("10 per minute")
-# @csrf.exempt
-# def google_authorize():
-#     try:
-#         token = oauth.google.authorize_access_token()
-#         nonce = session.pop('oauth_nonce', None)
-#         user_info = oauth.google.parse_id_token(token, nonce=nonce)
-#         if user_info['aud'] != app.config['GOOGLE_CLIENT_ID']:
-#             return redirect(url_for('login', msg=f"Google authentication failed! Try again.", state=1))
-#
-#         google_id = user_info.get('sub', None)
-#         google_email = user_info.get('email', None)
-#         if google_email is None or google_id is None:
-#             return redirect(url_for('login', msg=f"Google login error! Please try after sometime", state=1))
-#
-#         g_log_token = token_hex(32)
-#         email_verified = 1 if user_info.get('email_verified', False) else 0
-#         session['google-user'] = {
-#             'google_id': str(user_info['sub']),
-#             'email': user_info['email'],
-#             'account_verified': email_verified,
-#             'name': user_info.get('name', None),
-#             'picture_url': user_info.get('picture', None),
-#             'session_token': g_log_token,
-#         }
-#
-#         def login_authorized(user_db):
-#             session['user_id'] = user_db['id']
-#             session['email'] = user_db['email']
-#             session['name'] = dict(user_db).get('name') or None
-#             session['username'] = dict(user_db).get('username') or None
-#             session['session_token'] = g_log_token
-#             return redirect(url_for('home'))
-#
-#         user = auth.authenticate_user(user_info['email'])
-#
-#         if user is None:
-#             new_user_id = auth.get_last_user_id()
-#             new_user_id = new_user_id + 1 if new_user_id else 1
-#             if leaves.init_user_info(new_user_id, user_info['email']):
-#                 auth.register_user(user_info['email'])
-#                 auth.update_user_info(new_user_id, session.pop('google-user', {}))
-#                 new_user = auth.get_user_info_with_id(new_user_id)
-#                 return login_authorized(new_user)
-#             else:
-#                 return apology("Something went wrong with Database server. Please try again later.", 501)
-#         else:
-#             if user['google_id'] is None:
-#                 auth.update_user_info(user['id'], session.pop('google-user', {}))
-#                 return login_authorized(user)
-#             elif str(user['google_id']) == str(google_id):
-#                 session.pop('google-user', None)
-#                 auth.update_user_info(user['id'], {"session_token": g_log_token})
-#                 return login_authorized(user)
-#             else:
-#                 session.pop('google-user')
-#
-#             return redirect(url_for('login',
-#                                     msg="Some went wrong! If issue persists, Try login with email.",
-#                                     state=1))
-#     except Exception as e:
-#         print(f"Error during Google OAuth: {e}")
-#         session.pop('google-user', None)
-#         return redirect(
-#             url_for('login',
-#                     msg="An unexpected error occurred during Google login! Please try again.",
-#                     state=1))
+@app.route('/login/google')
+@limiter.limit("10 per minute")
+@csrf.exempt
+def login_google():
+    redirect_uri = url_for('google_authorize', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+
+@app.route('/continue/google/authorize')
+@limiter.limit("10 per minute")
+@csrf.exempt
+def google_authorize():
+    try:
+        token = oauth.google.authorize_access_token()
+        nonce = session.pop('oauth_nonce', None)
+        user_info = oauth.google.parse_id_token(token, nonce=nonce)
+        if user_info['aud'] != app.config['GOOGLE_CLIENT_ID']:
+            return redirect(url_for('login', msg=f"Google authentication failed! Try again.", state=1))
+
+        google_id = user_info.get('sub', None)
+        google_email = user_info.get('email', None)
+        if google_email is None or google_id is None:
+            return redirect(url_for('login', msg=f"Google login error! Please try after sometime", state=1))
+
+        g_log_token = token_hex(32)
+        email_verified = 1 if user_info.get('email_verified', False) else 0
+        session['google-user'] = {
+            'google_id': str(user_info['sub']),
+            'email': user_info['email'],
+            'account_verified': email_verified,
+            'name': user_info.get('name', None),
+            'picture_url': user_info.get('picture', None),
+            'session_token': g_log_token,
+        }
+
+        def login_authorized(user_db):
+            session['user_id'] = user_db['id']
+            session['email'] = user_db['email']
+            session['name'] = dict(user_db).get('name') or None
+            session['username'] = dict(user_db).get('username') or None
+            session['session_token'] = g_log_token
+            return redirect(url_for('home'))
+
+        user = auth.authenticate_user(user_info['email'])
+
+        if user is None:
+            new_user_id = auth.get_last_user_id()
+            new_user_id = new_user_id + 1 if new_user_id else 1
+            if leaves.init_user_info(new_user_id, user_info['email']):
+                auth.register_user(user_info['email'])
+                auth.update_user_info(new_user_id, session.pop('google-user', {}))
+                new_user = auth.get_user_info_with_id(new_user_id)
+                return login_authorized(new_user)
+            else:
+                return apology("Something went wrong with Database server. Please try again later.", 501)
+        else:
+            if user['google_id'] is None:
+                auth.update_user_info(user['id'], session.pop('google-user', {}))
+                return login_authorized(user)
+            elif str(user['google_id']) == str(google_id):
+                session.pop('google-user', None)
+                auth.update_user_info(user['id'], {"session_token": g_log_token})
+                return login_authorized(user)
+            else:
+                session.pop('google-user')
+
+            return redirect(url_for('login',
+                                    msg="Some went wrong! If issue persists, Try login with email.",
+                                    state=1))
+    except Exception as e:
+        print(f"Error during Google OAuth: {e}")
+        session.pop('google-user', None)
+        return redirect(
+            url_for('login',
+                    msg="An unexpected error occurred during Google login! Please try again.",
+                    state=1))
 
 
 @app.route('/logout')
@@ -442,7 +442,9 @@ def logout():
 
 
 @app.route('/')
+@admin.log_analytics
 def dashboard():
+    print()
     return render_template('dashboard.html')
 
 

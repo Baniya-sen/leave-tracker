@@ -1,3 +1,4 @@
+import base64
 import os
 import hashlib
 import json
@@ -6,7 +7,8 @@ import zipfile
 from dotenv import load_dotenv
 from time import time
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timezone
+import requests
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -14,12 +16,79 @@ from psycopg2.extras import RealDictCursor
 from flask import g, current_app, send_file, request, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from firebase_admin import credentials, initialize_app, firestore, _apps
+
 from auth import get_auth_db
 from leaves import get_mongo_client
 
 
 if os.environ.get("FLASK_ENV") != "production":
     load_dotenv()
+
+
+# FireBase Auth
+if not _apps:
+    b64 = os.getenv("FIREBASE_CREDENTIALS_B64")
+    creds_json = base64.b64decode(b64)
+    creds_dict = json.loads(creds_json)
+    cred = credentials.Certificate(creds_dict)
+    initialize_app(cred)
+
+fb_db = firestore.client()
+
+
+def lookup_geo(ip: str) -> dict:
+    try:
+        r = requests.get(f"https://ipwho.is/{ip}", timeout=1)
+        data = r.json()
+        if not data.get("success"):
+            return {"ip": ip, "error": data.get("message", "Geo lookup failed")}
+
+        for key in ["success", "flag", "About Us"]:
+            data.pop(key, None)
+
+        return data
+
+    except Exception as e:
+        return {"ip": ip, "error": str(e)}
+
+
+def log_analytics(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if os.environ.get("FLASK_ENV") == "production":
+            payload = {
+                "timestamp": datetime.now(timezone.utc),
+                "server_time": datetime.now().isoformat(),
+                "flask_env": current_app,
+                "debug": current_app.debug,
+                "remote_ip": request.remote_addr,
+                "geo": lookup_geo(request.remote_addr or "0.0.0.0"),
+                "method": request.method,
+                "path": request.path,
+                "url": request.url,
+                "base_url": request.base_url,
+                "endpoint": request.endpoint,
+                "blueprint": request.blueprint,
+                "user_agent": request.headers.get("User-Agent"),
+                "referrer": request.referrer,
+                "headers": dict(request.headers),
+                "cookies": dict(request.cookies),
+                "query_params": dict(request.args),
+                "form_data": request.form.to_dict(),
+                "json_body": request.get_json(silent=True),
+                "user_id": getattr(g, "user_id", None),
+                "session_id": request.cookies.get(current_app.config.get("SESSION_COOKIE_NAME", "session")),
+            }
+
+            try:
+                doc_id = f"LeavesTracker-{datetime.now(timezone.utc).isoformat()}"
+                fb_db.collection("leave_tracker_analytics_events").document(doc_id).set(payload)
+            except Exception as e:
+                current_app.logger.error("Analytics logging failed: %s", e)
+
+        return fn(*args, **kwargs)
+    return wrapper
 
 
 def hash_to_admin(period_seconds: int = 10*60, when: float = None) -> str:
