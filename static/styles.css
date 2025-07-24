@@ -5674,7 +5674,7 @@ nav .navbar-brand .logo_text::first-letter {
         position: relative;
         width: 100vw;
         margin-top: -11%;
-        margin-left: 0%;
+        margin-left: 19%;
         margin-bottom: 0% !important;
         color: #8a8a8a !important;
         font-size: 0.65rem;
@@ -5942,12 +5942,15 @@ nav .navbar-brand .logo_text::first-letter {
         overflow: auto;
     }
 
-    .app-login-left,
+    .app-login-left {
+        width: 0%;
+        max-height: 0px;
+    }
+
     .app-login-right {
         width: 100%;
-        min-height: 120px;
-        height: auto;
-        padding: 0;
+        height: 90% !important;
+        padding: 5rem;
     }
 
     .app-login-left-text {
@@ -6095,6 +6098,17 @@ nav .navbar-brand .logo_text::first-letter {
 
     .custom-leave-modal-title {
         font-size: 0.95rem;
+    }
+
+    #my-brand {
+        position: relative;
+        width: 100vw;
+        margin-top: -11%;
+        margin-left: 0%;
+        margin-bottom: 0% !important;
+        color: #8a8a8a !important;
+        font-size: 0.65rem;
+        text-align: center;
     }
 }
 
