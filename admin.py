@@ -131,14 +131,14 @@ def store_event_firebase(doc: dict) -> None:
 def log_analytics(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        # if os.environ.get("FLASK_ENV") != "production":
-        payload = get_req_payload()
-        fingerprint = make_fingerprint(payload)
-        last_fingerprint = session.get('event_fingerprint')
+        if os.environ.get("FLASK_ENV") == "production":
+            payload = get_req_payload()
+            fingerprint = make_fingerprint(payload)
+            last_fingerprint = session.get('event_fingerprint')
 
-        if fingerprint != last_fingerprint:
-            session['event_fingerprint'] = fingerprint
-            get_queue().enqueue(store_event_firebase, flatten(payload))
+            if fingerprint != last_fingerprint:
+                session['event_fingerprint'] = fingerprint
+                get_queue().enqueue(store_event_firebase, flatten(payload))
 
         return fn(*args, **kwargs)
     return wrapper
