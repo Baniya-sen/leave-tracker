@@ -618,7 +618,7 @@ def get_monthly_leaves_data(month: int):
 @app.route('/account', methods=['GET'])
 @login_required
 def account_root():
-    uname = session.get('username') or session.get('email', None)
+    uname = ''.join((session.get('name') or session['email']).strip().split())
     token = session.get('login_hex', {}).get('login_token', None)
     return redirect(url_for('account', username=uname, token=token))
 
@@ -626,8 +626,13 @@ def account_root():
 @app.route('/account/<username>/<token>', methods=['GET'])
 @login_required
 def account(username: str, token: str):
-    if username != (session.get('username') or session['email']) or token != verify_login_token(token):
+    name_session = ''.join((session.get('name') or session['email']).strip().split())
+    if username != name_session:
         return apology("Verification failed! Logout and Re-login!", 404)
+
+    if not verify_login_token(token):
+        session.clear()
+        abort(404)
 
     user = auth.get_user_info_with_id(session['user_id'])
     if user:
