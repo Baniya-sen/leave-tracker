@@ -39,6 +39,7 @@ def init_user_info(user_id: int, email: str) -> bool:
         return True
     except Exception as e:
         print(e)
+        current_app.logger.error("MongoDB error: ", e)
         return False
 
 
@@ -84,6 +85,7 @@ def update_user_profile(user_id: int, data: dict) -> bool:
         return result.matched_count > 0
     except Exception as e:
         print("Failed to update mongo with user info", session['user_id'], e)
+        current_app.logger.error("Failed to update mongo with user info", session['user_id'], e)
         return False
 
 
@@ -129,6 +131,7 @@ def update_user_leaves_by_import(user_id: int, leaves_taken_data: dict) -> Tuple
 
         if required > current:
             print(f"Too many leaves: {lt}: requested={required}, available={current}")
+            current_app.logger.info(f"Too many leaves: {lt}: requested={required}, available={current}")
             return -1, -1
 
         remaining_update[f"user_leaves.{firm}.leaves_remaining.{lt}"] = current - required

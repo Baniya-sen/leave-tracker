@@ -140,7 +140,8 @@ def from_json_filter(s):
             return json.loads(s)
         return s
     except Exception as e:
-        print(e)
+        print(f"Error from from_json_filter: {e}")
+        app.logger.error(f"Error from from_json_filter: {e}")
         return {}
 
 
@@ -225,6 +226,7 @@ def enforce_same_origin(f):
         origin = request.headers.get('Origin') or request.headers.get('Referer')
         if not origin or not is_allowed_origin(origin):
             print("Your requested origin could not be identified!")
+            app.logger.error("Your requested origin could not be identified!")
             abort(403)
         return f(*args, **kwargs)
 
@@ -297,6 +299,7 @@ def register():
             if leaves.init_user_info(new_user_id, cleaned['email']):
                 auth.register_user(cleaned['email'], request.form.get("password"))
                 print("User Registered! ", cleaned['email'])
+                app.logger.info("User Registered! ", cleaned['email'])
                 hexed = token_hex(16)
                 session['user_registered_hex'] = hexed
                 return redirect(
@@ -434,6 +437,7 @@ def google_authorize():
             if leaves.init_user_info(new_user_id, user_info['email']):
                 auth.register_user(user_info['email'])
                 auth.update_user_info(new_user_id, session.pop('google-user', {}))
+                app.logger.info(user_info)
                 new_user = auth.get_user_info_with_id(new_user_id)
                 return login_authorized(new_user)
             else:
@@ -454,6 +458,7 @@ def google_authorize():
                                     state=1))
     except Exception as e:
         print(f"Error during Google OAuth: {e}")
+        app.logger.error(f"Error during Google OAuth: {e}")
         session.pop('google-user', None)
         return redirect(
             url_for('login',
@@ -743,6 +748,7 @@ def import_leaves():
             return True
         except Exception as e:
             print(user_id, "Wrong date in import- ", e)
+            app.logger.error(user_id, "Wrong date in import- ", e)
             return False
 
     for leave_type, dates in leaves_taken.items():
@@ -812,7 +818,6 @@ def take_leave():
              .get('leaves_taken', {})
              .get(leave_type, []))
 
-    # Check for already taken dates
     for date_str in dates:
         if date_str in taken:
             return jsonify(error=f'Leave already taken for {date_str}'), 400
@@ -1059,9 +1064,9 @@ def admin_delete_all_data(token):
 
     admin_added = admin.get_admin_info_with_id(session['admin_id'])
     if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
-        success, message = admin.delete_all_user_data()
+        data = request.get_json() or {}
+        success, message = admin.delete_all_user_data(data.get('otp', ''))
         if success:
-            session['ADMIN_DELETE_TOKEN'] = 0
             return jsonify(status="success", message=message), 200
         else:
             return jsonify(status="error", message=message), 500

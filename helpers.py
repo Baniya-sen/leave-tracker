@@ -1,9 +1,18 @@
 import re
 import threading
 from datetime import datetime, timedelta
+from os import getenv
+
+import pyotp
+from flask import current_app, session
+
+from telegram import Bot
 
 import auth
 from admin import delete_unverified_accounts
+
+
+OTP_STORE = {}
 
 
 def account_verified(user_id) -> bool:
@@ -92,7 +101,9 @@ def validate_firm_leaves(data, request=None, user_id=None) -> any:
             n = int(c)
             if n < 0:
                 raise ValueError
-        except Exception:
+        except Exception as e:
+            print(e)
+            current_app.logger.error("Errors from helpers: ", e)
             return False, 'Leave count must be non-negative integer', None
     return True, None, {}
 
@@ -116,3 +127,34 @@ def run_task_and_reschedule():
         delete_unverified_accounts()
     finally:
         schedule_next_run()
+
+
+def send_otp_telegram():
+    TG_BOT = Bot(token=getenv("TELEGRAM_BOT_TOKEN"))
+    TG_CHAT = getenv("TELEGRAM_CHAT_ID")
+
+    secret = session.get("admin_otp_secret")
+    if not secret:
+        secret = pyotp.random_base32()
+        session["admin_otp_secret"] = secret
+
+    totp = pyotp.TOTP(secret, interval=600)
+    code = totp.now()
+    OTP_STORE[secret] = code
+    text = f"🚀 Your one‑time admin OTP is *{code}* (valid 10 for min)."
+    TG_BOT.send_message(chat_id=TG_CHAT, text=text, parse_mode="Markdown")
+    return code
+
+
+def validate_otp(submitted_otp) -> bool:
+    secret = session.get("admin_otp_secret")
+    if not secret:
+        return False
+    totp = pyotp.TOTP(secret, interval=600)
+    if not totp.verify(submitted_otp, valid_window=1):
+        return False
+    if OTP_STORE.get(secret) != submitted_otp:
+        return False
+    OTP_STORE.pop(secret, None)
+    session.pop("admin_otp_secret", None)
+    return True
