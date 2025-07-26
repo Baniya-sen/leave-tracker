@@ -130,18 +130,23 @@ def run_task_and_reschedule():
         schedule_next_run()
 
 
-def send_otp_telegram() -> bool:
-    secret = session.get("admin_otp_secret")
-    if not secret:
-        secret = pyotp.random_base32()
-        session["admin_otp_secret"] = secret
+def generate_otp(secret: str) -> str:
+    secret_base = session.get(secret, None)
+    if not secret_base:
+        secret_base = pyotp.random_base32()
+        session[secret] = secret_base
 
+    totp = pyotp.TOTP(secret_base, interval=600)
+    code = totp.now()
+    OTP_STORE[secret_base] = code
+    return code
+
+
+def send_otp_telegram() -> bool:
     TG_BOT = getenv("TELEGRAM_BOT_TOKEN")
     TG_CHAT = getenv("TELEGRAM_CHAT_ID")
 
-    totp = pyotp.TOTP(secret, interval=600)
-    code = totp.now()
-    OTP_STORE[secret] = code
+    code = generate_otp("admin_otp_secret")
     text = f"🚀 Your one‑time admin OTP for Leaves Tracker is: *{code}* (Only valid for 10 min)."
     url = (
         f"https://api.telegram.org/bot{TG_BOT}/sendMessage"
@@ -158,15 +163,15 @@ def send_otp_telegram() -> bool:
         return False
 
 
-def validate_otp(submitted_otp) -> bool:
-    secret = session.get("admin_otp_secret")
-    if not secret:
+def validate_otp(submitted_otp, secret) -> bool:
+    secret_base = session.get(secret, None)
+    if not secret_base:
         return False
-    totp = pyotp.TOTP(secret, interval=600)
+    totp = pyotp.TOTP(secret_base, interval=600)
     if not totp.verify(submitted_otp, valid_window=1):
         return False
-    if OTP_STORE.get(secret) != submitted_otp:
+    if OTP_STORE.get(secret_base) != submitted_otp:
         return False
-    OTP_STORE.pop(secret, None)
-    session.pop("admin_otp_secret", None)
+    OTP_STORE.pop(secret_base, None)
+    session.pop(secret, None)
     return True

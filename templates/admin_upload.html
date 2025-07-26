@@ -18,13 +18,13 @@
 
           <form id="upload-form" enctype="multipart/form-data">
             <div class="mb-3">
-              <label for="sqlFile" class="form-label">Select SQLite .db file</label>
+              <label for="userFile" class="form-label">Select A JSON file</label>
               <input
                 class="form-control"
                 type="file"
-                id="sqlFile"
+                id="userFile"
                 name="file"
-                accept=".db"
+                accept=".json"
                 required
               >
             </div>
@@ -45,8 +45,15 @@
               </div>
             </div>
 
+            <!-- OTP Container (hidden until button click) -->
+            <div id="otpContainerUpload" class="mt-4" style="margin-bottom: 5%;">
+                <div class="input-group">
+                  <input type="text" name="otp" class="form-control" id="uploadOTPaDMINvERIFY" placeholder="Enter OTP code to proceed" required>
+                </div>
+            </div>
+
             <a href="{{ upload_route }}" style="display: none;" id="upload_route"></a>
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" id="adminUploadOtpBtn">
               Upload
             </button>
           </form>

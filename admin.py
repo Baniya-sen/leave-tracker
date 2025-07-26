@@ -27,7 +27,6 @@ if os.environ.get("FLASK_ENV") != "production":
     load_dotenv()
 
 EXECUTOR = None
-OTP_STORE = {}
 
 # FireBase Auth
 if not _apps:
@@ -38,6 +37,16 @@ if not _apps:
     initialize_app(cred)
 
 fb_db = firestore.client()
+
+
+def hash_to_admin(period_seconds: int = 10 * 60, when: float = None) -> str:
+    h1 = os.getenv('H1')
+    h2 = os.getenv('H2')
+    h3 = os.getenv('H3')
+    ts = when if when is not None else time()
+    bucket = int(ts // period_seconds)
+    data = h1 + h2 + h3 + str(bucket)
+    return hashlib.sha256(data.encode('utf-8')).hexdigest()
 
 
 def lookup_geo(ip: str) -> dict:
@@ -75,16 +84,6 @@ def flatten(d: dict, parent_key: str = '', sep: str = ' ') -> dict:
             else:
                 items.append((new_key, str(v)))
     return dict(items)
-
-
-def hash_to_admin(period_seconds: int = 10 * 60, when: float = None) -> str:
-    h1 = os.getenv('H1')
-    h2 = os.getenv('H2')
-    h3 = os.getenv('H3')
-    ts = when if when is not None else time()
-    bucket = int(ts // period_seconds)
-    data = h1 + h2 + h3 + str(bucket)
-    return hashlib.sha256(data.encode('utf-8')).hexdigest()
 
 
 def get_executor():
@@ -287,7 +286,6 @@ def delete_all_user_data():
     try:
         # --- SQL cleanup ---
         conn = get_auth_db()
-        print("hereeeeeee")
         try:
             with conn.cursor() as cur:
                 cur.execute("""
@@ -296,21 +294,22 @@ def delete_all_user_data():
                     DECLARE
                       t RECORD;
                     BEGIN
-                      FOR t IN
-                        SELECT table_schema, table_name
-                          FROM information_schema.tables
-                         WHERE table_type = 'BASE TABLE'
-                           AND table_schema NOT IN ('pg_catalog','information_schema')
-                      LOOP
-                        EXECUTE format(
-                          'TRUNCATE TABLE %I.%I RESTART IDENTITY CASCADE;',
-                          t.table_schema, t.table_name
-                        );
-                      END LOOP;
+                      IF EXISTS (SELECT 1 FROM users) THEN
+                        FOR t IN
+                          SELECT table_schema, table_name
+                            FROM information_schema.tables
+                           WHERE table_type = 'BASE TABLE'
+                             AND table_schema NOT IN ('pg_catalog','information_schema')
+                        LOOP
+                          EXECUTE format(
+                            'TRUNCATE TABLE %I.%I RESTART IDENTITY CASCADE;',
+                            t.table_schema, t.table_name
+                          );
+                        END LOOP;
+                      END IF;
                     END
                     $$;
                 """)
-            print("donneeeeeeee")
             conn.commit()
             print("All users deleted and table reset.")
             current_app.logger.info("All users deleted and table reset.")
@@ -423,7 +422,7 @@ def upload_databases():
         session.clear()
         msg = f"Pushed all users data to Postgres users table."
         print(f"Pushed all users data to Postgres users table.")
-        current_app.logger.error(f"Pushed all users data to Postgres users table.")
+        current_app.logger.info(f"Pushed all users data to Postgres users table.")
 
     except Exception as e:
         print(f"Restore failed: {e}")
@@ -436,9 +435,14 @@ def upload_databases():
         if not mongo_file.filename.lower().endswith(('.json', '.txt')):
             return False, "Please upload a JSON file for Mongo data"
         try:
-            data = json.load(mongo_file)
+            data: list = json.load(mongo_file)
             if not isinstance(data, list):
                 raise ValueError("Root JSON must be an array of documents")
+            if len(data) == 0:
+                msg += f" Mongo JSON was empty, Imported 0 Mongo documents."
+                print(f"Mongo JSON was empty, Imported 0 Mongo documents.")
+                current_app.logger.info(f"Mongo JSON was empty, Imported 0 Mongo documents.")
+                return True, msg
         except Exception as e:
             return False, f"Invalid Mongo JSON file: {e}"
 

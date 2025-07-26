@@ -1656,6 +1656,10 @@ let pendingRoute = null;
   if (!btn) return;
   btn.addEventListener('click', e => {
     e.preventDefault();
+    ['downloadBtn', 'deleteBtn', 'uploadBtn'].forEach(idB => {
+        const btnB = document.getElementById(idB);
+        btnB.disabled = true;
+    });
     pendingOp = btn.dataset.op;
     const base = btn.dataset.route;
     pendingRoute = base.replace(/\/?$/, '');
@@ -1679,8 +1683,8 @@ if (otpForm) {
   otpForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!pendingRoute) return;
-    console.log("yahahahahahah")
 
+    document.getElementById('adminVerifyOTP').disabled = true;
     const otpValue = e.target.otp.value.trim();
     const options = {
       method: 'POST',
@@ -1692,13 +1696,12 @@ if (otpForm) {
     };
 
 
-    console.log("yahahahahahah")
-
     try {
       const res = await fetch(pendingRoute, options);
-      console.log("yahahahahahah")
       const ct = res.headers.get('Content-Type') || '';
-      console.log("thisss- ", ct)
+
+      document.getElementById('otpContainer').style.display = 'none';
+      e.target.otp.value = '';
 
       // 1) JSON response (errors or instructive payload)
       if (ct.includes('application/json')) {
@@ -1706,13 +1709,11 @@ if (otpForm) {
         document.getElementById('result').style.display = 'block';
 
         if (json.status === 'success') {
-          // maybe a success message w/o download_url
           document.getElementById('successMessage').style.display = 'block';
           document.getElementById('errorMessage').style.display = 'none';
           document.getElementById('successText').textContent = json.message;
         }
         else {
-          // error case
           document.getElementById('successMessage').style.display = 'none';
           document.getElementById('errorMessage').style.display = 'block';
           document.getElementById('errorText').textContent = json.message || 'Error';
@@ -1739,7 +1740,6 @@ if (otpForm) {
         return;
       }
 
-      // Fallback
       throw 'Unknown response type';
 
     } catch (err) {
@@ -1751,6 +1751,69 @@ if (otpForm) {
     }
   });
 }
+
+// Get upload page
+const uploadBtn = document.getElementById('uploadBtn');
+if (uploadBtn) {
+    uploadBtn.addEventListener('click', e => {
+        e.preventDefault();
+        ['downloadBtn', 'deleteBtn', 'uploadBtn'].forEach(idB => {
+            const btnB = document.getElementById(idB);
+            btnB.disabled = true;
+        });
+        const otpRoute = document.getElementById('want-otp').dataset.route;
+        fetch(otpRoute, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrfToken
+            },
+        });
+        const route = uploadBtn.dataset.route;
+        window.location.href = route;
+    })
+}
+
+// Admin-Upload
+const formUploadDB = document.getElementById('upload-form');
+const resultDivUpload = document.getElementById('result');
+
+function showResultUpload(success, message, extra = '') {
+    resultDivUpload.innerHTML = `
+      <div class="alert alert-${success ? 'success' : 'danger'}">
+        ${message}${extra ? ': ' + extra : ''}
+      </div>
+    `;
+}
+
+if (formUploadDB) {
+    formUploadDB.addEventListener('submit', e => {
+        e.preventDefault();
+        const userFile = document.getElementById('userFile');
+        userFile.classList.add('disabled');
+        const mongoFile = document.getElementById('mongoFile');
+        mongoFile.classList.add('disabled');
+        const uploadOTPaDMINvERIFY = document.getElementById('uploadOTPaDMINvERIFY');
+        uploadOTPaDMINvERIFY.classList.add('disabled');
+        document.getElementById('adminUploadOtpBtn').disabled = true;
+
+        const data = new FormData(formUploadDB);
+        const uploadRoute = document.getElementById('upload_route').href;
+        fetch(uploadRoute, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: data
+        })
+        .then(res => res.json())
+        .then(payload => {
+            showResultUpload(payload.status === 'success', payload.message);
+        })
+        .catch(err => {
+            showResultUpload(false, 'Upload failed', err.message);
+        });
+    });
+}
+
 
 // ===================== HAMBURGER MENU (Mobile Nav) =====================
 document.addEventListener('DOMContentLoaded', function () {
