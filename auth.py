@@ -49,10 +49,12 @@ def register_user(email: str, password=None) -> int | None:
         return cursor.lastrowid
 
     except psycopg2.IntegrityError:
-        print("User not Registered! Some went wrong!")
+        print("User not Registered! Email exists.")
+        current_app.logger.info("User not Registered! Email exists.")
         return None
     except Exception as e:
         print(f"An unexpected error occurred during user registration: {e}")
+        current_app.logger.error(f"An unexpected error occurred during user registration: {e}")
         return None
 
 
@@ -91,6 +93,7 @@ def get_last_user_id():
         return None
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
+        current_app.logger.error(f"An unexpected error occurred: {e}")
         return None
 
 
@@ -170,7 +173,8 @@ def update_user_info(user_id: int, data: dict) -> bool:
                 try:
                     existing_leaves = existing["leaves_type"]
                 except Exception as e:
-                    print(e)
+                    print("Not-Imp error", e)
+                    current_app.logger.error("Not-Imp error", e)
                     existing_leaves = {}
 
     fields = []
@@ -199,4 +203,5 @@ def update_user_info(user_id: int, data: dict) -> bool:
             return cursor.rowcount > 0
     except psycopg2.Error:
         print("User not updated to sql!", session['user_id'])
+        current_app.logger.error("User not updated to sql!", session['user_id'])
         return False

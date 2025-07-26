@@ -7,6 +7,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
 
+from helpers import generate_otp
+
 OTP_EXPIRY_MINUTES = 10
 SMTP_SERVER = "smtp.zoho.in"
 SMTP_PORT = 587
@@ -37,14 +39,9 @@ def send_email_via_zoho(recipient: str, subject: str, html_body: str, text_body:
         smtp.sendmail(ZOHO_VERIF_USER, recipient, msg.as_string())
 
 
-def generate_otp(length: int = 6) -> str:
-    from random import SystemRandom
-    return "".join(SystemRandom().choice("0123456789") for _ in range(length))
-
-
-def send_otp(username: str, recipient: str, otp: str = None) -> str:
+def send_otp(username: str, recipient: str, otp: str = None, resend: bool = False) -> str:
     if otp is None:
-        otp = generate_otp()
+        otp = generate_otp("Verification_otp" if not resend else "Verification_otp_resend")
     now = datetime.now(timezone.utc)
     expires = (now + timedelta(minutes=OTP_EXPIRY_MINUTES)).strftime("%H:%M UTC")
 

@@ -4,76 +4,90 @@
 
 {% block main %}
 <div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-10">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="mb-0">
-                        <i class="fas fa-cogs"></i> Admin Dashboard
-                    </h3>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info" role="alert">
-                        <i class="fas fa-info-circle"></i>
-                        <strong>Admin Functions:</strong> Use these tools to manage your application data.
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-download fa-3x text-primary mb-3"></i>
-                                    <h5 class="card-title">Download Database</h5>
-                                    <p class="card-text">Download a backup of your SQL database file.</p>
-                                    <a href="{{ download_route }}" class="btn btn-primary">
-                                        <i class="fas fa-download"></i> Download
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-upload fa-3x text-warning mb-3"></i>
-                                    <h5 class="card-title">Upload Database</h5>
-                                    <p class="card-text">Upload and replace the current database file.</p>
-                                    <a href="{{ upload_route }}" class="btn btn-warning">
-                                        <i class="fas fa-upload"></i> Upload
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4 mb-3">
-                            <div class="card h-100">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-trash fa-3x text-danger mb-3"></i>
-                                    <h5 class="card-title">Delete All Data</h5>
-                                    <p class="card-text">Delete all user data from both SQL and MongoDB.</p>
-                                    <a href="{{ delete_route }}" style="display: none;" id="delete_route"></a>
-                                    <button id="deleteBtn" class="btn btn-danger">
-                                        <i class="fas fa-trash"></i> Delete All
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="result" class="mt-3" style="display: none;">
-                        <div id="successMessage" class="alert alert-success" style="display: none;">
-                            <i class="fas fa-check-circle"></i>
-                            <span id="successText"></span>
-                        </div>
-                        <div id="errorMessage" class="alert alert-danger" style="display: none;">
-                            <i class="fas fa-exclamation-circle"></i>
-                            <span id="errorText"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <div class="row justify-content-center">
+    <div class="col-md-10">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="mb-0">
+            <i class="fas fa-cogs"></i> Admin Dashboard
+          </h3>
         </div>
+        <div class="card-body">
+          <div class="alert alert-info" role="alert">
+            <i class="fas fa-info-circle"></i>
+            <strong>Admin Functions:</strong> Use these tools to manage your application data.
+          </div>
+
+          <div class="row">
+            <!-- Download -->
+            <div class="col-md-4 mb-3">
+              <div class="card h-100">
+                <div class="card-body text-center">
+                  <i class="fas fa-download fa-3x text-primary mb-3"></i>
+                  <h5 class="card-title">Download Database</h5>
+                  <p class="card-text">Download a backup of your SQL database file.</p>
+                  <button id="downloadBtn" data-route="{{ download_route }}" data-op="download" class="btn btn-primary">
+                    <i class="fas fa-download"></i> Download
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upload -->
+            <div class="col-md-4 mb-3">
+              <div class="card h-100">
+                <div class="card-body text-center">
+                  <i class="fas fa-upload fa-3x text-warning mb-3"></i>
+                  <h5 class="card-title">Upload Database</h5>
+                  <p class="card-text">Upload and replace the current database file.</p>
+                  <button id="uploadBtn" data-route="{{ upload_route }}" data-op="upload" class="btn btn-warning">
+                    <i class="fas fa-upload"></i> Upload
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Delete -->
+            <div class="col-md-4 mb-3">
+              <div class="card h-100">
+                <div class="card-body text-center">
+                  <i class="fas fa-trash fa-3x text-danger mb-3"></i>
+                  <h5 class="card-title">Delete All Data</h5>
+                  <p class="card-text">Delete all user data from both SQL and MongoDB.</p>
+                  <button id="deleteBtn" data-route="{{ delete_route }}" data-op="delete" class="btn btn-danger">
+                    <i class="fas fa-trash"></i> Delete All
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="want-otp" style="display: none" data-route="{{ otp_route }}"></div>
+
+          <!-- OTP Container (hidden until button click) -->
+          <div id="otpContainer" class="mt-4" style="display: none;">
+            <form id="otpForm">
+              <div class="input-group">
+                <input type="text" name="otp" class="form-control" placeholder="Enter OTP code" required>
+                <button type="submit" class="btn btn-success" id="adminVerifyOTP">
+                  <i class="fas fa-key"></i> Verify OTP
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div id="result" class="mt-3" style="display: none;">
+            <div id="successMessage" class="alert alert-success" style="display: none;">
+              <i class="fas fa-check-circle"></i> <span id="successText"></span>
+            </div>
+            <div id="errorMessage" class="alert alert-danger" style="display: none;">
+              <i class="fas fa-exclamation-circle"></i> <span id="errorText"></span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 </div>
 
 {% endblock %}

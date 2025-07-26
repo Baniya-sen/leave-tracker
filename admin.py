@@ -4,19 +4,20 @@ import json
 import os
 import tempfile
 import zipfile
-from collections.abc import MutableMapping
 from datetime import datetime, timezone
 from functools import wraps
 from time import time
-from redis import Redis
-from rq import Queue
+from concurrent.futures import ThreadPoolExecutor
 
 import psycopg2
 import requests
+import pyotp
 from dotenv import load_dotenv
-from firebase_admin import credentials, initialize_app, firestore, _apps
-from flask import g, current_app, send_file, request, session, redirect, url_for
+
 from psycopg2.extras import RealDictCursor
+from firebase_admin import credentials, initialize_app, firestore, _apps
+
+from flask import g, current_app, send_file, request, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from auth import get_auth_db
@@ -25,8 +26,7 @@ from leaves import get_mongo_client
 if os.environ.get("FLASK_ENV") != "production":
     load_dotenv()
 
-REDIS_CONN = None
-Q = None
+EXECUTOR = None
 
 # FireBase Auth
 if not _apps:
@@ -39,16 +39,25 @@ if not _apps:
 fb_db = firestore.client()
 
 
+def hash_to_admin(period_seconds: int = 10 * 60, when: float = None) -> str:
+    h1 = os.getenv('H1')
+    h2 = os.getenv('H2')
+    h3 = os.getenv('H3')
+    ts = when if when is not None else time()
+    bucket = int(ts // period_seconds)
+    data = h1 + h2 + h3 + str(bucket)
+    return hashlib.sha256(data.encode('utf-8')).hexdigest()
+
+
 def lookup_geo(ip: str) -> dict:
     try:
-        r = requests.get(f"https://ipwho.is/{ip}", timeout=1)
-        data = r.json()
+        resp = requests.get(f"https://ipwho.is/{ip}", timeout=1)
+        data = resp.json()
         if not data.get("success"):
             return {"ip": ip, "error": data.get("message", "Geo lookup failed")}
         for key in ["success", "flag", "About Us"]:
             data.pop(key, None)
         return data
-
     except Exception as e:
         return {"ip": ip, "error": str(e)}
 
@@ -60,38 +69,28 @@ def make_fingerprint(req_payload: dict) -> str:
     return hashlib.sha256(s.encode()).hexdigest()
 
 
-def flatten(d: MutableMapping, parent_key='', sep=" "):
+def flatten(d: dict, parent_key: str = '', sep: str = ' ') -> dict:
     items = []
     for k, v in d.items():
-        new_key = f'{parent_key}{sep}{k}' if parent_key else k
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
         if isinstance(v, dict):
-            items.extend(flatten(d=v, parent_key=new_key, sep=sep).items())
+            if v:
+                items.extend(flatten(v, new_key, sep).items())
+            else:
+                items.append((new_key, {}))
         else:
-            items.append((new_key, v))
-
-    try:
-        return json.loads(json.dumps(dict(items)))
-    except Exception as e:
-        print(e)
-        return str(dict(items))
+            if isinstance(v, (str, int, float, bool, type(None))):
+                items.append((new_key, v))
+            else:
+                items.append((new_key, str(v)))
+    return dict(items)
 
 
-def hash_to_admin(period_seconds: int = 10 * 60, when: float = None) -> str:
-    h1 = os.getenv('H1')
-    h2 = os.getenv('H2')
-    h3 = os.getenv('H3')
-    ts = when if when is not None else time()
-    bucket = int(ts // period_seconds)
-    data = h1 + h2 + h3 + str(bucket)
-    return hashlib.sha256(data.encode('utf-8')).hexdigest()
-
-
-def get_queue():
-    global REDIS_CONN, Q
-    if REDIS_CONN is None or Q is None:
-        REDIS_CONN = Redis.from_url(current_app.config['RATELIMIT_STORAGE_URL'])
-        Q = Queue('default', connection=REDIS_CONN)
-    return Q
+def get_executor():
+    global EXECUTOR
+    if EXECUTOR is None:
+        EXECUTOR = ThreadPoolExecutor(max_workers=int(os.getenv("ANALYTICS_POOL_SIZE", 5)))
+    return EXECUTOR
 
 
 def get_req_payload() -> dict:
@@ -115,7 +114,7 @@ def get_req_payload() -> dict:
         "query_params": dict(request.args),
         "form_data": request.form.to_dict(),
         "json_body": request.get_json(silent=True),
-        "user_id": getattr(g, "user_id", None),
+        "user_id": session.get('user_id'),
         "session_id": request.cookies.get(current_app.config.get("SESSION_COOKIE_NAME", "session")),
     }
 
@@ -125,21 +124,19 @@ def store_event_firebase(doc: dict) -> None:
         doc_id = f"LeavesTracker-{datetime.now(timezone.utc).isoformat()}"
         fb_db.collection("leave_tracker_analytics_events").document(doc_id).set(doc)
     except Exception as e:
+        print("Analytics logging failed: %s", e)
         current_app.logger.error("Analytics logging failed: %s", e)
 
 
 def log_analytics(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        if os.environ.get("FLASK_ENV") == "production":
-            payload = get_req_payload()
-            fingerprint = make_fingerprint(payload)
-            last_fingerprint = session.get('event_fingerprint')
-
-            if fingerprint != last_fingerprint:
-                session['event_fingerprint'] = fingerprint
-                get_queue().enqueue(store_event_firebase, flatten(payload))
-
+        if os.environ.get("FLASK_ENV") == "development":
+            payload = flatten(get_req_payload())
+            fp = make_fingerprint(payload)
+            if session.get('event_fingerprint') != fp:
+                session['event_fingerprint'] = fp
+                get_executor().submit(store_event_firebase, payload)
         return fn(*args, **kwargs)
     return wrapper
 
@@ -149,14 +146,11 @@ def admin_login_required(f):
     def wrapper(*args, **kwargs):
         if 'admin_id' not in session or 'admin_session_token' not in session:
             return redirect(url_for('login'))
-
         admin_added = get_admin_info_with_id(session['admin_id'])
         if admin_added is None or dict(admin_added).get('admin_session_token') != session['admin_session_token']:
             session.clear()
             return redirect(url_for('login'))
-
         return f(*args, **kwargs)
-
     return wrapper
 
 
@@ -294,18 +288,37 @@ def delete_all_user_data():
         conn = get_auth_db()
         try:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM users;")
-                cur.execute("VACUUM FULL users;")
-                cur.execute("ALTER SEQUENCE users_id_seq RESTART WITH 1;")
-
+                cur.execute("""
+                    DO
+                    $$
+                    DECLARE
+                      t RECORD;
+                    BEGIN
+                      IF EXISTS (SELECT 1 FROM users) THEN
+                        FOR t IN
+                          SELECT table_schema, table_name
+                            FROM information_schema.tables
+                           WHERE table_type = 'BASE TABLE'
+                             AND table_schema NOT IN ('pg_catalog','information_schema')
+                        LOOP
+                          EXECUTE format(
+                            'TRUNCATE TABLE %I.%I RESTART IDENTITY CASCADE;',
+                            t.table_schema, t.table_name
+                          );
+                        END LOOP;
+                      END IF;
+                    END
+                    $$;
+                """)
             conn.commit()
-            print("All users deleted and table vacuumed.")
-            current_app.logger.info("All users deleted and table vacuumed.")
+            print("All users deleted and table reset.")
+            current_app.logger.info("All users deleted and table reset.")
 
         except Exception as e:
             print(f"Error clearing users table: {e}")
             current_app.logger.error(f"Error clearing users table: {e}")
             conn.rollback()
+            return False, f"Error deleting user SQL data: {str(e)}"
 
         # --- MongoDB cleanup ---
         client = get_mongo_client()
@@ -335,17 +348,26 @@ def download_all_data_as_zip():
         mongo_docs = list(collection.find({}, {'_id': False}))
         mongo_json = json.dumps(mongo_docs, indent=2)
 
+        def json_serial(obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            return obj
+
         conn = get_auth_db()
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM users;")
-            users_data = [dict(row) for row in cur.fetchall() if row]
+            users_data = [dict(row) for row in cur.fetchall()]
         admin_conn = get_admin_db()
         with admin_conn.cursor() as cur:
-            cur.execute("SELECT * FROM admin;")
-            admin_data = [dict(row) for row in cur.fetchall() if row]
+            cur.execute("SELECT * FROM admin_users;")
+            admin_data = [dict(row) for row in cur.fetchall()]
 
-        users_json = json.dumps(users_data, indent=2)
-        admin_json = json.dumps(admin_data, indent=2)
+        users_json = json.dumps(users_data, indent=2, default=json_serial)
+        admin_json = json.dumps(admin_data, indent=2, default=json_serial)
+
+        print(users_json)
+        print(admin_json)
+        print(mongo_json)
 
         with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as tmp_zip:
             with zipfile.ZipFile(tmp_zip, 'w') as zipf:
@@ -355,11 +377,14 @@ def download_all_data_as_zip():
             zip_path = tmp_zip.name
 
         download_name = f"{current_app.config['BACKUP_DATABASE']}_{datetime.now():%Y%m%d_%H%M%S}.zip"
+        print("All Database downloaded by: ", session.get('admin_id'), session.get('admin_username'))
+        current_app.logger.exception("All Database downloaded!" + str(session.get('admin_id')) + " " + session.get('admin_username'))
         return send_file(zip_path, as_attachment=True, download_name=download_name,
                          mimetype='application/zip')
 
     except Exception as e:
-        current_app.logger.exception("Error creating ZIP backup")
+        print("Error creating ZIP backup", e)
+        current_app.logger.exception("Error creating ZIP backup", e)
         return False, f"Error creating ZIP backup: {e}"
 
 
@@ -397,7 +422,7 @@ def upload_databases():
         session.clear()
         msg = f"Pushed all users data to Postgres users table."
         print(f"Pushed all users data to Postgres users table.")
-        current_app.logger.error(f"Pushed all users data to Postgres users table.")
+        current_app.logger.info(f"Pushed all users data to Postgres users table.")
 
     except Exception as e:
         print(f"Restore failed: {e}")
@@ -410,9 +435,14 @@ def upload_databases():
         if not mongo_file.filename.lower().endswith(('.json', '.txt')):
             return False, "Please upload a JSON file for Mongo data"
         try:
-            data = json.load(mongo_file)
+            data: list = json.load(mongo_file)
             if not isinstance(data, list):
                 raise ValueError("Root JSON must be an array of documents")
+            if len(data) == 0:
+                msg += f" Mongo JSON was empty, Imported 0 Mongo documents."
+                print(f"Mongo JSON was empty, Imported 0 Mongo documents.")
+                current_app.logger.info(f"Mongo JSON was empty, Imported 0 Mongo documents.")
+                return True, msg
         except Exception as e:
             return False, f"Invalid Mongo JSON file: {e}"
 

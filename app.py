@@ -140,7 +140,8 @@ def from_json_filter(s):
             return json.loads(s)
         return s
     except Exception as e:
-        print(e)
+        print(f"Error from from_json_filter: {e}")
+        app.logger.error(f"Error from from_json_filter: {e}")
         return {}
 
 
@@ -225,6 +226,7 @@ def enforce_same_origin(f):
         origin = request.headers.get('Origin') or request.headers.get('Referer')
         if not origin or not is_allowed_origin(origin):
             print("Your requested origin could not be identified!")
+            app.logger.error("Your requested origin could not be identified!")
             abort(403)
         return f(*args, **kwargs)
 
@@ -297,6 +299,7 @@ def register():
             if leaves.init_user_info(new_user_id, cleaned['email']):
                 auth.register_user(cleaned['email'], request.form.get("password"))
                 print("User Registered! ", cleaned['email'])
+                app.logger.info("User Registered! ", cleaned['email'])
                 hexed = token_hex(16)
                 session['user_registered_hex'] = hexed
                 return redirect(
@@ -434,6 +437,7 @@ def google_authorize():
             if leaves.init_user_info(new_user_id, user_info['email']):
                 auth.register_user(user_info['email'])
                 auth.update_user_info(new_user_id, session.pop('google-user', {}))
+                app.logger.info(user_info)
                 new_user = auth.get_user_info_with_id(new_user_id)
                 return login_authorized(new_user)
             else:
@@ -454,6 +458,7 @@ def google_authorize():
                                     state=1))
     except Exception as e:
         print(f"Error during Google OAuth: {e}")
+        app.logger.error(f"Error during Google OAuth: {e}")
         session.pop('google-user', None)
         return redirect(
             url_for('login',
@@ -743,6 +748,7 @@ def import_leaves():
             return True
         except Exception as e:
             print(user_id, "Wrong date in import- ", e)
+            app.logger.error(user_id, "Wrong date in import- ", e)
             return False
 
     for leave_type, dates in leaves_taken.items():
@@ -812,7 +818,6 @@ def take_leave():
              .get('leaves_taken', {})
              .get(leave_type, []))
 
-    # Check for already taken dates
     for date_str in dates:
         if date_str in taken:
             return jsonify(error=f'Leave already taken for {date_str}'), 400
@@ -872,9 +877,7 @@ def request_verify_email():
 
         otp = email_otp.send_otp(session.get('username') or "User", user_email)
         session["email_otp"]: list = []
-        session["email_otp_sent_at"]: list = []
         session["email_otp"].append(otp)
-        session["email_otp_sent_at"].append(datetime.now(timezone.utc).isoformat())
         session['resend_otp_limit'] = 1
         return jsonify(status="ok", message="OTP sent to your email. Please check you spam if not found.")
 
@@ -889,17 +892,15 @@ def request_verify_email():
 @enforce_same_origin
 def resend_verify_email():
     try:
-        if session.pop('resend_otp_limit', 0) - 1 != 0:
+        if session.pop('resend_otp_limit', 0) - 1 == 0:
+            email = session.get('email', None)
+            if not email:
+                return jsonify(error="No email found! Are you a robot?."), 403
+            otp = email_otp.send_otp(session.get('username') or "User", email, resend=True)
+            session["email_otp"].append(otp)
+            return jsonify(status="ok", message="OTP sent to your email. Please check you spam if not found.")
+        else:
             return jsonify(error="Resend OTP limits reached!."), 403
-
-        email = session.get('email', None)
-        if not email:
-            return jsonify(error="No email found! Are you a robot?."), 403
-
-        otp = email_otp.send_otp(session.get('username') or "User", email)
-        session["email_otp"].append(otp)
-        session["email_otp_sent_at"].append(datetime.now(timezone.utc).isoformat())
-        return jsonify(status="ok", message="OTP sent to your email. Please check you spam if not found.")
 
     except Exception as e:
         app.logger.exception(e)
@@ -921,23 +922,18 @@ def confirm_otp():
 
     user_otp = data['otp']
     real_otp: list = session.get("email_otp")
-    sent_at: list = session.get("email_otp_sent_at")
 
     if user_otp not in real_otp:
-        return jsonify(error="Invalid OTP!"), 403
+        return jsonify(error="Invalid  OTP!"), 403
 
-    sent_index = real_otp.index(user_otp)
-    if (not sent_at or datetime.fromisoformat(sent_at[sent_index]) +
-            timedelta(minutes=email_otp.OTP_EXPIRY_MINUTES) < datetime.now(
-                timezone.utc)):
-        return jsonify(error="OTP expired"), 400
+    if not helpers.validate_otp(user_otp, "Verification_otp"):
+        if not helpers.validate_otp(user_otp, "Verification_otp_resend"):
+            return jsonify(error="Expired OTP!"), 403
 
-    if user_otp in real_otp:
-        if auth.update_user_info(session['user_id'], {'account_verified': 1}) and \
-                leaves.update_user_profile(session['user_id'], {'account_verified': 1}):
-            session.pop("email_otp", None)
-            session.pop("email_otp_sent_at", None)
-            return redirect(url_for('account_root'))
+    if auth.update_user_info(session['user_id'], {'account_verified': 1}) and \
+            leaves.update_user_profile(session['user_id'], {'account_verified': 1}):
+        session.pop("email_otp", None)
+        return redirect(url_for('account_root'))
 
     return jsonify(error="Some error occurred!"), 400
 
@@ -1023,66 +1019,93 @@ def admin_logout():
 @app.route('/admin/admin-dashboard/<admin_name>/<token>')
 @admin.admin_login_required
 def admin_dashboard(admin_name, token):
-    admin_session = admin.get_admin_field(session['admin_id'], 'admin_session_token')
-    if admin_session != session['admin_session_token']:
-        return apology('There is some mismatch in token. Re-login!', 403)
-    if admin_name != session['admin_username'] or token != session['admin_session_token']:
+    if admin_name != session.get('admin_username', token_hex(2)) or token != session.get('admin_session_token', token_hex(2)):
         return apology('Admin credentials do not match!', 401)
-
-    session['ADMIN_DOWNLOAD_TOKEN'] = token_hex(32)
-    session['ADMIN_UPLOAD_TOKEN'] = token_hex(32)
-    session['ADMIN_DELETE_TOKEN'] = token_hex(32)
 
     return render_template(
         'admin_dashboard.html',
         download_route=url_for(
             'admin_download_database',
-            token=session['ADMIN_DOWNLOAD_TOKEN']
+            token=admin.hash_to_admin(period_seconds=2*60)
         ),
         upload_route=url_for(
             'admin_upload_database',
-            token=session['ADMIN_UPLOAD_TOKEN']
+            token=admin.hash_to_admin(period_seconds=1*60)
         ),
         delete_route=url_for(
             'admin_delete_all_data',
-            token=session['ADMIN_DELETE_TOKEN']
+            token=admin.hash_to_admin(period_seconds=1*60)
         ),
+        otp_route=url_for(
+            'get_admin_job_otp',
+            token=admin.hash_to_admin(period_seconds=2*60)
+        )
     )
+
+
+@app.route('/admin/do-admin/job-specific/get-otp/<string:token>', methods=['POST'])
+@limiter.limit("2 per minute")
+@admin.admin_login_required
+@enforce_same_origin
+def get_admin_job_otp(token: str):
+    if token != admin.hash_to_admin(period_seconds=2*60):
+        session.clear()
+        return jsonify(status="error", message="Token mismatched!"), 403
+
+    if helpers.send_otp_telegram():
+        return jsonify(status="success", message="OTP sent!"), 200
+    return jsonify(status="error", message="Something went wrong!"), 500
 
 
 @app.route('/admin/admin-spacing/delete/<string:token>', methods=['POST'])
 @limiter.limit("2 per minute")
 @admin.admin_login_required
+@enforce_same_origin
 def admin_delete_all_data(token):
-    if token != session.get('ADMIN_DELETE_TOKEN'):
+    if token != admin.hash_to_admin(period_seconds=1*60):
+        session.clear()
         return jsonify(status="error", message="Invalid token!"), 403
 
     admin_added = admin.get_admin_info_with_id(session['admin_id'])
     if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
+        data = request.get_json() or {}
+        if not helpers.validate_otp(data.pop('otp', ''), "admin_otp_secret"):
+            print("OTP did not matched!")
+            app.logger.error("OTP did not matched!")
+            return jsonify(status="error", message="OTP did not matched!"), 403
+
         success, message = admin.delete_all_user_data()
         if success:
-            session['ADMIN_DELETE_TOKEN'] = 0
-            return jsonify(status="success", message=message), 200
+            session.clear()
+            return redirect("/")
         else:
             return jsonify(status="error", message=message), 500
     else:
         return jsonify(status="error", message="Invalid credentials!"), 403
 
 
-@app.route('/admin/admin-spacing/download/<string:token>', methods=['GET'])
+@app.route('/admin/admin-spacing/download/<string:token>', methods=['POST'])
 @limiter.limit("4 per minute")
 @admin.admin_login_required
+@enforce_same_origin
 def admin_download_database(token):
-    if token != session.get('ADMIN_DOWNLOAD_TOKEN'):
+    if token != admin.hash_to_admin(period_seconds=2*60):
+        session.clear()
         return jsonify(status="error", message="Invalid token!"), 403
 
     admin_added = admin.get_admin_info_with_id(session['admin_id'])
     if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
+        data = request.get_json() or {}
+        if not helpers.validate_otp(data.get('otp', ''), "admin_otp_secret"):
+            print("OTP did not matched!")
+            app.logger.error("OTP did not matched!")
+            return jsonify(status="error", message="OTP did not matched!"), 403
+
         result = admin.download_all_data_as_zip()
         if isinstance(result, tuple):
             success, message = result
             return jsonify(status="error", message=message), 500
-        session['ADMIN_DOWNLOAD_TOKEN'] = 0
+        session.clear()
         return result
     else:
         return jsonify(status="error", message="Invalid credentials!"), 403
@@ -1091,26 +1114,37 @@ def admin_download_database(token):
 @app.route('/admin/admin-spacing/upload/<string:token>', methods=['GET', 'POST'])
 @limiter.limit("6 per minute")
 @admin.admin_login_required
+@enforce_same_origin
 def admin_upload_database(token):
-    if token != session.get('ADMIN_UPLOAD_TOKEN'):
-        return jsonify(status="error", message="Invalid token!"), 403
-
     admin_added = admin.get_admin_info_with_id(session['admin_id'])
     if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
         if request.method == 'GET':
+            if token != admin.hash_to_admin(period_seconds=1*60) and session.get('admin_session_token', None):
+                session.clear()
+                return jsonify(status="error", message="Invalid token!"), 403
+
             return render_template(
                 'admin_upload.html',
                 upload_route=url_for(
                     'admin_upload_database',
-                    token=session['ADMIN_UPLOAD_TOKEN']
+                    token=admin.hash_to_admin(period_seconds=3*60)
                 )
             )
 
         if request.method == 'POST':
+            if token != admin.hash_to_admin(period_seconds=3*60):
+                session.clear()
+                return jsonify(status="error", message="Invalid token!"), 403
+
+            if not helpers.validate_otp(request.form.get('otp', ''), "admin_otp_secret"):
+                print("OTP did not matched!")
+                app.logger.error("OTP did not matched!")
+                return jsonify(status="error", message="OTP did not matched!"), 403
+
             success, message = admin.upload_databases()
             if success:
-                session['ADMIN_UPLOAD_TOKEN'] = 0
-                return jsonify(status="success", message=message), 200
+                session.clear()
+                return redirect("/")
             else:
                 return jsonify(status="error", message=message), 400
     else:

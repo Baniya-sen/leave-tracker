@@ -1646,51 +1646,133 @@ if (registerForm) {
     });
 }
 
+// Admin-queries
+let pendingOp = null;
+let pendingRoute = null;
 
-// Admin-delete
-const deleteBtn = document.getElementById('deleteBtn');
-const resultDivDelete = document.getElementById('result');
-const successMessage = document.getElementById('successMessage');
-const errorMessage = document.getElementById('errorMessage');
-const successText = document.getElementById('successText');
-const errorText = document.getElementById('errorText');
-
-function showResultDelete(success, message) {
-    resultDivDelete.style.display = 'block';
-    if (success) {
-        successMessage.style.display = 'block';
-        errorMessage.style.display = 'none';
-        successText.textContent = message;
-    } else {
-        successMessage.style.display = 'none';
-        errorMessage.style.display = 'block';
-        errorText.textContent = message;
-    }
-}
-
-const csrf = document.querySelector('meta[name="csrf-token"]').content;
-if (deleteBtn) {
-    deleteBtn.addEventListener('click', function () {
-        if (confirm('Are you sure you want to delete ALL user data? This action cannot be undone!')) {
-            const deleteRoute = document.getElementById('delete_route').href;
-            fetch(deleteRoute, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrf
-                }
-            })
-                .then(response => response.json())
-                .then(data => {
-                    showResultDelete(data.status === 'success', data.message);
-                })
-                .catch(error => {
-                    showResultDelete(false, 'An error occurred while deleting data.', error.message);
-                });
-        }
+// Show OTP container and store operation
+['downloadBtn', 'deleteBtn'].forEach(id => {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.addEventListener('click', e => {
+    e.preventDefault();
+    ['downloadBtn', 'deleteBtn', 'uploadBtn'].forEach(idB => {
+        const btnB = document.getElementById(idB);
+        btnB.disabled = true;
     });
+    pendingOp = btn.dataset.op;
+    const base = btn.dataset.route;
+    pendingRoute = base.replace(/\/?$/, '');
+    document.getElementById('otpContainer').style.display = 'block';
+    document.getElementById('otpContainer').scrollIntoView({ behavior: 'smooth' });
+
+    const otpRoute = document.getElementById('want-otp').dataset.route;
+    fetch(otpRoute, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+    });
+  });
+});
+
+// OTP form submission
+const otpForm = document.getElementById('otpForm');
+if (otpForm) {
+  otpForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!pendingRoute) return;
+
+    document.getElementById('adminVerifyOTP').disabled = true;
+    const otpValue = e.target.otp.value.trim();
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({ otp: otpValue })
+    };
+
+
+    try {
+      const res = await fetch(pendingRoute, options);
+      const ct = res.headers.get('Content-Type') || '';
+
+      document.getElementById('otpContainer').style.display = 'none';
+      e.target.otp.value = '';
+
+      // 1) JSON response (errors or instructive payload)
+      if (ct.includes('application/json')) {
+        const json = await res.json();
+        document.getElementById('result').style.display = 'block';
+
+        if (json.status === 'success') {
+          document.getElementById('successMessage').style.display = 'block';
+          document.getElementById('errorMessage').style.display = 'none';
+          document.getElementById('successText').textContent = json.message;
+        }
+        else {
+          document.getElementById('successMessage').style.display = 'none';
+          document.getElementById('errorMessage').style.display = 'block';
+          document.getElementById('errorText').textContent = json.message || 'Error';
+        }
+        return;
+      }
+
+      // 2) ZIP (binary) response
+      if (ct.includes('application/zip') || ct.includes('application/octet-stream')) {
+        const disp = res.headers.get('Content-Disposition') || '';
+        let filename = 'download.zip';
+        const m = disp.match(/filename\*?=(?:UTF-8'')?["']?([^;"']+)["']?/i);
+        if (m) filename = decodeURIComponent(m[1]);
+
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      throw 'Unknown response type';
+
+    } catch (err) {
+      document.getElementById('result').style.display = 'block';
+      document.getElementById('successMessage').style.display = 'none';
+      document.getElementById('errorMessage').style.display = 'block';
+      document.getElementById('errorText').textContent = err.toString();
+      console.log(err)
+    }
+  });
 }
 
+// Get upload page
+const uploadBtn = document.getElementById('uploadBtn');
+if (uploadBtn) {
+    uploadBtn.addEventListener('click', e => {
+        e.preventDefault();
+        ['downloadBtn', 'deleteBtn', 'uploadBtn'].forEach(idB => {
+            const btnB = document.getElementById(idB);
+            btnB.disabled = true;
+        });
+        const otpRoute = document.getElementById('want-otp').dataset.route;
+        fetch(otpRoute, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrfToken
+            },
+        });
+        const route = uploadBtn.dataset.route;
+        window.location.href = route;
+    })
+}
 
 // Admin-Upload
 const formUploadDB = document.getElementById('upload-form');
@@ -1707,22 +1789,31 @@ function showResultUpload(success, message, extra = '') {
 if (formUploadDB) {
     formUploadDB.addEventListener('submit', e => {
         e.preventDefault();
+        const userFile = document.getElementById('userFile');
+        userFile.classList.add('disabled');
+        const mongoFile = document.getElementById('mongoFile');
+        mongoFile.classList.add('disabled');
+        const uploadOTPaDMINvERIFY = document.getElementById('uploadOTPaDMINvERIFY');
+        uploadOTPaDMINvERIFY.classList.add('disabled');
+        document.getElementById('adminUploadOtpBtn').disabled = true;
+
         const data = new FormData(formUploadDB);
         const uploadRoute = document.getElementById('upload_route').href;
         fetch(uploadRoute, {
             method: 'POST',
-            headers: { 'X-CSRFToken': csrf },
+            headers: { 'X-CSRFToken': csrfToken },
             body: data
         })
-            .then(res => res.json())
-            .then(payload => {
-                showResultUpload(payload.status === 'success', payload.message);
-            })
-            .catch(err => {
-                showResultUpload(false, 'Upload failed', err.message);
-            });
+        .then(res => res.json())
+        .then(payload => {
+            showResultUpload(payload.status === 'success', payload.message);
+        })
+        .catch(err => {
+            showResultUpload(false, 'Upload failed', err.message);
+        });
     });
 }
+
 
 // ===================== HAMBURGER MENU (Mobile Nav) =====================
 document.addEventListener('DOMContentLoaded', function () {
