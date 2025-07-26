@@ -19,3 +19,5 @@ Flask-Limiter~=3.12
 firebase_admin~=7.0.0
 psycopg2-binary~=2.9.10
 rq~=2.4.1
+pyotp~=2.9.0
+python-telegram-bot~=22.3

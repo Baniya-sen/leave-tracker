@@ -13,12 +13,13 @@ import psycopg2
 import requests
 import pyotp
 from dotenv import load_dotenv
-from firebase_admin import credentials, initialize_app, firestore, _apps
-from flask import g, current_app, send_file, request, session, redirect, url_for
+
 from psycopg2.extras import RealDictCursor
+from firebase_admin import credentials, initialize_app, firestore, _apps
+
+from flask import g, current_app, send_file, request, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 
-import helpers
 from auth import get_auth_db
 from leaves import get_mongo_client
 
@@ -280,17 +281,13 @@ def update_admin_info(user_id: int, data: dict) -> bool:
         return False
 
 
-def delete_all_user_data(otp: str):
-    if not helpers.validate_otp(otp):
-        print("OTP did not matched!")
-        current_app.logger.error("OTP did not matched!")
-        return False, "OTP did not matched!"
-
+def delete_all_user_data():
     session.clear()
 
     try:
         # --- SQL cleanup ---
         conn = get_auth_db()
+        print("hereeeeeee")
         try:
             with conn.cursor() as cur:
                 cur.execute("""
@@ -313,6 +310,7 @@ def delete_all_user_data(otp: str):
                     END
                     $$;
                 """)
+            print("donneeeeeeee")
             conn.commit()
             print("All users deleted and table reset.")
             current_app.logger.info("All users deleted and table reset.")
@@ -342,12 +340,7 @@ def delete_all_user_data(otp: str):
         return False, f"Error deleting user data: {str(e)}"
 
 
-def download_all_data_as_zip(otp: str):
-    if not validate_otp(otp):
-        print("OTP did not matched!")
-        current_app.logger.error("OTP did not matched!")
-        return False, "OTP did not matched!"
-
+def download_all_data_as_zip():
     try:
         client = get_mongo_client()
         db_name = current_app.config['MONGO_DB']
@@ -356,17 +349,26 @@ def download_all_data_as_zip(otp: str):
         mongo_docs = list(collection.find({}, {'_id': False}))
         mongo_json = json.dumps(mongo_docs, indent=2)
 
+        def json_serial(obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            return obj
+
         conn = get_auth_db()
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM users;")
-            users_data = [dict(row) for row in cur.fetchall() if row]
+            users_data = [dict(row) for row in cur.fetchall()]
         admin_conn = get_admin_db()
         with admin_conn.cursor() as cur:
-            cur.execute("SELECT * FROM admin;")
-            admin_data = [dict(row) for row in cur.fetchall() if row]
+            cur.execute("SELECT * FROM admin_users;")
+            admin_data = [dict(row) for row in cur.fetchall()]
 
-        users_json = json.dumps(users_data, indent=2)
-        admin_json = json.dumps(admin_data, indent=2)
+        users_json = json.dumps(users_data, indent=2, default=json_serial)
+        admin_json = json.dumps(admin_data, indent=2, default=json_serial)
+
+        print(users_json)
+        print(admin_json)
+        print(mongo_json)
 
         with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as tmp_zip:
             with zipfile.ZipFile(tmp_zip, 'w') as zipf:
@@ -376,20 +378,18 @@ def download_all_data_as_zip(otp: str):
             zip_path = tmp_zip.name
 
         download_name = f"{current_app.config['BACKUP_DATABASE']}_{datetime.now():%Y%m%d_%H%M%S}.zip"
+        print("All Database downloaded by: ", session.get('admin_id'), session.get('admin_username'))
+        current_app.logger.exception("All Database downloaded!" + str(session.get('admin_id')) + " " + session.get('admin_username'))
         return send_file(zip_path, as_attachment=True, download_name=download_name,
                          mimetype='application/zip')
 
     except Exception as e:
-        current_app.logger.exception("Error creating ZIP backup")
+        print("Error creating ZIP backup", e)
+        current_app.logger.exception("Error creating ZIP backup", e)
         return False, f"Error creating ZIP backup: {e}"
 
 
-def upload_databases(otp: str):
-    if not validate_otp(otp):
-        print("OTP did not matched!")
-        current_app.logger.error("OTP did not matched!")
-        return False, "OTP did not matched!"
-
+def upload_databases():
     if 'file' not in request.files:
         return False, "No file uploaded"
 

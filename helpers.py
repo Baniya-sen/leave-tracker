@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 from os import getenv
 
 import pyotp
+import requests
+
 from flask import current_app, session
 
-from telegram import Bot
 
 import auth
 from admin import delete_unverified_accounts
@@ -129,21 +130,32 @@ def run_task_and_reschedule():
         schedule_next_run()
 
 
-def send_otp_telegram():
-    TG_BOT = Bot(token=getenv("TELEGRAM_BOT_TOKEN"))
-    TG_CHAT = getenv("TELEGRAM_CHAT_ID")
-
+def send_otp_telegram() -> bool:
     secret = session.get("admin_otp_secret")
     if not secret:
         secret = pyotp.random_base32()
         session["admin_otp_secret"] = secret
 
+    TG_BOT = getenv("TELEGRAM_BOT_TOKEN")
+    TG_CHAT = getenv("TELEGRAM_CHAT_ID")
+
     totp = pyotp.TOTP(secret, interval=600)
     code = totp.now()
     OTP_STORE[secret] = code
-    text = f"🚀 Your one‑time admin OTP is *{code}* (valid 10 for min)."
-    TG_BOT.send_message(chat_id=TG_CHAT, text=text, parse_mode="Markdown")
-    return code
+    text = f"🚀 Your one‑time admin OTP for Leaves Tracker is: *{code}* (Only valid for 10 min)."
+    url = (
+        f"https://api.telegram.org/bot{TG_BOT}/sendMessage"
+        f"?chat_id={TG_CHAT}"
+        f"&text={requests.utils.quote(text)}"
+        f"&parse_mode=Markdown"
+    )
+    try:
+        resp = requests.get(url, timeout=(3, 5))
+        resp.raise_for_status()
+        return True
+    except requests.RequestException as e:
+        print("Telegram send failed:", e)
+        return False
 
 
 def validate_otp(submitted_otp) -> bool:

@@ -1651,7 +1651,7 @@ let pendingOp = null;
 let pendingRoute = null;
 
 // Show OTP container and store operation
-['downloadBtn', 'uploadBtn', 'deleteBtn'].forEach(id => {
+['downloadBtn', 'deleteBtn'].forEach(id => {
   const btn = document.getElementById(id);
   if (!btn) return;
   btn.addEventListener('click', e => {
@@ -1661,48 +1661,96 @@ let pendingRoute = null;
     pendingRoute = base.replace(/\/?$/, '');
     document.getElementById('otpContainer').style.display = 'block';
     document.getElementById('otpContainer').scrollIntoView({ behavior: 'smooth' });
-  });
-});
 
-// OTP form submission
-const otpContBtn = document.getElementById('otpForm');
-if (otpContBtn) {
-      otpContBtn.addEventListener('submit', e => {
-      e.preventDefault();
-      if (!pendingRoute) return;
-      const otpValue = e.target.otp.value;
-      console.log(pendingRoute, otpValue)
-      // Build fetch options
-      const options = {
+    const otpRoute = document.getElementById('want-otp').dataset.route;
+    fetch(otpRoute, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrfToken
         },
-        body: JSON.stringify({ otp: otpValue })
-      };
-      fetch(pendingRoute, options)
-        .then(res => res.json())
-        .then(data => {
-          document.getElementById('result').style.display = 'block';
-          if (data.status === 'success') {
-            document.getElementById('successMessage').style.display = 'block';
-            document.getElementById('errorMessage').style.display = 'none';
-            document.getElementById('successText').textContent = data.message;
-          } else {
-            document.getElementById('successMessage').style.display = 'none';
-            document.getElementById('errorMessage').style.display = 'block';
-            document.getElementById('errorText').textContent = data.message;
-          }
-        }).catch(err => {
-          document.getElementById('result').style.display = 'block';
+    });
+  });
+});
+
+// OTP form submission
+const otpForm = document.getElementById('otpForm');
+if (otpForm) {
+  otpForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!pendingRoute) return;
+    console.log("yahahahahahah")
+
+    const otpValue = e.target.otp.value.trim();
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({ otp: otpValue })
+    };
+
+
+    console.log("yahahahahahah")
+
+    try {
+      const res = await fetch(pendingRoute, options);
+      console.log("yahahahahahah")
+      const ct = res.headers.get('Content-Type') || '';
+      console.log("thisss- ", ct)
+
+      // 1) JSON response (errors or instructive payload)
+      if (ct.includes('application/json')) {
+        const json = await res.json();
+        document.getElementById('result').style.display = 'block';
+
+        if (json.status === 'success') {
+          // maybe a success message w/o download_url
+          document.getElementById('successMessage').style.display = 'block';
+          document.getElementById('errorMessage').style.display = 'none';
+          document.getElementById('successText').textContent = json.message;
+        }
+        else {
+          // error case
           document.getElementById('successMessage').style.display = 'none';
           document.getElementById('errorMessage').style.display = 'block';
-          document.getElementById('errorText').textContent = 'Request failed';
-        });
-    });
-}
+          document.getElementById('errorText').textContent = json.message || 'Error';
+        }
+        return;
+      }
 
+      // 2) ZIP (binary) response
+      if (ct.includes('application/zip') || ct.includes('application/octet-stream')) {
+        const disp = res.headers.get('Content-Disposition') || '';
+        let filename = 'download.zip';
+        const m = disp.match(/filename\*?=(?:UTF-8'')?["']?([^;"']+)["']?/i);
+        if (m) filename = decodeURIComponent(m[1]);
+
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // Fallback
+      throw 'Unknown response type';
+
+    } catch (err) {
+      document.getElementById('result').style.display = 'block';
+      document.getElementById('successMessage').style.display = 'none';
+      document.getElementById('errorMessage').style.display = 'block';
+      document.getElementById('errorText').textContent = err.toString();
+      console.log(err)
+    }
+  });
+}
 
 // ===================== HAMBURGER MENU (Mobile Nav) =====================
 document.addEventListener('DOMContentLoaded', function () {

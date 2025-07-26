@@ -1037,6 +1037,7 @@ def admin_dashboard(admin_name, token):
     session['ADMIN_DOWNLOAD_TOKEN'] = token_hex(32)
     session['ADMIN_UPLOAD_TOKEN'] = token_hex(32)
     session['ADMIN_DELETE_TOKEN'] = token_hex(32)
+    session['ADMIN_OTP_TOKEN'] = token_hex(32)
 
     return render_template(
         'admin_dashboard.html',
@@ -1052,21 +1053,46 @@ def admin_dashboard(admin_name, token):
             'admin_delete_all_data',
             token=session['ADMIN_DELETE_TOKEN']
         ),
+        otp_route=url_for(
+            'get_admin_job_otp',
+            token=session['ADMIN_OTP_TOKEN']
+        )
     )
+
+
+@app.route('/admin/do-admin/job-specific/get-otp/<string:token>', methods=['POST'])
+@limiter.limit("2 per minute")
+@admin.admin_login_required
+@enforce_same_origin
+def get_admin_job_otp(token: str):
+    if helpers.send_otp_telegram():
+        return jsonify(status="success", message="OTP sent!"), 200
+    return jsonify(status="error", message="Something went wrong!"), 500
 
 
 @app.route('/admin/admin-spacing/delete/<string:token>', methods=['POST'])
 @limiter.limit("2 per minute")
 @admin.admin_login_required
+@enforce_same_origin
 def admin_delete_all_data(token):
     if token != session.get('ADMIN_DELETE_TOKEN'):
         return jsonify(status="error", message="Invalid token!"), 403
 
+    print("kokokokokoko")
+
     admin_added = admin.get_admin_info_with_id(session['admin_id'])
     if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
         data = request.get_json() or {}
-        success, message = admin.delete_all_user_data(data.get('otp', ''))
+        print("kokokokokoko")
+        if not helpers.validate_otp(data.pop('otp', '')):
+            print("OTP did not matched!")
+            app.logger.error("OTP did not matched!")
+            return jsonify(status="error", message="OTP did not matched!"), 403
+
+        print("asasasasasas")
+        success, message = admin.delete_all_user_data()
         if success:
+            print("asasasasasas")
             return jsonify(status="success", message=message), 200
         else:
             return jsonify(status="error", message=message), 500
@@ -1074,20 +1100,27 @@ def admin_delete_all_data(token):
         return jsonify(status="error", message="Invalid credentials!"), 403
 
 
-@app.route('/admin/admin-spacing/download/<string:token>', methods=['GET'])
+@app.route('/admin/admin-spacing/download/<string:token>', methods=['POST'])
 @limiter.limit("4 per minute")
 @admin.admin_login_required
+@enforce_same_origin
 def admin_download_database(token):
     if token != session.get('ADMIN_DOWNLOAD_TOKEN'):
         return jsonify(status="error", message="Invalid token!"), 403
 
     admin_added = admin.get_admin_info_with_id(session['admin_id'])
     if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
+        data = request.get_json() or {}
+        if not helpers.validate_otp(data.get('otp', '')):
+            print("OTP did not matched!")
+            app.logger.error("OTP did not matched!")
+            return jsonify(status="error", message="OTP did not matched!"), 403
+
         result = admin.download_all_data_as_zip()
         if isinstance(result, tuple):
             success, message = result
             return jsonify(status="error", message=message), 500
-        session['ADMIN_DOWNLOAD_TOKEN'] = 0
+        session['ADMIN_DOWNLOAD_TOKEN'] = token_hex(8)
         return result
     else:
         return jsonify(status="error", message="Invalid credentials!"), 403
@@ -1096,6 +1129,7 @@ def admin_download_database(token):
 @app.route('/admin/admin-spacing/upload/<string:token>', methods=['GET', 'POST'])
 @limiter.limit("6 per minute")
 @admin.admin_login_required
+@enforce_same_origin
 def admin_upload_database(token):
     if token != session.get('ADMIN_UPLOAD_TOKEN'):
         return jsonify(status="error", message="Invalid token!"), 403
@@ -1103,6 +1137,12 @@ def admin_upload_database(token):
     admin_added = admin.get_admin_info_with_id(session['admin_id'])
     if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
         if request.method == 'GET':
+            data = request.get_json() or {}
+            if not helpers.validate_otp(data.get('otp', '')):
+                print("OTP did not matched!")
+                app.logger.error("OTP did not matched!")
+                return jsonify(status="error", message="OTP did not matched!"), 403
+
             return render_template(
                 'admin_upload.html',
                 upload_route=url_for(
