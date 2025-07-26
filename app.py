@@ -1019,7 +1019,7 @@ def admin_logout():
 @app.route('/admin/admin-dashboard/<admin_name>/<token>')
 @admin.admin_login_required
 def admin_dashboard(admin_name, token):
-    if admin_name != session.get('admin_username', None) or token != session.get('admin_session_token', None):
+    if admin_name != session.get('admin_username', token_hex(2)) or token != session.get('admin_session_token', token_hex(2)):
         return apology('Admin credentials do not match!', 401)
 
     return render_template(
@@ -1119,7 +1119,7 @@ def admin_upload_database(token):
     admin_added = admin.get_admin_info_with_id(session['admin_id'])
     if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
         if request.method == 'GET':
-            if token != admin.hash_to_admin(period_seconds=1*60):
+            if token != admin.hash_to_admin(period_seconds=1*60) and session.get('admin_session_token', None):
                 session.clear()
                 return jsonify(status="error", message="Invalid token!"), 403
 
