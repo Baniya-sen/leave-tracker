@@ -1019,7 +1019,7 @@ def admin_logout():
 @app.route('/admin/admin-dashboard/<admin_name>/<token>')
 @admin.admin_login_required
 def admin_dashboard(admin_name, token):
-    if admin_name != session.get('admin_username', token_hex(2)) or token != session.get('admin_session_token', token_hex(2)):
+    if admin_name != session.get('admin_username', token_hex(8)) or token != session.get('admin_session_token', token_hex(8)):
         return apology('Admin credentials do not match!', 401)
 
     return render_template(
