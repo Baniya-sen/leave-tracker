@@ -5629,7 +5629,7 @@ nav .navbar-brand .logo_text::first-letter {
     }
 
     .leaves-header {
-        margin-top: 2.5rem !important;
+        margin-top: 2rem !important;
         margin-bottom: 1.6rem !important;
     }
 
@@ -5666,6 +5666,10 @@ nav .navbar-brand .logo_text::first-letter {
 
 /* Tablet/Phablet: Stack dashboard, shrink font, fix nav */
 @media (max-width: 900px) {
+    .navbar-middle-m {
+        margin-left: -2.1rem !important;
+    }
+
     .app-register-terms {
         font-size: 0.6rem !important;
     }
@@ -5717,7 +5721,7 @@ nav .navbar-brand .logo_text::first-letter {
     }
 
     .leaves-header {
-        margin-left: 2rem !important;
+        margin-left: 0.2rem !important;
     }
 
     .calendar {
@@ -5778,6 +5782,20 @@ nav .navbar-brand .logo_text::first-letter {
 
     #otp-input {
         text-align: center;
+    }
+
+    #weekend-days-des {
+        padding-right: 3rem !important;
+    }
+
+    .setting-whole-bg {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+
+    .age-popup {
+        margin-left: 1% !important;
+        margin-bottom: 1rem !important;
     }
 }
 
@@ -6682,7 +6700,7 @@ footer {
     }
 
     .leaves-header {
-        margin-top: 2.5rem !important;
+        margin-top: 2rem !important;
         margin-bottom: 1.6rem !important;
     }
 
@@ -6767,4 +6785,11 @@ footer {
     align-items: center !important;
     gap: 0.2rem !important;
   }
+  .setting-whole-bg {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+   }
+   .setting-whole-bg-btn {
+    margin-top: 0.5rem !important;
+   }
 }

@@ -49,14 +49,13 @@
       </div>
       {% endif %}
 
-      <a class="navbar-brand m-0 app-navbar-brand d-flex align-items-center gap-2" href="/">
+      <a class="navbar-brand m-0 app-navbar-brand d-flex align-items-center gap-2 navbar-middle-m" href="/">
         <span class="app-navbar-logo">
           <img src="{{ url_for('static', filename='images/logo.png') }}" alt="leave_tracker_logo" height="35" width="35" />
         </span>
         <span class="logo_text app-navbar-title">Leaves Tracker</span>
       </a>
 
-      <!-- Hamburger for mobile: moved here -->
       <button id="mobile-nav-toggle" class="d-lg-none d-block" aria-label="Open navigation" aria-controls="mobile-nav"
         aria-expanded="false" type="button"
         style="background:none;border:none;padding:8px 12px;outline:none;z-index:110;position:absolute;right:0;top:50%;transform:translateY(-50%);">
@@ -74,7 +73,7 @@
         {% if session["user_id"] %}
         <ul class="navbar-nav flex-row m-0 align-items-center inter">
           <li class="nav-item">
-            <a class="nav-link nav-chip d-flex align-items-center gap-2 app-account-link" href="{{ '/account' if user_leaves is mapping else '/' }}">
+            <a class="nav-link nav-chip d-flex align-items-center gap-2 app-account-link" href="{{ '/account' if user_leaves is mapping else '/home' }}">
               <div class="nav-icon-circle app-account-icon">
                 {% if user_leaves is mapping or (not user_info or not user_info.get('name')) %}
                   <img src="{{ url_for('static', filename='images/account.png') }}" alt="Account" />
@@ -112,7 +111,13 @@
 
   <!-- Move mobile menu here, outside navbar -->
   <div id="mobile-nav-items" class="mobile-nav-items" style="display:none;">
-    <a href="/account" class="mobile-nav-item">Account</a>
+    <a class="mobile-nav-item" href="{{ '/account' if user_leaves is mapping else '/home' }}">
+      {% if user_leaves is mapping %}
+        Account
+      {% else %}
+        Home
+      {% endif %}
+    </a>
     <a href="/logout" class="mobile-nav-item">Logout</a>
   </div>
   <div class="blur-bg" id="blur-bg" style="display:none;"></div>

@@ -469,7 +469,7 @@ def google_authorize():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login', msg=f"✅ You have successfully logged out.", state=1))
+    return redirect(url_for('login', msg=f"You have successfully logged out", state=1))
 
 
 @app.route('/')
