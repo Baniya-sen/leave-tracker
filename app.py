@@ -15,7 +15,7 @@ from urllib.parse import quote_plus, urlparse
 
 from flask import (
     Flask, session, request, render_template,
-    redirect, url_for, jsonify, abort, send_from_directory
+    redirect, url_for, jsonify, abort, send_from_directory, make_response
 )
 from werkzeug.routing import BaseConverter
 from werkzeug.security import check_password_hash
@@ -469,7 +469,7 @@ def google_authorize():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login', msg=f"✅ You have successfully logged out.", state=1))
+    return redirect(url_for('login', msg=f"You have successfully logged out", state=1))
 
 
 @app.route('/')
@@ -1024,28 +1024,35 @@ def admin_logout():
 @app.route('/admin/admin-dashboard/<admin_name>/<token>')
 @admin.admin_login_required
 def admin_dashboard(admin_name, token):
-    if admin_name != session.get('admin_username', token_hex(8)) or token != session.get('admin_session_token', token_hex(8)):
+    if admin_name != session.get('admin_username', token_hex(8)) or \
+            token != session.get('admin_session_token', token_hex(8)):
         return apology('Admin credentials do not match!', 401)
 
-    return render_template(
-        'admin_dashboard.html',
-        download_route=url_for(
-            'admin_download_database',
-            token=admin.hash_to_admin(period_seconds=2*60)
-        ),
-        upload_route=url_for(
-            'admin_upload_database',
-            token=admin.hash_to_admin(period_seconds=1*60)
-        ),
-        delete_route=url_for(
-            'admin_delete_all_data',
-            token=admin.hash_to_admin(period_seconds=1*60)
-        ),
-        otp_route=url_for(
-            'get_admin_job_otp',
-            token=admin.hash_to_admin(period_seconds=2*60)
+    response = make_response(render_template(
+            'admin_dashboard.html',
+            download_route=url_for(
+                'admin_download_database',
+                token=admin.hash_to_admin(period_seconds=2*60)
+            ),
+            upload_route=url_for(
+                'admin_upload_database',
+                token=admin.hash_to_admin(period_seconds=1*60)
+            ),
+            delete_route=url_for(
+                'admin_delete_all_data',
+                token=admin.hash_to_admin(period_seconds=1*60)
+            ),
+            otp_route=url_for(
+                'get_admin_job_otp',
+                token=admin.hash_to_admin(period_seconds=2*60)
+            )
         )
     )
+
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 @app.route('/admin/do-admin/job-specific/get-otp/<string:token>', methods=['POST'])
@@ -1110,8 +1117,14 @@ def admin_download_database(token):
         if isinstance(result, tuple):
             success, message = result
             return jsonify(status="error", message=message), 500
+
         session.clear()
-        return result
+        response = make_response(result)
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+
     else:
         return jsonify(status="error", message="Invalid credentials!"), 403
 
@@ -1128,13 +1141,19 @@ def admin_upload_database(token):
                 session.clear()
                 return jsonify(status="error", message="Invalid token!"), 403
 
-            return render_template(
-                'admin_upload.html',
-                upload_route=url_for(
-                    'admin_upload_database',
-                    token=admin.hash_to_admin(period_seconds=3*60)
+            response = make_response(render_template(
+                    'admin_upload.html',
+                    upload_route=url_for(
+                        'admin_upload_database',
+                        token=admin.hash_to_admin(period_seconds=3*60)
+                    )
                 )
             )
+
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
 
         if request.method == 'POST':
             if token != admin.hash_to_admin(period_seconds=3*60):

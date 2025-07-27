@@ -23,7 +23,7 @@
       <div class="settings-tab-panel" id="tab-account">
         <div class="settings-card mb-4">
           <div class="d-flex align-items-center gap-3 mb-4">
-            <img src="{{ user_info['avatar_url'] or url_for('static', filename='images/avatar.png') }}" alt="Profile"
+            <img src="{{ user_info['picture_url'] or url_for('static', filename='images/avatar.png') }}" alt="Profile"
               class="profile-pic" style="width: 100px; height: 100px;">
             <div>
               <div class="fw-semibold settings-profile-name">{{ user_info['name'] or '—' }}</div>
@@ -163,12 +163,12 @@
 
             <!-- Firm Weekend Days -->
             <div class="settings-row-bg settings-form-group">
-              <div class="d-flex align-items-center w-100">
+              <div class="d-flex align-items-center w-100 setting-whole-bg">
                 <div style="flex:1;">
                   <label class="settings-label mb-1">Your Firm Weekend Days</label>
                   <div id="firm-weekend-display" class="settings-value d-flex align-items-center" style="gap: 10px;">
                     {% if not user_info['firm_weekend_days'] %}
-                      Numbers separated by comma, e.g. 6, 7 - For Saturday and Sunday
+                    <span id="weekend-days-des" style="padding-right: 2rem;">Enter only weekend days Number separated by comma.<br>Example: Enter only '7', if your firm weekend is Sunday,<br>While '6, 7' - For Saturday and Sunday.</span>
                     {% endif %}
                     {% set value_str = user_info['firm_weekend_days'] or '' %}
                     {% set weekday_map = { '1': 'Monday', '2': 'Tuesday', '3': 'Wednesday', '4': 'Thursday', '5': 'Friday', '6': 'Saturday', '7': 'Sunday' } %}
@@ -188,7 +188,7 @@
                     </div>
                   </form>
                 </div>
-                <div class="settings-form-actions">
+                <div class="settings-form-actions setting-whole-bg-btn">
                   <button class="btn btn-link p-0 settings-edit-btn" id="edit-firm-weekend" data-panel="edit-firm-weekend">Update Weekend Days</button>
                 </div>
               </div>
@@ -196,7 +196,7 @@
 
             <!-- Firm Leaves Structure -->
             <div class="settings-row-bg settings-form-group" id="firm-leaves-section">
-              <div class="d-flex align-items-start w-100" style="gap: 1rem;">
+              <div class="d-flex align-items-start w-100 setting-whole-bg" style="gap: 1rem;">
                 <!-- Display Grid -->
                 <div class="leaves-grid" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; flex:1;">
                   <span class="settings-label" style="grid-column: span 2;">Your Firm Leaves Structure</span>
@@ -217,7 +217,7 @@
                 </div>
 
                 <!-- Edit Button -->
-                <div class="settings-form-actions">
+                <div class="settings-form-actions setting-whole-bg-btn">
                   <button class="btn btn-link p-0 settings-edit-btn" data-panel="edit-firm-leaves" id="edit-firm-leaves">Update Firm Leaves</button>
                 </div>
               </div>
@@ -275,13 +275,12 @@
                 <h5 class="settings-label w-100 mb-0 inter pb-2">Paste Your Leave Data JSON</h5>
                 <span class="text-muted small mb-2">Already tracking leaves in Excel, Notepad, email threads or some HR tool? You can easily migrate all of it!<br>
                   Convert your data into JSON format given below and paste it into the text-box!</span>
-                <p class="text-muted small mb-2">
-                  Leave types <strong>must match exactly</strong> what you’ve configured in firm settings.
-                  Otherwise, they'll be <strong>Replaced</strong>.<br>
                   <span class="json-example">
                     An Example would be:
                     <code>{"Casual": ["2025-07-01", "2025-03-12"], "Sick": ["2025-06-20"]}<br></code>
                   </span>
+                <p class="text-muted small mb-2">
+                  Leave types <strong>must match exactly</strong> what you’ve configured in firm settings.
                 </p>
               </div>
               <div class="d-flex w-100 inter ai-bot-copy">

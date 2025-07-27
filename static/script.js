@@ -1592,9 +1592,11 @@ function showCopiedMessage(container, msg_TEXT) {
     msg.style.color = "#27d289";
     msg.textContent = msg_TEXT;
     container.appendChild(msg);
+    container.classList.add('disabled');
 
     setTimeout(() => {
         msg.remove();
+        container.classList.remove('disabled');
     }, 2500);
 }
 
