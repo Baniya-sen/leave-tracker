@@ -288,29 +288,38 @@ def delete_all_user_data():
         conn = get_auth_db()
         try:
             with conn.cursor() as cur:
-                cur.execute("""
-                    DO
-                    $$
-                    DECLARE
-                      t RECORD;
-                    BEGIN
-                      IF EXISTS (SELECT 1 FROM users) THEN
-                        FOR t IN
-                          SELECT table_schema, table_name
-                            FROM information_schema.tables
-                           WHERE table_type = 'BASE TABLE'
-                             AND table_schema NOT IN ('pg_catalog','information_schema')
-                        LOOP
-                          EXECUTE format(
-                            'TRUNCATE TABLE %I.%I RESTART IDENTITY CASCADE;',
-                            t.table_schema, t.table_name
-                          );
-                        END LOOP;
-                      END IF;
-                    END
-                    $$;
-                """)
+                print("Opted to delete all users data!")
+                current_app.logger.info("Opted to delete all users data!")
+
+                cur.execute("SELECT EXISTS (SELECT 1 FROM users)")
+                result_row = cur.fetchone()
+                has_rows = result_row['exists']
+
+                if has_rows:
+                    cur.execute("""
+                        DO
+                        $$
+                        DECLARE
+                          t RECORD;
+                        BEGIN
+                          IF EXISTS (SELECT 1 FROM users) THEN
+                            FOR t IN
+                              SELECT table_schema, table_name
+                                FROM information_schema.tables
+                               WHERE table_type = 'BASE TABLE'
+                                 AND table_schema NOT IN ('pg_catalog','information_schema')
+                            LOOP
+                              EXECUTE format(
+                                'TRUNCATE TABLE %I.%I RESTART IDENTITY CASCADE;',
+                                t.table_schema, t.table_name
+                              );
+                            END LOOP;
+                          END IF;
+                        END
+                        $$;
+                    """)
             conn.commit()
+
             print("All users deleted and table reset.")
             current_app.logger.info("All users deleted and table reset.")
 

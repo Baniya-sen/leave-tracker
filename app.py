@@ -1000,7 +1000,7 @@ def admin_login(hashed):
             request.form['username'], request.form['password']
         )
         if admin_added:
-            token = token_hex(32)
+            token = admin.hash_to_admin(2*60)
             admin.update_admin_info(admin_added['id'], {'admin_session_token': token})
 
             session['admin_id'] = admin_added['id']
@@ -1025,7 +1025,8 @@ def admin_logout():
 @admin.admin_login_required
 def admin_dashboard(admin_name, token):
     if admin_name != session.get('admin_username', token_hex(8)) or \
-            token != session.get('admin_session_token', token_hex(8)):
+            token != session.get('admin_session_token', token_hex(8)) or \
+            token != admin.hash_to_admin(2*60):
         return apology('Admin credentials do not match!', 401)
 
     response = make_response(render_template(
@@ -1078,15 +1079,20 @@ def admin_delete_all_data(token):
         session.clear()
         return jsonify(status="error", message="Invalid token!"), 403
 
+    print("nonononon")
+
     admin_added = admin.get_admin_info_with_id(session['admin_id'])
     if admin_added and session['admin_session_token'] == admin_added['admin_session_token']:
+        print("nonononon sdsdsdsdsd")
         data = request.get_json() or {}
         if not helpers.validate_otp(data.pop('otp', ''), "admin_otp_secret"):
             print("OTP did not matched!")
             app.logger.error("OTP did not matched!")
             return jsonify(status="error", message="OTP did not matched!"), 403
 
+        print("nonononon qqqqqqqqqqqqqqqq")
         success, message = admin.delete_all_user_data()
+        print("nonononon aaaaaaaaaaaa")
         if success:
             session.clear()
             return redirect("/")
