@@ -3,7 +3,7 @@ name: Keep Flask App Alive on on-render
 # Runs every 5 minutes
 on:
   schedule:
-    - cron:  '*/10 * * * *'
+    - cron:  '*/5 * * * *'
 
 jobs:
   ping:
