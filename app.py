@@ -828,7 +828,7 @@ def take_leave():
             return jsonify(error=f'Leave already taken for {date_str}'), 400
 
     new_taken = taken + dates
-    new_remaining = remaining - len(dates)
+    new_remaining = leaves_given[leave_type] - len(new_taken)
 
     if new_remaining < 0:
         return jsonify(error='Not enough leaves left'), 400
