@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, Json
 
 from flask import g, current_app, session
 from werkzeug.security import generate_password_hash
@@ -186,7 +186,7 @@ def update_user_info(user_id: int, data: dict) -> bool:
                 new_leaves = data[field]
                 merged = existing_leaves.copy()
                 merged.update(new_leaves)
-                values.append(merged)
+                values.append(Json(merged))
             else:
                 values.append(data[field])
 

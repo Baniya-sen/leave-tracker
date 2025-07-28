@@ -11,7 +11,6 @@ from concurrent.futures import ThreadPoolExecutor
 
 import psycopg2
 import requests
-import pyotp
 from dotenv import load_dotenv
 
 from psycopg2.extras import RealDictCursor
@@ -64,12 +63,12 @@ def lookup_geo(ip: str) -> dict:
 
 def make_fingerprint(req_payload: dict) -> str:
     keys = ["path", "method", "query_params", "user_id"]
-    imp_params = {k: req_payload[k] for k in keys}
+    imp_params = {k: req_payload[k] for k in keys if k in req_payload}
     s = json.dumps(imp_params, sort_keys=True)
     return hashlib.sha256(s.encode()).hexdigest()
 
 
-def flatten(d: dict, parent_key: str = '', sep: str = ' ') -> dict:
+def flatten(d: dict, parent_key: str = '', sep: str = '_') -> dict:
     items = []
     for k, v in d.items():
         new_key = f"{parent_key}{sep}{k}" if parent_key else k
@@ -131,7 +130,7 @@ def store_event_firebase(doc: dict) -> None:
 def log_analytics(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        if os.environ.get("FLASK_ENV") == "development":
+        if os.environ.get("FLASK_ENV") == "production":
             payload = flatten(get_req_payload())
             fp = make_fingerprint(payload)
             if session.get('event_fingerprint') != fp:
