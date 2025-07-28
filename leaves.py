@@ -51,21 +51,22 @@ def update_user_profile(user_id: int, data: dict) -> bool:
     existing_doc = coll.find_one(
         {"user_id": user_id},
         {f"user_leaves.{firm}.leaves_given": 1,
-         f"user_leaves.{firm}.leaves_remaining": 1,
+         f"user_leaves.{firm}.leaves_taken": 1,
          "_id": 0}
     )
 
     existing_g = existing_doc.get("user_leaves", {}).get(firm, {}).get("leaves_given", {}) if existing_doc else {}
-    existing_r = existing_doc.get("user_leaves", {}).get(firm, {}).get("leaves_remaining", {}) if existing_doc else {}
+    existing_t = existing_doc.get("user_leaves", {}).get(firm, {}).get("leaves_taken", {}) if existing_doc else {}
 
     for key, val in data.items():
         if key == "leaves_type":
             new_given = val
             merged_given = existing_g.copy()
-            merged_remaining = existing_r.copy()
+            merged_remaining = {}
             for t, c in new_given.items():
                 merged_given[t] = c
-                merged_remaining.setdefault(t, c)
+            for t, c in merged_given.items():
+                merged_remaining[t] = c - len(existing_t.get(t, []))
 
             set_ops[f"user_leaves.{firm}.leaves_given"] = merged_given
             set_ops[f"user_leaves.{firm}.leaves_remaining"] = merged_remaining
@@ -159,9 +160,8 @@ def get_users_leaves(user_id: int, username: str, firm: str) -> dict | None:
     return document.get("user_leaves") if document else None
 
 
-def remove_user_leave(user_id: int, firm: str, leave_type: str, date_str: str) -> tuple[bool, str|None]:
+def remove_user_leave(user_id: int, firm: str, leave_type: str, date_str: str) -> tuple[bool, str | None]:
     coll = get_leaves_collection()
-    # Pull the date from the leaves_taken array for the type
     update = {
         "$pull": {f"user_leaves.{firm}.leaves_taken.{leave_type}": date_str},
         "$inc": {f"user_leaves.{firm}.leaves_remaining.{leave_type}": 1}
@@ -171,4 +171,3 @@ def remove_user_leave(user_id: int, firm: str, leave_type: str, date_str: str) -
         return True, None
     else:
         return False, "No leave found to remove or already removed."
-
